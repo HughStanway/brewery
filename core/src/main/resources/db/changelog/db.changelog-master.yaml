@@ -1,0 +1,110 @@
+databaseChangeLog:
+  - changeSet:
+      id: 001-initial-schema
+      author: foundry
+      changes:
+        - createTable:
+            tableName: builds
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  defaultValue: gen_random_uuid()
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: repository
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: branch
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: commit
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: varchar(50)
+                  defaultValue: 'pending'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamp
+                  defaultValueDate: now()
+              - column:
+                  name: updated_at
+                  type: timestamp
+                  defaultValueDate: now()
+        
+        - createTable:
+            tableName: artifacts
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  defaultValue: gen_random_uuid()
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: name
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: version
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: artifact_type
+                  type: varchar(50)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: build_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_artifacts_builds
+                    references: builds(id)
+              - column:
+                  name: storage_path
+                  type: text
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamp
+                  defaultValueDate: now()
+        
+        - createIndex:
+            indexName: idx_builds_repository_branch
+            tableName: builds
+            columns:
+              - column:
+                  name: repository
+              - column:
+                  name: branch
+        
+        - createIndex:
+            indexName: idx_builds_status
+            tableName: builds
+            columns:
+              - column:
+                  name: status
+        
+        - createIndex:
+            indexName: idx_artifacts_name_version
+            tableName: artifacts
+            columns:
+              - column:
+                  name: name
+              - column:
+                  name: version
+            unique: true

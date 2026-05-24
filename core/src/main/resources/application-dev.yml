@@ -1,0 +1,21 @@
+spring:
+  application:
+    name: foundry-orchestrator-dev
+  
+  datasource:
+    url: jdbc:postgresql://localhost:5432/supply_chain_dev
+    username: postgres
+    password: dev_password
+  
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+  
+  liquibase:
+    enabled: false
+
+logging:
+  level:
+    root: INFO
+    com.homelab.foundry: DEBUG
+    org.springframework.web: DEBUG

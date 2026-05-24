@@ -1,0 +1,19 @@
+spring:
+  application:
+    name: foundry-orchestrator-test
+  
+  datasource:
+    driver-class-name: org.testcontainers.jdbc.ContainerDatabaseDriver
+    url: jdbc:tc:postgresql:15:///supply_chain_test
+  
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+  
+  liquibase:
+    enabled: false
+
+logging:
+  level:
+    root: WARN
+    com.homelab.foundry: DEBUG

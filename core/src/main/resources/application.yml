@@ -1,0 +1,74 @@
+spring:
+  application:
+    name: foundry-orchestrator
+  
+  datasource:
+    url: jdbc:postgresql://localhost:5432/supply_chain
+    username: postgres
+    password: ${DB_PASSWORD:dev_password}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+  
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+        jdbc:
+          batch_size: 20
+          fetch_size: 50
+        order_inserts: true
+        order_updates: true
+    show-sql: false
+    open-in-view: false
+  
+  liquibase:
+    enabled: true
+    change-log: classpath:db/changelog/master.xml
+    contexts: ${LIQUIBASE_CONTEXT:dev}
+  
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    default-property-inclusion: non_null
+
+server:
+  port: 8080
+  servlet:
+    context-path: /api
+  error:
+    include-message: always
+
+logging:
+  level:
+    root: INFO
+    com.homelab.foundry: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+foundry:
+  build:
+    timeout-seconds: 1800
+    max-concurrent-builds: 2
+    container-memory: 4g
+    container-cpus: 2
+  
+  artifact-store:
+    base-path: /mnt/artifact-store
+    retention-days: 90
+  
+  docker:
+    host: ${DOCKER_HOST:unix:///var/run/docker.sock}
+    buildkit-enabled: true
+  
+  github:
+    webhook:
+      secret: ${GITHUB_WEBHOOK_SECRET:dev_secret}
+      allowed-events:
+        - push
+        - pull_request
