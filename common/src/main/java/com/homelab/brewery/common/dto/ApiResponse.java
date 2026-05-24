@@ -1,4 +1,4 @@
-package com.homelab.foundry.common.dto;
+package com.homelab.brewery.common.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 

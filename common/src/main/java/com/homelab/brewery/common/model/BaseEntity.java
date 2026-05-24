@@ -1,4 +1,4 @@
-package com.homelab.foundry.common.model;
+package com.homelab.brewery.common.model;
 
 import lombok.Data;
 import lombok.NoArgsConstructor;

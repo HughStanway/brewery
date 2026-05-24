@@ -1,6 +1,6 @@
 spring:
   application:
-    name: foundry-orchestrator-dev
+    name: brewery-orchestrator-dev
   
   datasource:
     url: jdbc:postgresql://localhost:5432/supply_chain_dev
@@ -17,5 +17,5 @@ spring:
 logging:
   level:
     root: INFO
-    com.homelab.foundry: DEBUG
+    com.homelab.brewery: DEBUG
     org.springframework.web: DEBUG

@@ -5,7 +5,7 @@ A self-hosted, artifact-centric CI/CD platform designed for homelab environments
 ## Project Structure
 
 ```
-foundry/
+brewery/
 ├── common/              # Shared models, DTOs, exceptions
 ├── api/                 # REST API controllers and configs
 ├── core/                # Main Spring Boot application
@@ -116,7 +116,7 @@ docker-compose up
 docker-compose logs -f
 
 # Follow logs from specific service
-docker-compose logs -f foundry
+docker-compose logs -f brewery
 ```
 
 ## Database
@@ -138,5 +138,5 @@ Proprietary - Homelab use only
 
 ## RUN:
 
-cd /Users/hughstanway/Projects/foundry
+cd /Users/hughstanway/Projects/brewery
 mvn spring-boot:run -pl core -Dspring-boot.run.profiles=dev

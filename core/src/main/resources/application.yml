@@ -1,6 +1,6 @@
 spring:
   application:
-    name: foundry-orchestrator
+    name: brewery-orchestrator
   
   datasource:
     url: jdbc:postgresql://localhost:5432/supply_chain
@@ -46,12 +46,12 @@ server:
 logging:
   level:
     root: INFO
-    com.homelab.foundry: DEBUG
+    com.homelab.brewery: DEBUG
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
     file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
 
-foundry:
+brewery:
   build:
     timeout-seconds: 1800
     max-concurrent-builds: 2

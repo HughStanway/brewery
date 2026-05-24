@@ -103,7 +103,7 @@ Step 8: Resolution
 ### 2.1 Per-Repository Cascade Policy (cascade.yml)
 
 ```yaml
-# In repository root or .foundry/cascade.yml
+# In repository root or .brewery/cascade.yml
 
 cascade:
   # Automatic cascade enabled?

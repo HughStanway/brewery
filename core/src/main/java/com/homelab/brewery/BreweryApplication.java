@@ -1,4 +1,4 @@
-package com.homelab.foundry;
+package com.homelab.brewery;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -6,9 +6,9 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication
 @EnableScheduling
-public class FoundryApplication {
+public class BreweryApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(FoundryApplication.class, args);
+        SpringApplication.run(BreweryApplication.class, args);
     }
 }

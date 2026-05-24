@@ -1,6 +1,6 @@
 spring:
   application:
-    name: foundry-orchestrator-test
+    name: brewery-orchestrator-test
   
   datasource:
     driver-class-name: org.testcontainers.jdbc.ContainerDatabaseDriver
@@ -16,4 +16,4 @@ spring:
 logging:
   level:
     root: WARN
-    com.homelab.foundry: DEBUG
+    com.homelab.brewery: DEBUG

@@ -5,7 +5,7 @@
                              http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.homelab.foundry</groupId>
+    <groupId>com.homelab.brewery</groupId>
     <artifactId>software-supply-chain-platform</artifactId>
     <version>0.1.0-SNAPSHOT</version>
     <packaging>pom</packaging>
@@ -53,37 +53,37 @@
 
             <!-- Internal modules -->
             <dependency>
-                <groupId>com.homelab.foundry</groupId>
+                <groupId>com.homelab.brewery</groupId>
                 <artifactId>common</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>com.homelab.foundry</groupId>
+                <groupId>com.homelab.brewery</groupId>
                 <artifactId>api</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>com.homelab.foundry</groupId>
+                <groupId>com.homelab.brewery</groupId>
                 <artifactId>core</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>com.homelab.foundry</groupId>
+                <groupId>com.homelab.brewery</groupId>
                 <artifactId>build-engine</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>com.homelab.foundry</groupId>
+                <groupId>com.homelab.brewery</groupId>
                 <artifactId>registry</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>com.homelab.foundry</groupId>
+                <groupId>com.homelab.brewery</groupId>
                 <artifactId>dependency-resolver</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>com.homelab.foundry</groupId>
+                <groupId>com.homelab.brewery</groupId>
                 <artifactId>deployment-engine</artifactId>
                 <version>${project.version}</version>
             </dependency>

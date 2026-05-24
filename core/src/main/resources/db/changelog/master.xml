@@ -1,7 +1,7 @@
 databaseChangeLog:
   - changeSet:
       id: "1-init-schema"
-      author: "foundry"
+      author: "brewery"
       changes:
         - createTable:
             tableName: builds

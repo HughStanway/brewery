@@ -1,4 +1,4 @@
-# Copilot Instructions for Foundry
+# Copilot Instructions for Brewery
 
 ## Project Overview
 
