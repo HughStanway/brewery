@@ -16,23 +16,23 @@ public class ApiResponse<T> {
         this.timestamp = Instant.now();
     }
     
-    public ApiResponse(String status, T data, String message, Instant timestamp) {
+    public ApiResponse(String status, T data, String message) {
         this.status = status;
         this.data = data;
         this.message = message;
-        this.timestamp = timestamp;
+        this.timestamp = Instant.now();
     }
     
     public static <T> ApiResponse<T> success(T data) {
-        return new ApiResponse<>("success", data, null, Instant.now());
+        return new ApiResponse<>("success", data, null);
     }
     
     public static <T> ApiResponse<T> success(T data, String message) {
-        return new ApiResponse<>("success", data, message, Instant.now());
+        return new ApiResponse<>("success", data, message);
     }
     
     public static <T> ApiResponse<T> error(String message) {
-        return new ApiResponse<>("error", null, message, Instant.now());
+        return new ApiResponse<>("error", null, message);
     }
 
     public String getStatus() {

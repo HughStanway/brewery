@@ -1,4 +1,4 @@
-.PHONY: help test logs logs-brewery run stop clean
+.PHONY: help test rebuild logs logs-brewery run stop clean
 
 # Variables
 DOCKER_COMPOSE := docker compose
@@ -33,6 +33,12 @@ run:
 	@echo "$(BLUE)Building Docker image and starting container...$(NC)"
 	$(DOCKER_COMPOSE) up -d --build
 	@echo "$(GREEN)✓ Application started$(NC)"
+	@echo "  - API: http://localhost:8080/api/health"
+
+rebuild:
+	@echo "$(BLUE)Rebuilding brewery image and restarting app container...$(NC)"
+	$(DOCKER_COMPOSE) up -d --build brewery
+	@echo "$(GREEN)✓ Brewery container reloaded$(NC)"
 	@echo "  - API: http://localhost:8080/api/health"
 
 stop:
