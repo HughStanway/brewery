@@ -2,17 +2,20 @@ FROM eclipse-temurin:21-jdk-alpine
 
 WORKDIR /app
 
-COPY .mvn .mvn
-COPY mvnw mvnw
-COPY pom.xml pom.xml
+# Install Maven
+RUN apk add --no-cache maven
 
-# Download dependencies
-RUN chmod +x mvnw && ./mvnw dependency:resolve
-
-COPY . .
+COPY pom.xml .
+COPY common ./common
+COPY api ./api
+COPY core ./core
+COPY build-engine ./build-engine
+COPY registry ./registry
+COPY dependency-resolver ./dependency-resolver
+COPY deployment-engine ./deployment-engine
 
 # Build the application
-RUN ./mvnw clean package -DskipTests
+RUN mvn clean package -DskipTests -q
 
 # Runtime stage
 FROM eclipse-temurin:21-jre-alpine
