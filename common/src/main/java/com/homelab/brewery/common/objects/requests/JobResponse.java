@@ -8,9 +8,8 @@ import java.util.UUID;
 @Data
 @NoArgsConstructor
 public class JobResponse {
-    private String status;
     private UUID buildId;
     private String repository;
     private String commit;
-    private String branch = "main";
+    private String branch;
 }

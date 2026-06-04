@@ -28,10 +28,11 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    env_file:
+      - .env
     environment:
       SPRING_PROFILES_ACTIVE: dev
       DB_PASSWORD: ${DB_PASSWORD:-dev_password}
-      GITHUB_WEBHOOK_SECRET: ${GITHUB_WEBHOOK_SECRET:-dev_secret}
       DOCKER_HOST: unix:///var/run/docker.sock
     ports:
       - "8080:8080"

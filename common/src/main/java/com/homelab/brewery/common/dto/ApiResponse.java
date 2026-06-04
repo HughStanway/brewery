@@ -6,7 +6,7 @@ import java.time.Instant;
 
 public class ApiResponse<T> {
     private String status;
-    private T data;
+    private T payload;
     private String message;
     
     @JsonProperty("timestamp")
@@ -16,23 +16,27 @@ public class ApiResponse<T> {
         this.timestamp = Instant.now();
     }
     
-    public ApiResponse(String status, T data, String message) {
+    public ApiResponse(String status, T payload, String message) {
         this.status = status;
-        this.data = data;
+        this.payload = payload;
         this.message = message;
         this.timestamp = Instant.now();
     }
     
-    public static <T> ApiResponse<T> success(T data) {
-        return new ApiResponse<>("success", data, null);
+    public static <T> ApiResponse<T> success(T payload) {
+        return new ApiResponse<>("success", payload, null);
     }
     
-    public static <T> ApiResponse<T> success(T data, String message) {
-        return new ApiResponse<>("success", data, message);
+    public static <T> ApiResponse<T> success(T payload, String message) {
+        return new ApiResponse<>("success", payload, message);
+    }
+
+    public static <T> ApiResponse<T> error(T payload) {
+        return new ApiResponse<>("error", payload, null);
     }
     
-    public static <T> ApiResponse<T> error(String message) {
-        return new ApiResponse<>("error", null, message);
+    public static <T> ApiResponse<T> error(T payload, String message) {
+        return new ApiResponse<>("error", payload, message);
     }
 
     public String getStatus() {
@@ -43,12 +47,12 @@ public class ApiResponse<T> {
         this.status = status;
     }
 
-    public T getData() {
-        return data;
+    public T getPayload() {
+        return payload;
     }
 
-    public void setData(T data) {
-        this.data = data;
+    public void setPayload(T payload) {
+        this.payload = payload;
     }
 
     public String getMessage() {
