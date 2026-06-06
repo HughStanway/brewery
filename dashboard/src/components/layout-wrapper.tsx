@@ -11,7 +11,8 @@ import {
   RefreshCw,
   Settings,
   Activity,
-  Terminal
+  Terminal,
+  BookOpen
 } from 'lucide-react';
 
 interface LayoutWrapperProps {
@@ -27,6 +28,7 @@ export default function LayoutWrapper({ children }: LayoutWrapperProps) {
     { name: 'Artifact Registry', href: '/artifacts', icon: Package },
     { name: 'Dependencies', href: '/dependencies', icon: GitFork },
     { name: 'Cascade Rebuilds', href: '/cascade', icon: RefreshCw },
+    { name: 'Documentation', href: '/docs', icon: BookOpen },
   ];
 
   return (
