@@ -348,6 +348,8 @@ export default function CascadePage() {
                 <tr className="border-b border-[#1e293b] text-gray-400 font-medium">
                   <th className="py-3 px-4 text-xs tracking-wider uppercase">Chain ID</th>
                   <th className="py-3 px-4 text-xs tracking-wider uppercase">Status</th>
+                  <th className="py-3 px-4 text-xs tracking-wider uppercase">Trigger Type</th>
+                  <th className="py-3 px-4 text-xs tracking-wider uppercase">Trigger Artifact</th>
                   <th className="py-3 px-4 text-xs tracking-wider uppercase">Root Cause</th>
                   <th className="py-3 px-4 text-xs tracking-wider uppercase">Depth</th>
                   <th className="py-3 px-4 text-xs tracking-wider uppercase">Started At</th>
@@ -364,6 +366,9 @@ export default function CascadePage() {
                     if (chain.status === 'running') statusBg = 'bg-blue-500/10 text-blue-400 border-blue-500/20 animate-pulse';
 
                     const chainIdVal = chain.chainId || chain.id || '';
+                    const triggerTypeVal = chain.triggerType || chain.trigger_type;
+                    const rootArtName = chain.rootArtifactName || chain.root_artifact_name;
+                    const rootArtVer = chain.rootArtifactVersion || chain.root_artifact_version;
 
                     return (
                       <tr 
@@ -378,14 +383,30 @@ export default function CascadePage() {
                             {chain.status}
                           </span>
                         </td>
-                        <td className="py-4 px-4 text-xs text-white max-w-[200px] truncate" title={chain.rootCause}>
-                          {chain.rootCause}
+                        <td className="py-4 px-4">
+                          {triggerTypeVal ? (
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold border uppercase ${
+                              triggerTypeVal === 'New version publication'
+                                ? 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+                                : 'bg-violet-500/10 text-violet-400 border-violet-500/20'
+                            }`}>
+                              {triggerTypeVal}
+                            </span>
+                          ) : (
+                            <span className="text-gray-500 font-mono text-[11px]">—</span>
+                          )}
+                        </td>
+                        <td className="py-4 px-4 font-mono text-xs text-white">
+                          {rootArtName ? `${rootArtName}@${rootArtVer || 'latest'}` : <span className="text-gray-500">—</span>}
+                        </td>
+                        <td className="py-4 px-4 text-xs text-white max-w-[200px] truncate" title={chain.rootCause || chain.root_cause}>
+                          {chain.rootCause || chain.root_cause}
                         </td>
                         <td className="py-4 px-4 text-xs font-semibold text-gray-300 font-mono">
                           d={chain.depth}
                         </td>
                         <td className="py-4 px-4 text-xs text-gray-400 font-mono">
-                          {chain.startedAt ? new Date(chain.startedAt).toLocaleString() : '--'}
+                          {chain.startedAt || chain.started_at ? new Date(chain.startedAt || chain.started_at || '').toLocaleString() : '--'}
                         </td>
                         <td className="py-4 px-4 text-right">
                           <Link 
@@ -401,7 +422,7 @@ export default function CascadePage() {
                   })
                 ) : (
                   <tr>
-                    <td colSpan={6} className="py-8 text-center text-gray-500 font-mono text-xs">
+                    <td colSpan={8} className="py-8 text-center text-gray-500 font-mono text-xs">
                       No rebuild chains generated in this session.
                     </td>
                   </tr>

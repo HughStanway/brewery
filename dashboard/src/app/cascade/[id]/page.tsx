@@ -131,6 +131,33 @@ export default function CascadeDetailsPage() {
 
           <div className="space-y-4 text-xs">
             <div>
+              <span className="text-[10px] text-gray-500 font-semibold block uppercase">Trigger Type</span>
+              {chain.trigger_type || chain.triggerType ? (
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold border uppercase mt-1 ${
+                  (chain.trigger_type || chain.triggerType) === 'New version publication'
+                    ? 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+                    : 'bg-violet-500/10 text-violet-400 border-violet-500/20'
+                }`}>
+                  {chain.trigger_type || chain.triggerType}
+                </span>
+              ) : (
+                <span className="text-gray-500 block mt-1">—</span>
+              )}
+            </div>
+
+            {/* Trigger Artifact */}
+            <div>
+              <span className="text-[10px] text-gray-500 font-semibold block uppercase">Trigger Artifact</span>
+              {chain.root_artifact_name || chain.rootArtifactName ? (
+                <span className="font-semibold text-white block mt-1 font-mono">
+                  {chain.root_artifact_name || chain.rootArtifactName}@{chain.root_artifact_version || chain.rootArtifactVersion}
+                </span>
+              ) : (
+                <span className="text-gray-500 block mt-1">—</span>
+              )}
+            </div>
+
+            <div>
               <span className="text-[10px] text-gray-500 font-semibold block uppercase">Root Trigger Cause</span>
               <p className="font-medium text-white block leading-relaxed bg-black/30 p-2.5 rounded-lg border border-[#1e293b] mt-1">
                 {chain.root_cause || chain.rootCause}

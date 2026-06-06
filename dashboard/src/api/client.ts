@@ -131,6 +131,8 @@ export interface RebuildChain {
   root_artifact_name?: string;
   rootArtifactVersion?: string;
   root_artifact_version?: string;
+  triggerType?: string;
+  trigger_type?: string;
   rootCause?: string;
   root_cause?: string;
   status: 'running' | 'completed' | 'completed_with_errors' | 'cancelled';

@@ -11,7 +11,10 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.homelab.brewery.common.repository.ArtifactRepository;
+import com.homelab.brewery.common.repository.CascadeTaskRepository;
 import java.util.Map;
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -22,6 +25,8 @@ public class CascadeRebuildController {
 
     private final CascadeRebuildService cascadeRebuildService;
     private final com.homelab.brewery.common.repository.RebuildChainRepository rebuildChainRepository;
+    private final ArtifactRepository artifactRepository;
+    private final CascadeTaskRepository cascadeTaskRepository;
 
     /**
      * POST /api/cascade/trigger/{name}/{version}
@@ -60,7 +65,43 @@ public class CascadeRebuildController {
     @GetMapping("/chains")
     public ResponseEntity<?> listAllChains() {
         try {
-            return ResponseEntity.ok(rebuildChainRepository.findAll(org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "startedAt")));
+            List<com.homelab.brewery.common.entity.RebuildChain> chains = rebuildChainRepository.findAll(
+                org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "startedAt")
+            );
+            List<java.util.Map<String, Object>> enriched = chains.stream().map(chain -> {
+                java.util.Map<String, Object> map = new java.util.LinkedHashMap<>();
+                map.put("id", chain.getId());
+                map.put("chainId", chain.getId());
+                map.put("rootArtifactId", chain.getRootArtifactId());
+                map.put("rootCause", chain.getRootCause());
+                map.put("status", chain.getStatus());
+                map.put("depth", chain.getDepth());
+                map.put("parentChainId", chain.getParentChainId());
+                map.put("startedAt", chain.getStartedAt());
+                map.put("completedAt", chain.getCompletedAt());
+                
+                if (chain.getRootArtifactId() != null) {
+                    artifactRepository.findById(chain.getRootArtifactId()).ifPresent(art -> {
+                        map.put("rootArtifactName", art.getName());
+                        map.put("root_artifact_name", art.getName());
+                        map.put("rootArtifactVersion", art.getVersion());
+                        map.put("root_artifact_version", art.getVersion());
+                        
+                        String triggerType = "New version publication";
+                        if (art.getBuildId() != null) {
+                            List<com.homelab.brewery.common.entity.CascadeTask> tasks = cascadeTaskRepository.findByBuildId(art.getBuildId());
+                            if (tasks != null && !tasks.isEmpty()) {
+                                triggerType = "Dependency cascade rebuild";
+                            }
+                        }
+                        map.put("triggerType", triggerType);
+                        map.put("trigger_type", triggerType);
+                    });
+                }
+                return map;
+            }).collect(java.util.stream.Collectors.toList());
+            
+            return ResponseEntity.ok(enriched);
         } catch (Exception e) {
             log.error("Error listing rebuild chains", e);
             return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));

@@ -171,6 +171,23 @@ public class CascadeRebuildServiceImpl implements CascadeRebuildService {
         result.put("started_at", chain.getStartedAt() != null ? chain.getStartedAt().toString() : null);
         result.put("completed_at", chain.getCompletedAt() != null ? chain.getCompletedAt().toString() : null);
         result.put("task_count", tasks.size());
+        
+        if (chain.getRootArtifactId() != null) {
+            artifactRepository.findById(chain.getRootArtifactId()).ifPresent(art -> {
+                result.put("root_artifact_name", art.getName());
+                result.put("root_artifact_version", art.getVersion());
+                
+                String triggerType = "New version publication";
+                if (art.getBuildId() != null) {
+                    List<CascadeTask> buildTasks = cascadeTaskRepository.findByBuildId(art.getBuildId());
+                    if (buildTasks != null && !buildTasks.isEmpty()) {
+                        triggerType = "Dependency cascade rebuild";
+                    }
+                }
+                result.put("trigger_type", triggerType);
+            });
+        }
+
         result.put("task_status_counts", statusCounts);
         result.put("tasks", taskDetails);
         return result;
