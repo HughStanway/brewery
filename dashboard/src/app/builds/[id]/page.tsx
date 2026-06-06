@@ -54,6 +54,56 @@ export default function BuildDetailsPage() {
     }
   });
 
+  // Fetch all artifacts to check if this build produced one
+  const { data: artifacts } = useQuery({
+    queryKey: ['artifacts'],
+    queryFn: apiClient.getArtifacts,
+  });
+
+  const buildArtifact = React.useMemo(() => {
+    if (!artifacts || !build) return null;
+    return artifacts.find((a) => a.buildId === build.id);
+  }, [artifacts, build]);
+
+  // Fetch the dependency graph for the produced artifact to inspect its resolved dependencies
+  const { data: graphData } = useQuery({
+    queryKey: ['dependencyGraph', buildArtifact?.name, buildArtifact?.version],
+    queryFn: () => apiClient.getDependencyGraph(buildArtifact!.name, buildArtifact!.version, 1, 'forward'),
+    enabled: !!buildArtifact,
+  });
+
+  const outdatedDependencies = React.useMemo(() => {
+    if (!artifacts || !graphData || !graphData.graph || !graphData.graph.nodes) {
+      return [];
+    }
+    
+    // Map of name -> latest version
+    const latestVersions = new Map<string, string>();
+    artifacts.forEach((a) => {
+      if (a.isLatest) {
+        latestVersions.set(a.name, a.version);
+      }
+    });
+
+    const outdatedList: { name: string; currentVersion: string; latestVersion: string }[] = [];
+    const nodes = graphData.graph.nodes;
+    
+    nodes.forEach((node: any) => {
+      if (node.type === 'root') return;
+      
+      const latestVer = latestVersions.get(node.name);
+      if (latestVer && node.version !== latestVer) {
+        outdatedList.push({
+          name: node.name,
+          currentVersion: node.version,
+          latestVersion: latestVer
+        });
+      }
+    });
+    
+    return outdatedList;
+  }, [artifacts, graphData]);
+
   const logEndRef = React.useRef<HTMLDivElement>(null);
 
   // Auto-scroll logs to bottom if building
@@ -226,6 +276,30 @@ export default function BuildDetailsPage() {
               </span>
             )}
           </div>
+
+          {/* Outdated Dependencies Warning Box */}
+          {outdatedDependencies.length > 0 && (
+            <div className="mb-4 p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-400 space-y-2">
+              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider">
+                <span className="w-2.5 h-2.5 bg-amber-500 rounded-full animate-pulse"></span>
+                Outdated Dependencies Warning
+              </div>
+              <p className="text-xs text-gray-400">
+                This build resolved dependencies that are no longer the latest version in the registry:
+              </p>
+              <div className="space-y-1 text-xs">
+                {outdatedDependencies.map((dep, idx) => (
+                  <div key={idx} className="flex items-center gap-1.5 font-mono text-[11px]">
+                    <span className="text-white font-semibold">{dep.name}</span>
+                    <span className="text-gray-500">resolved:</span>
+                    <span className="text-amber-500">{dep.currentVersion}</span>
+                    <span className="text-gray-500">→ latest:</span>
+                    <span className="text-emerald-400">{dep.latestVersion}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Logs scroll area */}
           <div className="flex-1 bg-black/50 border border-[#1e293b] rounded-xl p-4 overflow-y-auto font-mono text-xs text-gray-300 leading-relaxed max-h-[500px]">

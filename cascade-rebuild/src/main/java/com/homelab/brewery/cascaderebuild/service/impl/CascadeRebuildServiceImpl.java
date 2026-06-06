@@ -77,6 +77,13 @@ public class CascadeRebuildServiceImpl implements CascadeRebuildService {
         List<String> affectedArtifacts = new ArrayList<>();
 
         for (Artifact dependent : directDependents) {
+            // Skip if the dependent version is deprecated/outdated
+            if (dependent.getDeprecatedAt() != null || !Boolean.TRUE.equals(dependent.getIsLatest())) {
+                log.info("Skipping deprecated dependent version {}@{} for cascade rebuild",
+                        dependent.getName(), dependent.getVersion());
+                continue;
+            }
+
             // Check version range compatibility
             if (!isCompatibleWithNewVersion(dependent, name, version)) {
                 log.debug("Skipping dependent {}@{} - version range not compatible with {}",
@@ -200,6 +207,10 @@ public class CascadeRebuildServiceImpl implements CascadeRebuildService {
 
             List<Artifact> directDeps = findDirectDependents(currentName);
             for (Artifact dep : directDeps) {
+                // Skip if the dependent version is deprecated/outdated
+                if (dep.getDeprecatedAt() != null || !Boolean.TRUE.equals(dep.getIsLatest())) {
+                    continue;
+                }
                 if (!visitedNames.contains(dep.getName())) {
                     visitedNames.add(dep.getName());
                     queue.add(dep.getName());
