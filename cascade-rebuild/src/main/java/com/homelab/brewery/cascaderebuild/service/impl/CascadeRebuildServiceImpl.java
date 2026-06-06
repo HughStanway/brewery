@@ -70,7 +70,7 @@ public class CascadeRebuildServiceImpl implements CascadeRebuildService {
         RebuildChain savedChain = rebuildChainRepository.save(chain);
 
         // Find direct dependents using reverse_dependencies table
-        List<Artifact> directDependents = findDirectDependents(triggerArtifact.getId());
+        List<Artifact> directDependents = findDirectDependents(name);
         log.info("Found {} direct dependents of {}@{}", directDependents.size(), name, version);
 
         int tasksCreated = 0;
@@ -178,46 +178,40 @@ public class CascadeRebuildServiceImpl implements CascadeRebuildService {
         if (triggerOpt.isEmpty()) {
             throw new IllegalArgumentException("Artifact not found: " + name + "@" + version);
         }
-        Artifact triggerArtifact = triggerOpt.get();
 
         // BFS up to maxDepth=5 over reverse_dependencies
         int maxDepth = 5;
         List<Map<String, Object>> affectedList = new ArrayList<>();
-        Set<UUID> visited = new HashSet<>();
-        Queue<UUID> queue = new LinkedList<>();
-        Map<UUID, Integer> depthMap = new HashMap<>();
+        Set<String> visitedNames = new HashSet<>();
+        Queue<String> queue = new LinkedList<>();
+        Map<String, Integer> depthMap = new HashMap<>();
 
-        visited.add(triggerArtifact.getId());
-        queue.add(triggerArtifact.getId());
-        depthMap.put(triggerArtifact.getId(), 0);
+        visitedNames.add(name);
+        queue.add(name);
+        depthMap.put(name, 0);
 
         while (!queue.isEmpty()) {
-            UUID currentId = queue.poll();
-            int currentDepth = depthMap.get(currentId);
+            String currentName = queue.poll();
+            int currentDepth = depthMap.get(currentName);
 
             if (currentDepth >= maxDepth) {
                 continue;
             }
 
-            List<ReverseDependency> reverseDeps = reverseDependencyRepository.findByArtifactId(currentId);
-            for (ReverseDependency rd : reverseDeps) {
-                UUID dependentId = rd.getDependentArtifactId();
-                if (!visited.contains(dependentId)) {
-                    visited.add(dependentId);
-                    queue.add(dependentId);
-                    depthMap.put(dependentId, currentDepth + 1);
+            List<Artifact> directDeps = findDirectDependents(currentName);
+            for (Artifact dep : directDeps) {
+                if (!visitedNames.contains(dep.getName())) {
+                    visitedNames.add(dep.getName());
+                    queue.add(dep.getName());
+                    depthMap.put(dep.getName(), currentDepth + 1);
 
-                    Optional<Artifact> depArtOpt = artifactRepository.findById(dependentId);
-                    if (depArtOpt.isPresent()) {
-                        Artifact depArt = depArtOpt.get();
-                        Map<String, Object> entry = new LinkedHashMap<>();
-                        entry.put("artifact_name", depArt.getName());
-                        entry.put("artifact_version", depArt.getVersion());
-                        entry.put("artifact_id", depArt.getId().toString());
-                        entry.put("depth", currentDepth + 1);
-                        entry.put("direct", currentDepth == 0);
-                        affectedList.add(entry);
-                    }
+                    Map<String, Object> entry = new LinkedHashMap<>();
+                    entry.put("artifact_name", dep.getName());
+                    entry.put("artifact_version", dep.getVersion());
+                    entry.put("artifact_id", dep.getId().toString());
+                    entry.put("depth", currentDepth + 1);
+                    entry.put("direct", currentDepth == 0);
+                    affectedList.add(entry);
                 }
             }
         }
@@ -342,13 +336,20 @@ public class CascadeRebuildServiceImpl implements CascadeRebuildService {
     // ─── private helpers ────────────────────────────────────────────────────────
 
     /**
-     * Returns all artifacts that directly depend on the given artifact ID.
+     * Returns all artifacts that directly depend on the given artifact name (across all its versions).
      */
-    private List<Artifact> findDirectDependents(UUID artifactId) {
-        List<ReverseDependency> reverseDeps = reverseDependencyRepository.findByArtifactId(artifactId);
+    private List<Artifact> findDirectDependents(String name) {
+        List<Artifact> versions = artifactRepository.findByName(name);
         List<Artifact> dependents = new ArrayList<>();
-        for (ReverseDependency rd : reverseDeps) {
-            artifactRepository.findById(rd.getDependentArtifactId()).ifPresent(dependents::add);
+        Set<UUID> addedDependentIds = new HashSet<>();
+        for (Artifact version : versions) {
+            List<ReverseDependency> reverseDeps = reverseDependencyRepository.findByArtifactId(version.getId());
+            for (ReverseDependency rd : reverseDeps) {
+                if (!addedDependentIds.contains(rd.getDependentArtifactId())) {
+                    addedDependentIds.add(rd.getDependentArtifactId());
+                    artifactRepository.findById(rd.getDependentArtifactId()).ifPresent(dependents::add);
+                }
+            }
         }
         return dependents;
     }

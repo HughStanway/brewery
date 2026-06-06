@@ -13,6 +13,7 @@ COPY build-engine ./build-engine
 COPY registry ./registry
 COPY dependency-resolver ./dependency-resolver
 COPY deployment-engine ./deployment-engine
+COPY cascade-rebuild ./cascade-rebuild
 
 # Build the application
 RUN mvn clean package -DskipTests -q

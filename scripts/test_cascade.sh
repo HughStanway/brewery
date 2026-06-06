@@ -136,8 +136,8 @@ FINAL_STATUS=""
 while [ $WAIT_SECS -lt 30 ]; do
     POLL_RESP=$(curl -s "${CASCADE_URL}/chains/${CHAIN_ID}")
     # Check if there are any pending or building tasks
-    PENDING_COUNT=$(echo "$POLL_RESP" | grep -o '"pending"' | wc -l | tr -d ' ')
-    BUILDING_COUNT=$(echo "$POLL_RESP" | grep -o '"building"' | wc -l | tr -d ' ')
+    PENDING_COUNT=$( (echo "$POLL_RESP" | grep -o '"pending"' || true) | wc -l | tr -d ' ')
+    BUILDING_COUNT=$( (echo "$POLL_RESP" | grep -o '"building"' || true) | wc -l | tr -d ' ')
     if [ "$PENDING_COUNT" -eq 0 ] && [ "$BUILDING_COUNT" -eq 0 ]; then
         FINAL_STATUS="$POLL_RESP"
         echo "Tasks completed after ${WAIT_SECS}s."

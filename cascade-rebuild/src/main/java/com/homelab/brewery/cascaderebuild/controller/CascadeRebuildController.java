@@ -28,8 +28,8 @@ public class CascadeRebuildController {
      */
     @PostMapping("/trigger/{name}/{version}")
     public ResponseEntity<?> triggerCascade(
-            @PathVariable String name,
-            @PathVariable String version,
+            @PathVariable("name") String name,
+            @PathVariable("version") String version,
             @RequestBody(required = false) Map<String, Object> body) {
         try {
             String reason = "manual trigger";
@@ -57,7 +57,7 @@ public class CascadeRebuildController {
      * GET /api/cascade/chains/{chainId}
      */
     @GetMapping("/chains/{chainId}")
-    public ResponseEntity<?> getChainStatus(@PathVariable UUID chainId) {
+    public ResponseEntity<?> getChainStatus(@PathVariable("chainId") UUID chainId) {
         try {
             Map<String, Object> result = cascadeRebuildService.getChainStatus(chainId);
             return ResponseEntity.ok(result);
@@ -74,7 +74,7 @@ public class CascadeRebuildController {
      * POST /api/cascade/chains/{chainId}/cancel
      */
     @PostMapping("/chains/{chainId}/cancel")
-    public ResponseEntity<?> cancelChain(@PathVariable UUID chainId) {
+    public ResponseEntity<?> cancelChain(@PathVariable("chainId") UUID chainId) {
         try {
             cascadeRebuildService.cancelChain(chainId);
             return ResponseEntity.ok(Map.of("chain_id", chainId.toString(), "status", "cancelled"));
@@ -92,8 +92,8 @@ public class CascadeRebuildController {
      */
     @GetMapping("/impact/{name}/{version}")
     public ResponseEntity<?> getCascadeImpact(
-            @PathVariable String name,
-            @PathVariable String version) {
+            @PathVariable("name") String name,
+            @PathVariable("version") String version) {
         try {
             Map<String, Object> result = cascadeRebuildService.getCascadeImpact(name, version);
             return ResponseEntity.ok(result);
