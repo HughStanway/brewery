@@ -496,3 +496,152 @@ databaseChangeLog:
             columns:
               - column: artifact_id
 
+  - changeSet:
+      id: "4-cascade-schema"
+      author: "brewery"
+      changes:
+        - createTable:
+            tableName: rebuild_chains
+            columns:
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: root_artifact_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_chains_root_artifact
+                    references: artifacts(id)
+              - column:
+                  name: root_cause
+                  type: TEXT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: VARCHAR(50)
+                  defaultValue: running
+                  constraints:
+                    nullable: false
+              - column:
+                  name: depth
+                  type: INT
+                  defaultValue: 0
+              - column:
+                  name: parent_chain_id
+                  type: UUID
+                  constraints:
+                    foreignKeyName: fk_chains_parent
+                    references: rebuild_chains(id)
+              - column:
+                  name: started_at
+                  type: TIMESTAMP
+                  defaultValueComputed: CURRENT_TIMESTAMP
+              - column:
+                  name: completed_at
+                  type: TIMESTAMP
+
+        - createIndex:
+            indexName: idx_chains_root
+            tableName: rebuild_chains
+            columns:
+              - column: root_artifact_id
+
+        - createIndex:
+            indexName: idx_chains_status
+            tableName: rebuild_chains
+            columns:
+              - column: status
+
+        - createIndex:
+            indexName: idx_chains_parent
+            tableName: rebuild_chains
+            columns:
+              - column: parent_chain_id
+
+        - createTable:
+            tableName: cascade_tasks
+            columns:
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: chain_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_cascade_tasks_chain
+                    references: rebuild_chains(id)
+                    deleteCascade: true
+              - column:
+                  name: artifact_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_cascade_tasks_artifact
+                    references: artifacts(id)
+              - column:
+                  name: dependency_artifact_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_cascade_tasks_dep_artifact
+                    references: artifacts(id)
+              - column:
+                  name: reason
+                  type: TEXT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: VARCHAR(50)
+                  defaultValue: pending
+                  constraints:
+                    nullable: false
+              - column:
+                  name: build_id
+                  type: UUID
+                  constraints:
+                    foreignKeyName: fk_cascade_tasks_build
+                    references: builds(id)
+              - column:
+                  name: priority
+                  type: INT
+                  defaultValue: 0
+              - column:
+                  name: attempted_at
+                  type: TIMESTAMP
+              - column:
+                  name: completed_at
+                  type: TIMESTAMP
+              - column:
+                  name: error_message
+                  type: TEXT
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+                  defaultValueComputed: CURRENT_TIMESTAMP
+
+        - createIndex:
+            indexName: idx_cascade_tasks_chain
+            tableName: cascade_tasks
+            columns:
+              - column: chain_id
+
+        - createIndex:
+            indexName: idx_cascade_tasks_status
+            tableName: cascade_tasks
+            columns:
+              - column: status
+
+        - createIndex:
+            indexName: idx_cascade_tasks_artifact
+            tableName: cascade_tasks
+            columns:
+              - column: artifact_id
+

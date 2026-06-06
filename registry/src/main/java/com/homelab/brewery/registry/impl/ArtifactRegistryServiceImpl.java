@@ -5,6 +5,7 @@ import com.homelab.brewery.common.entity.Artifact;
 import com.homelab.brewery.common.entity.ArtifactMetadata;
 import com.homelab.brewery.common.entity.ArtifactTag;
 import com.homelab.brewery.common.entity.VersionAlias;
+import com.homelab.brewery.common.event.ArtifactRegisteredEvent;
 import com.homelab.brewery.common.repository.ArtifactMetadataRepository;
 import com.homelab.brewery.common.repository.ArtifactRepository;
 import com.homelab.brewery.common.repository.ArtifactTagRepository;
@@ -15,6 +16,7 @@ import com.homelab.brewery.registry.SemanticVersionResolver;
 import com.homelab.brewery.registry.model.ArtifactMetadataJson;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -41,6 +43,7 @@ public class ArtifactRegistryServiceImpl implements ArtifactRegistryService {
     private final VersionAliasRepository aliasRepository;
     private final ArtifactStorageManager storageManager;
     private final SemanticVersionResolver versionResolver;
+    private final ApplicationEventPublisher eventPublisher;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
@@ -144,6 +147,11 @@ public class ArtifactRegistryServiceImpl implements ArtifactRegistryService {
             }
 
             log.info("Successfully registered artifact in database. id={}", savedArtifact.getId());
+
+            // 7. Publish ArtifactRegisteredEvent to trigger cascade rebuilds
+            eventPublisher.publishEvent(
+                    new ArtifactRegisteredEvent(this, savedArtifact.getName(), savedArtifact.getVersion(), savedArtifact.getId()));
+
             return savedArtifact;
 
         } catch (Exception e) {
