@@ -13,14 +13,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import javax.crypto.Mac;
-import javax.crypto.spec.SecretKeySpec;
-import java.nio.charset.StandardCharsets;
-import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
-import java.util.HexFormat;
 import java.util.List;
 import java.util.UUID;
 
@@ -28,16 +22,10 @@ import java.util.UUID;
 @Slf4j
 public class JobTriggerServiceImpl implements JobTriggerService {
 
-    private static final String HMAC_SHA256 = "HmacSHA256";
-    private static final String SIGNATURE_PREFIX = "sha256=";
-
     private final List<String> allowedEvents;
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final BuildRepository buildRepository;
     private final BuildQueueManager buildQueueManager;
-
-    @Value("${brewery.github.webhook.secret:}")
-    private String configuredSecret;
 
     public JobTriggerServiceImpl(
         BuildRepository buildRepository,
@@ -53,7 +41,7 @@ public class JobTriggerServiceImpl implements JobTriggerService {
     public JobResponse triggerJob(JobRequest jobRequest) {
         if (jobRequest.getRepository() == null || jobRequest.getCommit() == null) {
             log.error("Failed to trigger job: missing required repository or commit metadata.");
-            throw new IllegalArgumentException("Webhook payload is missing required repository, branch, or commit data");
+            throw new IllegalArgumentException("Payload is missing required repository, branch, or commit data");
         }
 
         UUID buildId = jobRequest.getBuildId() != null ? jobRequest.getBuildId() : UUID.randomUUID();
@@ -85,27 +73,16 @@ public class JobTriggerServiceImpl implements JobTriggerService {
     }
 
     @Override
-    public JobResponse triggerFromWebhookPayload(byte[] rawPayload, String eventType, String signatureHeader) {
-        log.info("Received webhook event payload. eventType={}", eventType);
-
-        if (signatureHeader == null || signatureHeader.isBlank()) {
-            log.warn("Rejected webhook payload: missing X-Hub-Signature-256 header");
-            throw new SecurityException("Missing X-Hub-Signature-256 header");
-        }
-
-        String secret = resolveSecret();
-        if (isVerificationEnabled() && !validateSignature(rawPayload, signatureHeader, secret)) {
-            log.error("Rejected webhook payload: invalid signature");
-            throw new SecurityException("Invalid webhook signature");
-        }
+    public JobResponse triggerFromRawPayload(byte[] rawPayload, String eventType) {
+        log.info("Received raw GitHub event payload. eventType={}", eventType);
 
         if (eventType == null || eventType.isBlank()) {
-            log.warn("Rejected webhook payload: missing event type");
-            throw new IllegalArgumentException("Missing X-GitHub-Event header");
+            log.warn("Rejected payload: missing event type");
+            throw new IllegalArgumentException("Missing event type");
         }
 
         if (!allowedEvents.contains(eventType)) {
-            log.warn("Rejected webhook payload: unsupported event type: {}", eventType);
+            log.warn("Rejected payload: unsupported event type: {}", eventType);
             throw new IllegalArgumentException("Unsupported GitHub event: " + eventType);
         }
 
@@ -114,63 +91,11 @@ public class JobTriggerServiceImpl implements JobTriggerService {
             JsonNode payload = objectMapper.readTree(rawPayload);
             jobRequest = parseJobRequest(payload, eventType);
         } catch (Exception e) {
-            log.error("Failed to parse webhook payload for event type {}", eventType, e);
-            throw new IllegalArgumentException("Malformed webhook payload", e);
+            log.error("Failed to parse payload for event type {}", eventType, e);
+            throw new IllegalArgumentException("Malformed event payload", e);
         }
 
         return triggerJob(jobRequest);
-    }
-
-    private String resolveSecret() {
-        String env = System.getenv("GITHUB_WEBHOOK_SECRET");
-        if (env != null && !env.isBlank()) {
-            return env;
-        }
-        if (configuredSecret != null && !configuredSecret.isBlank()) {
-            return configuredSecret;
-        }
-        throw new IllegalStateException("GitHub webhook secret is not configured");
-    }
-
-    private boolean isVerificationEnabled() {
-        String env = System.getenv("GITHUB_WEBHOOK_VERIFY");
-        if (env == null || env.isBlank()) {
-            // Default to true if secret is defined to be safe, or check environment
-            throw new IllegalStateException("GITHUB_WEBHOOK_VERIFY is not configured");
-        }
-        return env.equalsIgnoreCase("1") || env.equalsIgnoreCase("true") || env.equalsIgnoreCase("yes");
-    }
-
-    private boolean validateSignature(byte[] payload, String signatureHeader, String secret) {
-        if (!signatureHeader.startsWith(SIGNATURE_PREFIX)) {
-            return false;
-        }
-
-        String signature = signatureHeader.substring(SIGNATURE_PREFIX.length());
-        String expected = computeHmac256(payload, secret);
-        return constantTimeEquals(signature, expected);
-    }
-
-    private String computeHmac256(byte[] payload, String secret) {
-        try {
-            Mac mac = Mac.getInstance(HMAC_SHA256);
-            mac.init(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), HMAC_SHA256));
-            byte[] digest = mac.doFinal(payload);
-            return HexFormat.of().formatHex(digest);
-        } catch (NoSuchAlgorithmException | InvalidKeyException e) {
-            throw new IllegalStateException("Unable to compute HMAC-SHA256", e);
-        }
-    }
-
-    private boolean constantTimeEquals(String a, String b) {
-        if (a == null || b == null || a.length() != b.length()) {
-            return false;
-        }
-        int result = 0;
-        for (int i = 0; i < a.length(); i++) {
-            result |= a.charAt(i) ^ b.charAt(i);
-        }
-        return result == 0;
     }
 
     private JobRequest parseJobRequest(JsonNode payload, String eventType) {

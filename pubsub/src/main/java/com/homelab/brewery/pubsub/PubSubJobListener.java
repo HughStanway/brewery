@@ -55,12 +55,11 @@ public class PubSubJobListener {
         try {
             // Retrieve custom attributes if forwarding raw webhook events
             String githubEvent = message.getPubsubMessage().getAttributesOrDefault("x-github-event", null);
-            String hubSignature = message.getPubsubMessage().getAttributesOrDefault("x-hub-signature-256", null);
 
             if (githubEvent != null) {
                 // Scenario A: Raw payload passthrough
                 log.info("Processing raw GitHub event via Pub/Sub. eventType={}, messageId={}", githubEvent, messageId);
-                jobTriggerService.triggerFromWebhookPayload(payloadBytes, githubEvent, hubSignature);
+                jobTriggerService.triggerFromRawPayload(payloadBytes, githubEvent);
             } else {
                 // Scenario B: Pre-processed JobRequest
                 log.info("Processing parsed JobRequest via Pub/Sub. messageId={}", messageId);
@@ -72,10 +71,6 @@ public class PubSubJobListener {
             message.ack();
             log.debug("Acknowledged Pub/Sub message. messageId={}", messageId);
 
-        } catch (SecurityException e) {
-            log.error("Security/Signature verification failed. messageId={}, error={}", messageId, e.getMessage());
-            // Acknowledge invalid signatures to avoid poison pill loops in message queue
-            message.ack();
         } catch (IllegalArgumentException | IOException e) {
             log.error("Malformed payload received. messageId={}, error={}", messageId, e.getMessage());
             // Acknowledge malformed payloads to avoid infinite reprocessing loops

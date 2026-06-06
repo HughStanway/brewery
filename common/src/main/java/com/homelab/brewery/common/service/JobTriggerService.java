@@ -10,7 +10,7 @@ public interface JobTriggerService {
     JobResponse triggerJob(JobRequest jobRequest);
 
     /**
-     * Entrypoint for raw GitHub webhook payloads (validates signature + parses).
+     * Entrypoint for raw GitHub event payloads (parses and triggers).
      */
-    JobResponse triggerFromWebhookPayload(byte[] rawPayload, String eventType, String signatureHeader);
+    JobResponse triggerFromRawPayload(byte[] rawPayload, String eventType);
 }
