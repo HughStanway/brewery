@@ -278,3 +278,221 @@ databaseChangeLog:
             tableName: artifacts
             columns:
               - column: name
+
+  - changeSet:
+      id: "3-dependencies-schema"
+      author: "brewery"
+      changes:
+        - createTable:
+            tableName: dependencies
+            columns:
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: artifact_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_dependencies_artifacts
+                    references: artifacts(id)
+                    deleteCascade: true
+              - column:
+                  name: dependency_name
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: version_range
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: resolved_version
+                  type: VARCHAR(255)
+              - column:
+                  name: dependency_artifact_id
+                  type: UUID
+                  constraints:
+                    foreignKeyName: fk_dependencies_dep_artifacts
+                    references: artifacts(id)
+              - column:
+                  name: dependency_type
+                  type: VARCHAR(50)
+                  defaultValue: runtime
+                  constraints:
+                    nullable: false
+              - column:
+                  name: is_optional
+                  type: BOOLEAN
+                  defaultValue: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+                  defaultValueComputed: CURRENT_TIMESTAMP
+
+        - addUniqueConstraint:
+            tableName: dependencies
+            columnNames: artifact_id,dependency_name
+            constraintName: uk_dependencies_artifact_name
+
+        - createIndex:
+            indexName: idx_dependencies_artifact
+            tableName: dependencies
+            columns:
+              - column: artifact_id
+
+        - createIndex:
+            indexName: idx_dependencies_name
+            tableName: dependencies
+            columns:
+              - column: dependency_name
+
+        - createIndex:
+            indexName: idx_dependencies_resolved
+            tableName: dependencies
+            columns:
+              - column: resolved_version
+
+        - createTable:
+            tableName: resolved_dependencies
+            columns:
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: artifact_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_resolved_artifacts
+                    references: artifacts(id)
+                    deleteCascade: true
+              - column:
+                  name: dependency_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_resolved_dependencies
+                    references: dependencies(id)
+                    deleteCascade: true
+              - column:
+                  name: resolved_to_artifact_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_resolved_to_artifacts
+                    references: artifacts(id)
+              - column:
+                  name: resolved_version
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: resolution_time
+                  type: TIMESTAMP
+                  defaultValueComputed: CURRENT_TIMESTAMP
+
+        - addUniqueConstraint:
+            tableName: resolved_dependencies
+            columnNames: artifact_id,dependency_id
+            constraintName: uk_resolved_dependencies_artifact_dep
+
+        - createIndex:
+            indexName: idx_resolved_dep_artifact
+            tableName: resolved_dependencies
+            columns:
+              - column: artifact_id
+
+        - createTable:
+            tableName: reverse_dependencies
+            columns:
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: artifact_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_reverse_artifacts
+                    references: artifacts(id)
+                    deleteCascade: true
+              - column:
+                  name: dependent_artifact_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_reverse_dependent_artifacts
+                    references: artifacts(id)
+                    deleteCascade: true
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+                  defaultValueComputed: CURRENT_TIMESTAMP
+
+        - addUniqueConstraint:
+            tableName: reverse_dependencies
+            columnNames: artifact_id,dependent_artifact_id
+            constraintName: uk_reverse_dependencies_artifact_dependent
+
+        - createIndex:
+            indexName: idx_reverse_dep_artifact
+            tableName: reverse_dependencies
+            columns:
+              - column: artifact_id
+
+        - createIndex:
+            indexName: idx_reverse_dep_dependent
+            tableName: reverse_dependencies
+            columns:
+              - column: dependent_artifact_id
+
+        - createTable:
+            tableName: dependency_conflicts
+            columns:
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: artifact_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_conflicts_artifacts
+                    references: artifacts(id)
+                    deleteCascade: true
+              - column:
+                  name: conflict_description
+                  type: TEXT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: involved_artifacts
+                  type: TEXT[]
+                  constraints:
+                    nullable: false
+              - column:
+                  name: suggested_resolutions
+                  type: TEXT[]
+              - column:
+                  name: detected_at
+                  type: TIMESTAMP
+                  defaultValueComputed: CURRENT_TIMESTAMP
+
+        - createIndex:
+            indexName: idx_conflicts_artifact
+            tableName: dependency_conflicts
+            columns:
+              - column: artifact_id
+
