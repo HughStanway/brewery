@@ -13,4 +13,5 @@ public interface ArtifactTagRepository extends JpaRepository<ArtifactTag, UUID> 
     List<ArtifactTag> findByArtifactId(UUID artifactId);
     Optional<ArtifactTag> findByArtifactIdAndTag(UUID artifactId, String tag);
     void deleteByArtifactIdAndTag(UUID artifactId, String tag);
+    void deleteByArtifactId(UUID artifactId);
 }

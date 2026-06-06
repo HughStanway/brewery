@@ -100,9 +100,12 @@ public class ArtifactRegistryServiceImpl implements ArtifactRegistryService {
                 }
             }
 
-            // 5. Create and save new Artifact database entity
-            Artifact artifact = new Artifact();
-            artifact.setId(UUID.randomUUID());
+            // 5. Create and save new Artifact database entity or update existing one to prevent duplicates
+            Optional<Artifact> existingOpt = artifactRepository.findByNameAndVersion(name, version);
+            Artifact artifact = existingOpt.orElseGet(Artifact::new);
+            if (artifact.getId() == null) {
+                artifact.setId(UUID.randomUUID());
+            }
             artifact.setName(name);
             artifact.setVersion(version);
             artifact.setArtifactType(artifactType);
@@ -111,7 +114,9 @@ public class ArtifactRegistryServiceImpl implements ArtifactRegistryService {
             artifact.setFileSizeBytes(fileSizeBytes);
             artifact.setChecksum(checksum);
             artifact.setIsLatest(true);
-            artifact.setDownloadCount(0);
+            if (artifact.getDownloadCount() == null) {
+                artifact.setDownloadCount(0);
+            }
             
             // Map tags list to array representation
             if (tags != null && !tags.isEmpty()) {
@@ -125,7 +130,10 @@ public class ArtifactRegistryServiceImpl implements ArtifactRegistryService {
             
             Artifact savedArtifact = artifactRepository.save(artifact);
 
-            // 6. Save relational tags to artifact_tags table
+            // 6. Save relational tags to artifact_tags table (clean existing first if overwriting)
+            if (existingOpt.isPresent()) {
+                tagRepository.deleteByArtifactId(artifact.getId());
+            }
             if (tags != null) {
                 for (String t : tags) {
                     ArtifactTag tagEntity = new ArtifactTag();
