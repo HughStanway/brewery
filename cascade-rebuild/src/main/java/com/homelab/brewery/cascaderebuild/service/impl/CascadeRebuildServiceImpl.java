@@ -67,6 +67,21 @@ public class CascadeRebuildServiceImpl implements CascadeRebuildService {
         chain.setRootCause(reason);
         chain.setStatus("running");
         chain.setDepth(0);
+        
+        // Determine trigger type
+        String triggerType = "New version publication";
+        if (reason != null && reason.startsWith("New version registered")) {
+            if (triggerArtifact.getBuildId() != null) {
+                List<CascadeTask> tasks = cascadeTaskRepository.findByBuildId(triggerArtifact.getBuildId());
+                if (tasks != null && !tasks.isEmpty()) {
+                    triggerType = "Dependency cascade rebuild";
+                }
+            }
+        } else {
+            triggerType = "Manual trigger";
+        }
+        chain.setTriggerType(triggerType);
+        
         RebuildChain savedChain = rebuildChainRepository.save(chain);
 
         // Find direct dependents using reverse_dependencies table
@@ -177,11 +192,15 @@ public class CascadeRebuildServiceImpl implements CascadeRebuildService {
                 result.put("root_artifact_name", art.getName());
                 result.put("root_artifact_version", art.getVersion());
                 
-                String triggerType = "New version publication";
-                if (art.getBuildId() != null) {
-                    List<CascadeTask> buildTasks = cascadeTaskRepository.findByBuildId(art.getBuildId());
-                    if (buildTasks != null && !buildTasks.isEmpty()) {
-                        triggerType = "Dependency cascade rebuild";
+                String triggerType = chain.getTriggerType();
+                if (triggerType == null) {
+                    // Fallback for older records
+                    triggerType = "New version publication";
+                    if (art.getBuildId() != null) {
+                        List<CascadeTask> buildTasks = cascadeTaskRepository.findByBuildId(art.getBuildId());
+                        if (buildTasks != null && !buildTasks.isEmpty()) {
+                            triggerType = "Dependency cascade rebuild";
+                        }
                     }
                 }
                 result.put("trigger_type", triggerType);

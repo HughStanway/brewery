@@ -645,3 +645,14 @@ databaseChangeLog:
             columns:
               - column: artifact_id
 
+  - changeSet:
+      id: "5-add-trigger-type-to-rebuild-chains"
+      author: "brewery"
+      changes:
+        - addColumn:
+            tableName: rebuild_chains
+            columns:
+              - column:
+                  name: trigger_type
+                  type: VARCHAR(100)
+

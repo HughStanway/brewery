@@ -87,11 +87,15 @@ public class CascadeRebuildController {
                         map.put("rootArtifactVersion", art.getVersion());
                         map.put("root_artifact_version", art.getVersion());
                         
-                        String triggerType = "New version publication";
-                        if (art.getBuildId() != null) {
-                            List<com.homelab.brewery.common.entity.CascadeTask> tasks = cascadeTaskRepository.findByBuildId(art.getBuildId());
-                            if (tasks != null && !tasks.isEmpty()) {
-                                triggerType = "Dependency cascade rebuild";
+                        String triggerType = chain.getTriggerType();
+                        if (triggerType == null) {
+                            // Fallback for older database records
+                            triggerType = "New version publication";
+                            if (art.getBuildId() != null) {
+                                List<com.homelab.brewery.common.entity.CascadeTask> tasks = cascadeTaskRepository.findByBuildId(art.getBuildId());
+                                if (tasks != null && !tasks.isEmpty()) {
+                                    triggerType = "Dependency cascade rebuild";
+                                }
                             }
                         }
                         map.put("triggerType", triggerType);
