@@ -297,7 +297,7 @@ export default function DependenciesPage() {
                     >
                       {pkgVersions.map((v: any) => (
                         <option key={v.version} value={v.version}>
-                          {v.version} {v.version === pkgVersionsData?.latest ? '(latest)' : ''}
+                          {v.version} {v.is_latest || v.isLatest ? ' (latest)' : ''} {v.deprecated_at || v.deprecatedAt ? ' (deprecated)' : ''}
                         </option>
                       ))}
                     </select>

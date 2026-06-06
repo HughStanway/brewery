@@ -94,13 +94,19 @@ public class ArtifactRegistryServiceImpl implements ArtifactRegistryService {
             Path shaFile = dir.resolve(filename + ".sha256");
             String checksum = Files.readString(shaFile, StandardCharsets.UTF_8).trim();
 
-            // 4. Mark all previous versions of this artifact as not latest
+            // 4. Mark all previous versions of this artifact as not latest and deprecated
             List<Artifact> existingVersions = artifactRepository.findByName(name);
             for (Artifact ext : existingVersions) {
+                if (ext.getVersion().equals(version)) {
+                    continue; // Skip the version currently being registered/overwritten
+                }
                 if (Boolean.TRUE.equals(ext.getIsLatest())) {
                     ext.setIsLatest(false);
-                    artifactRepository.save(ext);
                 }
+                if (ext.getDeprecatedAt() == null) {
+                    ext.setDeprecatedAt(Instant.now());
+                }
+                artifactRepository.save(ext);
             }
 
             // 5. Create and save new Artifact database entity or update existing one to prevent duplicates
@@ -117,6 +123,7 @@ public class ArtifactRegistryServiceImpl implements ArtifactRegistryService {
             artifact.setFileSizeBytes(fileSizeBytes);
             artifact.setChecksum(checksum);
             artifact.setIsLatest(true);
+            artifact.setDeprecatedAt(null);
             if (artifact.getDownloadCount() == null) {
                 artifact.setDownloadCount(0);
             }

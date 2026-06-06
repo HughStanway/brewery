@@ -196,7 +196,7 @@ export default function CascadePage() {
                   >
                     {triggerVersions.map((v: any) => (
                       <option key={v.version} value={v.version}>
-                        {v.version} {v.version === triggerVersionsData?.latest ? '(latest)' : ''}
+                        {v.version} {v.is_latest || v.isLatest ? ' (latest)' : ''} {v.deprecated_at || v.deprecatedAt ? ' (deprecated)' : ''}
                       </option>
                     ))}
                   </select>
@@ -283,7 +283,7 @@ export default function CascadePage() {
                     >
                       {impactVersions.map((v: any) => (
                         <option key={v.version} value={v.version}>
-                          {v.version} {v.version === impactVersionsData?.latest ? '(latest)' : ''}
+                          {v.version} {v.is_latest || v.isLatest ? ' (latest)' : ''} {v.deprecated_at || v.deprecatedAt ? ' (deprecated)' : ''}
                         </option>
                       ))}
                     </select>

@@ -182,9 +182,14 @@ export default function ArtifactsPage() {
                   </div>
                   <div className="flex items-center justify-between">
                     <span>Latest Version:</span>
-                    <span className="font-semibold text-white font-mono">
-                      {group.latestVersion}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-semibold text-white font-mono">
+                        {group.latestVersion}
+                      </span>
+                      <span className="px-1.5 py-0.5 bg-emerald-500/15 text-emerald-400 text-[9px] font-bold rounded border border-emerald-500/25 uppercase tracking-wider">
+                        Latest
+                      </span>
+                    </div>
                   </div>
                   <div className="space-y-1">
                     <span>Repository Location:</span>

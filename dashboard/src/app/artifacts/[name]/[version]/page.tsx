@@ -108,23 +108,41 @@ export default function ArtifactDetailsPage() {
   const versionsList = versionsResponse?.versions || [];
   const downloadUrl = `/api/registry/artifacts/${name}/${version}/download`;
 
+  const currentVersionDetails = versionsList.find((v: any) => v.version === version);
+  const isLatest = currentVersionDetails?.is_latest || currentVersionDetails?.isLatest;
+  const isDeprecated = !!(currentVersionDetails?.deprecated_at || currentVersionDetails?.deprecatedAt);
+
   return (
     <div className="space-y-6">
-      {/* Back to Catalog */}
-      <div className="flex items-center justify-between">
-        <Link 
-          href="/artifacts"
-          className="flex items-center gap-2 text-sm text-gray-400 hover:text-gray-200 transition-colors font-medium"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Back to Artifacts
-        </Link>
-
+      {/* Page Title Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#1e293b] pb-4">
+        <div className="flex items-center gap-3">
+          <div className="p-3 bg-blue-500/10 text-blue-400 rounded-xl">
+            <Package className="w-6 h-6" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
+              {metadata.name}
+              {isLatest && (
+                <span className="px-2 py-0.5 bg-emerald-500/15 text-emerald-400 text-[10px] font-bold rounded-lg border border-emerald-500/25 uppercase tracking-wider">
+                  Latest Version
+                </span>
+              )}
+              {isDeprecated && (
+                <span className="px-2 py-0.5 bg-amber-500/15 text-amber-400 text-[10px] font-bold rounded-lg border border-amber-500/25 uppercase tracking-wider">
+                  Deprecated Version
+                </span>
+              )}
+            </h2>
+            <p className="text-xs text-gray-400 mt-1">Inspecting release package metadata and dependencies.</p>
+          </div>
+        </div>
+        
         {/* Download Button */}
         <a 
           href={downloadUrl}
           download
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold transition-all shadow-lg shadow-blue-500/20"
+          className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold transition-all shadow-lg shadow-blue-500/20 self-start md:self-auto"
         >
           <Download className="w-4 h-4" />
           Download Artifact File
@@ -152,7 +170,19 @@ export default function ArtifactDetailsPage() {
 
               <div>
                 <span className="text-[10px] text-gray-500 font-semibold block uppercase">Active Version</span>
-                <span className="font-mono text-white block font-semibold">{metadata.version}</span>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <span className="font-mono text-white font-semibold">{metadata.version}</span>
+                  {isLatest && (
+                    <span className="px-1.5 py-0.5 bg-emerald-500/15 text-emerald-400 text-[9px] font-bold rounded border border-emerald-500/25 uppercase tracking-wider">
+                      Latest
+                    </span>
+                  )}
+                  {isDeprecated && (
+                    <span className="px-1.5 py-0.5 bg-amber-500/15 text-amber-400 text-[9px] font-bold rounded border border-amber-500/25 uppercase tracking-wider">
+                      Deprecated
+                    </span>
+                  )}
+                </div>
               </div>
 
               <div>
@@ -185,6 +215,8 @@ export default function ArtifactDetailsPage() {
             <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
               {versionsList.map((ver: any) => {
                 const isCurrent = ver.version === version;
+                const verIsLatest = ver.is_latest || ver.isLatest;
+                const verIsDeprecated = !!(ver.deprecated_at || ver.deprecatedAt);
                 return (
                   <Link
                     key={ver.version}
@@ -195,7 +227,19 @@ export default function ArtifactDetailsPage() {
                         : 'border-transparent text-gray-400 hover:bg-[#151d30] hover:text-gray-200'
                     }`}
                   >
-                    <span>{ver.version}</span>
+                    <div className="flex items-center gap-1.5">
+                      <span>{ver.version}</span>
+                      {verIsLatest && (
+                        <span className="px-1 py-0.2 bg-emerald-500/15 text-emerald-400 text-[8px] font-bold rounded border border-emerald-500/25 uppercase tracking-wider">
+                          latest
+                        </span>
+                      )}
+                      {verIsDeprecated && (
+                        <span className="px-1 py-0.2 bg-amber-500/15 text-amber-400 text-[8px] font-bold rounded border border-amber-500/25 uppercase tracking-wider">
+                          deprecated
+                        </span>
+                      )}
+                    </div>
                     <ChevronRight className={`w-4 h-4 ${isCurrent ? 'text-blue-400' : 'text-gray-600'}`} />
                   </Link>
                 );
