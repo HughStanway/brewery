@@ -10,8 +10,8 @@ echo "=== Testing Brewery Pub/Sub Ingestion ==="
 
 # 1. Prepare JSON payload
 PAYLOAD='{
-  "repository": "homelab/brewery-test-repo",
-  "commit": "8f86f7b3df6e3f05477b7f14b6f1577908b7634f",
+  "repository": "/Users/hughstanway/Projects/brewery",
+  "commit": "0befb2eeedaa8770de6a1b223bcce8821c13945f",
   "branch": "main"
 }'
 

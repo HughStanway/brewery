@@ -286,13 +286,16 @@ public class BuildExecutorImpl implements BuildExecutor {
     }
 
     private void executeGitCommand(File dir, String... command) throws IOException, InterruptedException {
-        ProcessBuilder pb = new ProcessBuilder(command);
+        List<String> fullCommand = new ArrayList<>();
+        fullCommand.add("git");
+        fullCommand.addAll(List.of(command));
+        ProcessBuilder pb = new ProcessBuilder(fullCommand);
         pb.directory(dir);
         Process p = pb.start();
         boolean success = p.waitFor(60, TimeUnit.SECONDS);
         if (!success || p.exitValue() != 0) {
             String error = new String(p.getErrorStream().readAllBytes(), StandardCharsets.UTF_8);
-            throw new IOException("Git command failed: " + String.join(" ", command) + ". Error: " + error);
+            throw new IOException("Git command failed: " + String.join(" ", fullCommand) + ". Error: " + error);
         }
     }
 
