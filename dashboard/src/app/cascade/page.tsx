@@ -221,16 +221,21 @@ export default function CascadePage() {
                 <div className="flex justify-between font-semibold text-white">
                   <span>Affected Dependents:</span>
                   <span className="text-violet-400 font-mono">
-                    {impactData.impactedArtifacts?.length || impactData.affectedCount || 0} packages
+                    {impactData.total_affected ?? impactData.totalAffected ?? (impactData.affected_artifacts?.length || impactData.affectedArtifacts?.length || 0)} packages
                   </span>
                 </div>
                 <div className="max-h-28 overflow-y-auto space-y-1.5 font-mono text-[11px] text-gray-400 pr-1">
-                  {(impactData.impactedArtifacts || impactData.affectedArtifacts || []).map((artName: string, i: number) => (
-                    <div key={i} className="flex items-center gap-1 py-0.5 px-2 bg-black/35 rounded border border-[#1e293b]">
-                      <GitPullRequest className="w-3 h-3 text-violet-400 shrink-0" />
-                      {artName}
-                    </div>
-                  ))}
+                  {((impactData.affected_artifacts || impactData.affectedArtifacts || impactData.impactedArtifacts || []) as any[]).map((art: any, i: number) => {
+                    const label = typeof art === 'string'
+                      ? art
+                      : (art.artifact_name || art.artifactName || 'unknown') + '@' + (art.artifact_version || art.artifactVersion || '');
+                    return (
+                      <div key={i} className="flex items-center gap-1 py-0.5 px-2 bg-black/35 rounded border border-[#1e293b]">
+                        <GitPullRequest className="w-3 h-3 text-violet-400 shrink-0" />
+                        {label}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
