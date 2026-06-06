@@ -164,6 +164,32 @@ public class ArtifactRegistryServiceImpl implements ArtifactRegistryService {
                 .collect(Collectors.toList());
     }
 
+    private void updateMetadataJsonTags(Artifact artifact, List<String> newTags) {
+        try {
+            ArtifactMetadataJson metaJson;
+            if (artifact.getMetadata() != null && !artifact.getMetadata().isBlank()) {
+                metaJson = objectMapper.readValue(artifact.getMetadata(), ArtifactMetadataJson.class);
+            } else {
+                metaJson = new ArtifactMetadataJson();
+            }
+
+            metaJson.setTags(newTags);
+
+            String updatedJsonStr = objectMapper.writeValueAsString(metaJson);
+            artifact.setMetadata(updatedJsonStr);
+
+            Path dir = storageManager.getArtifactDirectoryPath(artifact.getName(), artifact.getVersion());
+            if (Files.exists(dir)) {
+                Path metadataFile = dir.resolve("metadata.json");
+                objectMapper.writerWithDefaultPrettyPrinter().writeValue(metadataFile.toFile(), metaJson);
+                log.info("Successfully updated metadata.json file on disk with tags: {}", newTags);
+            }
+        } catch (Exception e) {
+            log.error("Failed to update metadata JSON and file for {} version {}", 
+                    artifact.getName(), artifact.getVersion(), e);
+        }
+    }
+
     @Override
     @Transactional
     public void tagArtifact(String name, String version, String tag) {
@@ -187,6 +213,7 @@ public class ArtifactRegistryServiceImpl implements ArtifactRegistryService {
         if (!currentTags.contains(tag)) {
             currentTags.add(tag);
             artifact.setTags(currentTags.toArray(new String[0]));
+            updateMetadataJsonTags(artifact, currentTags);
             artifactRepository.save(artifact);
         }
         log.info("Tagged artifact {} version {} with tag '{}'", name, version, tag);
@@ -209,6 +236,7 @@ public class ArtifactRegistryServiceImpl implements ArtifactRegistryService {
             List<String> currentTags = new ArrayList<>(Arrays.asList(artifact.getTags()));
             if (currentTags.remove(tag)) {
                 artifact.setTags(currentTags.toArray(new String[0]));
+                updateMetadataJsonTags(artifact, currentTags);
                 artifactRepository.save(artifact);
             }
         }
