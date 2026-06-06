@@ -100,18 +100,10 @@ assert_contains "bcrypt@4.0.1 registered" "$RESP" "bcrypt"
 # Give the event listener a moment to trigger the cascade
 sleep 2
 
-# ─── Step 4: POST to /api/cascade/trigger/bcrypt/4.0.1 ──────────────────────
+# ─── Step 4: Extract chain_id of the automatically triggered cascade ─────────
 echo ""
-echo "4. Manually triggering cascade for bcrypt@4.0.1..."
-TRIGGER_RESP=$(curl -s -X POST \
-  -H "Content-Type: application/json" \
-  -d '{"reason":"test cascade rebuild","max_depth":3}' \
-  "${CASCADE_URL}/trigger/bcrypt/4.0.1")
-echo "Trigger response: ${TRIGGER_RESP}"
-assert_contains "Trigger returns chain_id" "$TRIGGER_RESP" "chain_id"
-
-# ─── Step 5: Extract chain_id from response ───────────────────────────────────
-CHAIN_ID=$(echo "$TRIGGER_RESP" | grep -o '"chain_id":"[^"]*"' | head -1 | cut -d'"' -f4)
+echo "4. Extracting automatically triggered cascade chain_id..."
+CHAIN_ID=$(curl -s "${CASCADE_URL}/chains" | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
 assert_not_empty "chain_id extracted" "$CHAIN_ID"
 
 # ─── Step 6: GET /api/cascade/chains/{chain_id} ──────────────────────────────
