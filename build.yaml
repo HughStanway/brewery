@@ -18,3 +18,8 @@ artifacts:
   - name: txt-file
     pattern: "target_artifact.txt"
     type: text
+
+dependencies:
+  - name: bcrypt
+    version_range: "^4.0.0"
+

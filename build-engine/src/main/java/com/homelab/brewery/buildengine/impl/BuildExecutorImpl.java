@@ -209,6 +209,18 @@ public class BuildExecutorImpl implements BuildExecutor {
             String artifactVersion = "0.0.0-" + build.getCommit().substring(0, Math.min(build.getCommit().length(), 7));
             String artifactName = config.getMetadata().getName();
 
+            // Map declared dependencies from build.yaml to registry descriptor model
+            List<com.homelab.brewery.registry.model.ArtifactMetadataJson.DependencyInfo> dependencies = new ArrayList<>();
+            if (config.getDependencies() != null) {
+                for (BuildYamlConfig.DependencyConfig depConfig : config.getDependencies()) {
+                    com.homelab.brewery.registry.model.ArtifactMetadataJson.DependencyInfo info =
+                            new com.homelab.brewery.registry.model.ArtifactMetadataJson.DependencyInfo();
+                    info.setName(depConfig.getName());
+                    info.setVersionRange(depConfig.getResolvedVersionRange());
+                    dependencies.add(info);
+                }
+            }
+
             if (config.getArtifacts() == null || config.getArtifacts().isEmpty()) {
                 throw new IllegalArgumentException("No artifacts configured under artifacts: list in build.yaml");
             }
@@ -231,7 +243,7 @@ public class BuildExecutorImpl implements BuildExecutor {
                                 build.getCommit(),
                                 file.getName(),
                                 is,
-                                java.util.Collections.emptyList(),
+                                dependencies,
                                 java.util.Collections.emptyList()
                         );
                     }

@@ -61,6 +61,14 @@
                 <scope>import</scope>
             </dependency>
 
+            <!-- Force Lombok version for all modules -->
+            <dependency>
+                <groupId>org.projectlombok</groupId>
+                <artifactId>lombok</artifactId>
+                <version>${lombok.version}</version>
+                <optional>true</optional>
+            </dependency>
+
             <!-- Internal modules -->
             <dependency>
                 <groupId>com.homelab.brewery</groupId>

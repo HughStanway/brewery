@@ -9,6 +9,7 @@ public class BuildYamlConfig {
     private Build build;
     private Steps steps;
     private List<ArtifactConfig> artifacts;
+    private List<DependencyConfig> dependencies;
 
     @Data
     public static class Metadata {
@@ -36,5 +37,18 @@ public class BuildYamlConfig {
         private String name;
         private String pattern;
         private String type;
+    }
+
+    @Data
+    public static class DependencyConfig {
+        private String name;
+        private String versionRange;
+        private String version_range;
+        private String type;
+        private Boolean optional;
+
+        public String getResolvedVersionRange() {
+            return versionRange != null ? versionRange : version_range;
+        }
     }
 }
