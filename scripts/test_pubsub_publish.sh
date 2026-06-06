@@ -11,7 +11,7 @@ echo "=== Testing Brewery Pub/Sub Ingestion ==="
 # 1. Prepare JSON payload
 PAYLOAD='{
   "repository": "/Users/hughstanway/Projects/brewery",
-  "commit": "ac6ef57923a7c8d12296b2b3c370cbfb05798df6",
+  "commit": "2c1a1ce5c0910426a709a05c0bcd5a8b25a7afb6",
   "branch": "main"
 }'
 
