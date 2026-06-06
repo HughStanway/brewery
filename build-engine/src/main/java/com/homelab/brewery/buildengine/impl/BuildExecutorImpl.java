@@ -282,6 +282,23 @@ public class BuildExecutorImpl implements BuildExecutor {
 
             // 8. Extract Artifacts
             String artifactVersion = "0.0.0-" + build.getCommit().substring(0, Math.min(build.getCommit().length(), 7));
+            
+            // If this build is triggered by a CascadeTask, use the original target version to maintain in-place rebuild consistency
+            try {
+                List<CascadeTask> tasks = cascadeTaskRepository.findByBuildId(build.getId());
+                if (tasks != null && !tasks.isEmpty()) {
+                    CascadeTask task = tasks.get(0);
+                    Optional<Artifact> originalArtifactOpt = artifactRepository.findById(task.getArtifactId());
+                    if (originalArtifactOpt.isPresent()) {
+                        artifactVersion = originalArtifactOpt.get().getVersion();
+                        log.info("Cascade task build detected. Using original target version {} for artifact {}", 
+                                artifactVersion, originalArtifactOpt.get().getName());
+                    }
+                }
+            } catch (Exception e) {
+                log.warn("Failed to retrieve cascade task version for build {}, using commit version fallback", build.getId(), e);
+            }
+
             String artifactName = config.getMetadata().getName();
 
             // Map declared dependencies from build.yaml to registry descriptor model
