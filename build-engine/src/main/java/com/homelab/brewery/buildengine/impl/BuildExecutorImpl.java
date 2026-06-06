@@ -9,13 +9,11 @@ import com.github.dockerjava.api.model.Volume;
 import com.github.dockerjava.api.command.WaitContainerResultCallback;
 import com.homelab.brewery.buildengine.BuildExecutor;
 import com.homelab.brewery.buildengine.model.BuildYamlConfig;
-import com.homelab.brewery.common.entity.Artifact;
 import com.homelab.brewery.common.entity.Build;
-import com.homelab.brewery.common.repository.ArtifactRepository;
 import com.homelab.brewery.common.repository.BuildRepository;
+import com.homelab.brewery.registry.ArtifactRegistryService;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FileUtils;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.yaml.snakeyaml.Yaml;
 
@@ -44,18 +42,15 @@ public class BuildExecutorImpl implements BuildExecutor {
 
     private final DockerClient dockerClient;
     private final BuildRepository buildRepository;
-    private final ArtifactRepository artifactRepository;
-
-    @Value("${brewery.artifact-store.base-path:/mnt/artifact-store}")
-    private String artifactStorePath;
+    private final ArtifactRegistryService registryService;
 
     public BuildExecutorImpl(
             DockerClient dockerClient,
             BuildRepository buildRepository,
-            ArtifactRepository artifactRepository) {
+            ArtifactRegistryService registryService) {
         this.dockerClient = dockerClient;
         this.buildRepository = buildRepository;
-        this.artifactRepository = artifactRepository;
+        this.registryService = registryService;
     }
 
     @Override
@@ -225,28 +220,22 @@ public class BuildExecutorImpl implements BuildExecutor {
                 }
 
                 for (File file : files) {
-                    File destDir = new File(artifactStorePath + "/" + artifactName + "/" + artifactVersion);
-                    if (!destDir.exists() && !destDir.mkdirs()) {
-                        throw new IOException("Failed to create destination directory: " + destDir.getAbsolutePath());
+                    try (InputStream is = new FileInputStream(file)) {
+                        registryService.registerArtifact(
+                                artifactName,
+                                artifactVersion,
+                                artConfig.getType() != null ? artConfig.getType() : "binary",
+                                build.getId().toString(),
+                                build.getRepository(),
+                                build.getBranch(),
+                                build.getCommit(),
+                                file.getName(),
+                                is,
+                                java.util.Collections.emptyList(),
+                                java.util.Collections.emptyList()
+                        );
                     }
-
-                    File destFile = new File(destDir, file.getName());
-                    FileUtils.copyFile(file, destFile);
-                    log.info("Saved artifact. buildId={}, file={}, dest={}", build.getId(), file.getName(), destFile.getAbsolutePath());
-
-                    // Calculate checksum
-                    String checksum = calculateSha256(destFile);
-
-                    // Create database entity
-                    Artifact artifact = new Artifact();
-                    artifact.setName(artifactName);
-                    artifact.setVersion(artifactVersion);
-                    artifact.setArtifactType(artConfig.getType() != null ? artConfig.getType() : "binary");
-                    artifact.setBuildId(build.getId());
-                    artifact.setStoragePath(destFile.getAbsolutePath());
-                    artifact.setFileSizeBytes(destFile.length());
-                    artifact.setChecksum(checksum);
-                    artifactRepository.save(artifact);
+                    log.info("Saved and registered artifact. buildId={}, file={}", build.getId(), file.getName());
                 }
             }
 

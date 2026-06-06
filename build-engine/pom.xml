@@ -14,11 +14,14 @@
     <artifactId>build-engine</artifactId>
     <name>Build Engine</name>
     <description>Docker-based build execution engine (Phase 1)</description>
-
     <dependencies>
         <dependency>
             <groupId>com.homelab.brewery</groupId>
             <artifactId>common</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.homelab.brewery</groupId>
+            <artifactId>registry</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
