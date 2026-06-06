@@ -2,9 +2,12 @@ package com.homelab.brewery.service.impl;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.homelab.brewery.buildengine.BuildQueueManager;
+import com.homelab.brewery.common.entity.Build;
 import com.homelab.brewery.common.objects.github.GitHubEventMetadata;
 import com.homelab.brewery.common.objects.requests.JobRequest;
 import com.homelab.brewery.common.objects.requests.JobResponse;
+import com.homelab.brewery.common.repository.BuildRepository;
 import com.homelab.brewery.common.service.JobTriggerService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -30,13 +33,19 @@ public class JobTriggerServiceImpl implements JobTriggerService {
 
     private final List<String> allowedEvents;
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private final BuildRepository buildRepository;
+    private final BuildQueueManager buildQueueManager;
 
     @Value("${brewery.github.webhook.secret:}")
     private String configuredSecret;
 
     public JobTriggerServiceImpl(
+        BuildRepository buildRepository,
+        BuildQueueManager buildQueueManager,
         @Value("${brewery.github.webhook.allowed-events:push,pull_request}") List<String> allowedEvents
     ) {
+        this.buildRepository = buildRepository;
+        this.buildQueueManager = buildQueueManager;
         this.allowedEvents = allowedEvents;
     }
 
@@ -50,6 +59,21 @@ public class JobTriggerServiceImpl implements JobTriggerService {
         UUID buildId = jobRequest.getBuildId() != null ? jobRequest.getBuildId() : UUID.randomUUID();
         log.info("Triggering build job. buildId={}, repository={}, branch={}, commit={}",
                  buildId, jobRequest.getRepository(), jobRequest.getBranch(), jobRequest.getCommit());
+
+        // Create and persist the pending Build entity
+        Build build = new Build();
+        build.setId(buildId);
+        build.setRepository(jobRequest.getRepository());
+        build.setBranch(jobRequest.getBranch());
+        build.setCommit(jobRequest.getCommit());
+        build.setStatus("pending");
+        if (jobRequest.getGithubEventMetadata() != null) {
+            build.setWebhookEventId(String.valueOf(jobRequest.getGithubEventMetadata().getId()));
+        }
+        buildRepository.save(build);
+
+        // Enqueue build execution task via Build Queue
+        buildQueueManager.enqueue(build);
 
         JobResponse response = new JobResponse();
         response.setBuildId(buildId);

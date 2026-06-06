@@ -169,135 +169,135 @@ Input:
 Step 1: Clone Repository
   git clone --depth 1 --branch main https://github.com/myteam/auth-lib.git /tmp/build-{uuid}
 
-Step 2: Detect Project Type
-  Check for: Cargo.toml → Rust
-            go.mod → Go
-            pyproject.toml / setup.py → Python
-            package.json → Node.js
-            CMakeLists.txt → C++
+Step 2: Read build.yaml
+  - Look for mandatory build.yaml file in the root directory.
+  - If missing, fail the build immediately with error: "Missing build.yaml configuration".
+  - Parse metadata, build environment settings, steps, and artifacts.
 
 Step 3: Prepare Build Container
-  Select base image for language
-  Mount working directory
-  Set environment variables
+  - Select base image specified in build.yaml (e.g., rust:1.75, python:3.11-slim, etc.)
+  - Mount workspace directory /tmp/build-{uuid} to container /workspace
+  - Set environment variables and configuration (memory, cpus, timeout)
 
-Step 4: Execute Build in Container
-  Run language-specific build command
-  Capture stdout/stderr to logs
-  Monitor for timeout (default: 30 mins)
+Step 4: Execute Build Steps in Container
+  - Execute commands defined under steps:
+    1. setup
+    2. build
+    3. test
+  - Capture stdout/stderr stream directly to build.log
+  - Monitor for timeout (default: 30 mins, or overridden in build.yaml)
 
 Step 5: Extract Artifacts
-  Copy build outputs from container
-  Organize by artifact type (jar, wheel, binary, etc.)
+  - Copy build outputs from workspace matching patterns specified under artifacts.
+  - Organize by artifact type (jar, wheel, binary, etc.)
 
 Step 6: Generate Version & Metadata
-  Compute version from:
-    - Git tags (semver)
-    - Commit count
-    - Commit message markers (#major, #minor, #patch)
-    Default: 0.0.0-{commit_short}
+  - Compute version from commit tags, commits count, or configuration.
+  - Default to: 0.0.0-{commit_short}
 
 Step 7: Store to Artifact Registry
-  /store/{name}/{version}/
+  - /store/{name}/{version}/
     artifact.{ext}
     metadata.json
     build.log
 
 Step 8: Update Database
-  INSERT into artifacts table
-  UPDATE builds table (status: SUCCESS)
-
-Step 9: Emit Event
-  ArtifactCreated { id, name, version, type }
+  - INSERT into artifacts table
+  - UPDATE builds table (status: SUCCESS)
 ```
 
-### 3.2 Language Support & Build Configurations
+### 3.2 mandatory build.yaml Specification
 
-#### Rust
-```dockerfile
-FROM rust:latest
-WORKDIR /build
-COPY . .
-RUN cargo build --release
-# Artifact: target/release/{binary_name}
-```
+Every project supported by Brewery must include a `build.yaml` file in its root. This defines its identity, dependencies, build settings, and output files.
 
-#### Go
-```dockerfile
-FROM golang:1.21
-WORKDIR /build
-COPY . .
-RUN go build -o {binary_name} .
-# Artifact: ./{binary_name}
-```
-
-#### Python
-```dockerfile
-FROM python:3.11
-WORKDIR /build
-COPY . .
-RUN pip install -e .
-RUN python -m build
-# Artifact: dist/*.whl
-```
-
-#### Node.js
-```dockerfile
-FROM node:20
-WORKDIR /build
-COPY . .
-RUN npm ci
-RUN npm run build
-# Artifact: dist/
-```
-
-#### C++
-```dockerfile
-FROM ubuntu:22.04
-RUN apt-get update && apt-get install -y build-essential cmake
-WORKDIR /build
-COPY . .
-RUN mkdir -p build && cd build && cmake .. && make
-# Artifact: build/bin/{binary_name}
-```
-
-### 3.3 Build Configuration (buildkit.yml)
-
+#### Schema
 ```yaml
-# Optional per-repository build configuration
-version: 1
+# Identity and Identity Details
+metadata:
+  name: "auth-lib"            # Unique name of the artifact
+  version_scheme: "semver"    # semver or commit-based
 
+# Build Environment Configuration
 build:
-  timeout: 1800  # seconds
-  memory: 4g
-  cpus: 2
-  
-commands:
-  setup: |
-    # Pre-build steps
-  build: |
-    # Custom build command (overrides defaults)
-  test: |
-    # Test command
-  package: |
-    # Packaging step
+  image: "python:3.11-slim"   # Mandatory: Docker image to execute steps in
+  timeout_seconds: 1800       # Optional: Build timeout limit (default: 1800)
+  memory: "4g"                # Optional: Memory limit (default: 4g)
+  cpus: 2                     # Optional: CPU limit (default: 2)
 
+# Sequence of Build Steps
+steps:
+  setup: |                    # Optional: Pre-requisites installation
+    pip install --upgrade pip
+  build: |                    # Mandatory: Compilation / build command
+    python -m build
+  test: |                     # Optional: Testing commands
+    pytest
+
+# List of Outputs to Capture as Artifacts
 artifacts:
-  - pattern: "target/release/*"
-    type: "binary"
-    name: "{repo_name}"
-  - pattern: "dist/*.whl"
-    type: "python-wheel"
-    name: "{repo_name}"
-
-versioning:
-  scheme: "semver"  # or "commit-based"
-  tag_pattern: "v*"  # git tag pattern
-
-dependencies:
-  - "myteam/core-lib@^1.0.0"
-  - "myteam/crypto@>=2.0.0"
+  - name: "auth-lib"          # Name of the output artifact
+    pattern: "dist/*.whl"     # File pattern (glob) relative to workspace
+    type: "wheel"             # binary, jar, wheel, npm-package, docker-image
 ```
+
+#### Language Examples
+
+##### Rust
+```yaml
+metadata:
+  name: "crypto-service"
+  version_scheme: "semver"
+build:
+  image: "rust:1.75-slim"
+steps:
+  build: |
+    cargo build --release
+  test: |
+    cargo test
+artifacts:
+  - name: "crypto-service"
+    pattern: "target/release/crypto-service"
+    type: "binary"
+```
+
+##### Go
+```yaml
+metadata:
+  name: "gateway"
+  version_scheme: "semver"
+build:
+  image: "golang:1.21-alpine"
+steps:
+  setup: |
+    apk add --no-cache git
+  build: |
+    go build -o gateway .
+  test: |
+    go test ./...
+artifacts:
+  - name: "gateway"
+    pattern: "./gateway"
+    type: "binary"
+```
+
+##### Node.js
+```yaml
+metadata:
+  name: "dashboard"
+  version_scheme: "semver"
+build:
+  image: "node:20-slim"
+steps:
+  setup: |
+    npm ci
+  build: |
+    npm run build
+artifacts:
+  - name: "dashboard"
+    pattern: "dist/"
+    type: "npm-package"
+```
+
 
 ---
 
