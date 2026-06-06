@@ -130,3 +130,19 @@ else
 fi
 
 echo -e "\n=== Pub/Sub Dependency Ingestion & Resolution Validation Completed Successfully! ==="
+
+# 9. Register bcrypt dependency first so it can be resolved
+echo "Registering new bcrypt dependency version..."
+echo "dummy bcrypt" > bcrypt-4.0.2.jar
+curl -s --fail-with-body -X POST \
+  -F "file=@bcrypt-4.0.2.jar" \
+  -F "name=bcrypt" \
+  -F "version=4.0.2" \
+  -F "artifact_type=jar" \
+  -F "build_id=fb060fe3-4529-4c1f-afb3-e7d386220372" \
+  -F "repository=myteam/bcrypt" \
+  -F "branch=main" \
+  -F "commit=bc111" \
+  "${REGISTRY_URL}/artifacts" > /dev/null
+rm -f bcrypt-4.0.2.jar
+echo "✓ bcrypt@4.0.2 registered."
