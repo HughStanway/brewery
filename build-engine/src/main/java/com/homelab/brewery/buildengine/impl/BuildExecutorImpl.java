@@ -1,5 +1,6 @@
 package com.homelab.brewery.buildengine.impl;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.api.command.CreateContainerResponse;
 import com.github.dockerjava.api.command.PullImageResultCallback;
@@ -9,13 +10,20 @@ import com.github.dockerjava.api.model.Volume;
 import com.github.dockerjava.api.command.WaitContainerResultCallback;
 import com.homelab.brewery.buildengine.BuildExecutor;
 import com.homelab.brewery.buildengine.model.BuildYamlConfig;
+import com.homelab.brewery.common.entity.Artifact;
 import com.homelab.brewery.common.entity.Build;
+import com.homelab.brewery.common.entity.CascadeTask;
+import com.homelab.brewery.common.repository.ArtifactRepository;
 import com.homelab.brewery.common.repository.BuildRepository;
+import com.homelab.brewery.common.repository.CascadeTaskRepository;
 import com.homelab.brewery.registry.ArtifactRegistryService;
+import com.homelab.brewery.registry.model.ArtifactMetadataJson;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FileUtils;
 import org.springframework.stereotype.Service;
 import org.yaml.snakeyaml.Yaml;
+
+import java.util.Optional;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -43,14 +51,21 @@ public class BuildExecutorImpl implements BuildExecutor {
     private final DockerClient dockerClient;
     private final BuildRepository buildRepository;
     private final ArtifactRegistryService registryService;
+    private final CascadeTaskRepository cascadeTaskRepository;
+    private final ArtifactRepository artifactRepository;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     public BuildExecutorImpl(
             DockerClient dockerClient,
             BuildRepository buildRepository,
-            ArtifactRegistryService registryService) {
+            ArtifactRegistryService registryService,
+            CascadeTaskRepository cascadeTaskRepository,
+            ArtifactRepository artifactRepository) {
         this.dockerClient = dockerClient;
         this.buildRepository = buildRepository;
         this.registryService = registryService;
+        this.cascadeTaskRepository = cascadeTaskRepository;
+        this.artifactRepository = artifactRepository;
     }
 
     @Override
@@ -84,6 +99,31 @@ public class BuildExecutorImpl implements BuildExecutor {
             if (isMockRepo) {
                 log.info("Mock repository detected: {}. Simulating workspace checkout...", repo);
                 String artifactName = repo.substring(repo.indexOf("/") + 1);
+
+                // Extract dependencies if this build is triggered by a CascadeTask
+                StringBuilder dependenciesYaml = new StringBuilder();
+                try {
+                    List<CascadeTask> tasks = cascadeTaskRepository.findByBuildId(build.getId());
+                    if (tasks != null && !tasks.isEmpty()) {
+                        CascadeTask task = tasks.get(0);
+                        Optional<Artifact> parentArtifactOpt = artifactRepository.findById(task.getArtifactId());
+                        if (parentArtifactOpt.isPresent()) {
+                            Artifact parentArtifact = parentArtifactOpt.get();
+                            if (parentArtifact.getMetadata() != null && !parentArtifact.getMetadata().isBlank()) {
+                                ArtifactMetadataJson meta = objectMapper.readValue(parentArtifact.getMetadata(), ArtifactMetadataJson.class);
+                                if (meta.getDependencies() != null && !meta.getDependencies().isEmpty()) {
+                                    dependenciesYaml.append("dependencies:\n");
+                                    for (ArtifactMetadataJson.DependencyInfo dep : meta.getDependencies()) {
+                                        dependenciesYaml.append("  - name: \"").append(dep.getName()).append("\"\n");
+                                        dependenciesYaml.append("    version_range: \"").append(dep.getVersionRange()).append("\"\n");
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    log.error("Failed to recover dependencies for mock build.yaml", e);
+                }
                 
                 // Create dummy build.yaml
                 File yamlFile = new File(workspaceDir, "build.yaml");
@@ -93,7 +133,8 @@ public class BuildExecutorImpl implements BuildExecutor {
                         "  image: \"alpine:latest\"\n" +
                         "artifacts:\n" +
                         "  - pattern: \"dist/*.jar\"\n" +
-                        "    type: \"jar\"\n";
+                        "    type: \"jar\"\n" +
+                        dependenciesYaml.toString();
                 Files.writeString(yamlFile.toPath(), dummyYaml, StandardCharsets.UTF_8);
                 
                 // Create dummy artifact file
