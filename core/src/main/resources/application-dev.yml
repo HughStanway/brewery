@@ -32,7 +32,7 @@ brewery:
     base-path: /Users/hughstanway/Projects/brewery/artifact-store
   dependency-resolver:
     scheduler:
-      delay-ms: 1000
+      delay-ms: 30000
   cascade:
     scheduler:
-      delay-ms: 1000
+      delay-ms: 10000

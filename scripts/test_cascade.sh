@@ -74,10 +74,13 @@ RESP=$(curl -s -X POST \
   "${REGISTRY_URL}/artifacts")
 assert_contains "auth-lib@1.0.0 registered" "$RESP" "auth-lib"
 
-# Give the dependency resolver a moment to build reverse dependencies
+# Explicitly resolve dependencies for auth-lib@1.0.0 to create reverse dependencies instantly
 echo ""
-echo "Waiting 3s for dependency resolver to process reverse dependencies..."
-sleep 3
+echo "Forcing synchronous dependency resolution for auth-lib@1.0.0..."
+curl -s -X POST \
+  -H "Content-Type: application/json" \
+  -d '{"include_transitive": true}' \
+  "http://localhost:8080/api/dependencies/resolve/auth-lib/1.0.0" > /dev/null
 
 # ─── Step 3: Register bcrypt@4.0.1 (trigger - new version) ──────────────────
 echo ""

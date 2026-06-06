@@ -418,7 +418,7 @@ public class DependencyResolverServiceImpl implements DependencyResolverService 
     @Override
     @Transactional
     public void resolveUnresolvedArtifacts() {
-        log.info("Running background scheduled task to resolve newly registered artifacts...");
+        log.debug("Running background scheduled task to resolve newly registered artifacts...");
         
         List<Artifact> allArtifacts = artifactRepository.findAll();
         for (Artifact art : allArtifacts) {
