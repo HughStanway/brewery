@@ -2,6 +2,11 @@ spring:
   application:
     name: brewery-orchestrator-dev
   
+  cloud:
+    gcp:
+      pubsub:
+        emulator-host: ${PUBSUB_EMULATOR_HOST:localhost:8085}
+
   datasource:
     url: jdbc:postgresql://localhost:5432/supply_chain_dev
     username: postgres

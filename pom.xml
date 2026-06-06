@@ -14,7 +14,7 @@
 
     <modules>
         <module>common</module>
-        <module>api</module>
+        <module>pubsub</module>
         <module>core</module>
         <module>build-engine</module>
         <module>registry</module>
@@ -52,6 +52,15 @@
                 <scope>import</scope>
             </dependency>
 
+            <!-- Spring Cloud GCP BOM -->
+            <dependency>
+                <groupId>com.google.cloud</groupId>
+                <artifactId>spring-cloud-gcp-dependencies</artifactId>
+                <version>5.3.0</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
             <!-- Internal modules -->
             <dependency>
                 <groupId>com.homelab.brewery</groupId>
@@ -60,7 +69,7 @@
             </dependency>
             <dependency>
                 <groupId>com.homelab.brewery</groupId>
-                <artifactId>api</artifactId>
+                <artifactId>pubsub</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
@@ -121,6 +130,13 @@
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
+        </dependency>
+
+        <!-- Structured Logging JSON encoder -->
+        <dependency>
+            <groupId>net.logstash.logback</groupId>
+            <artifactId>logstash-logback-encoder</artifactId>
+            <version>7.4</version>
         </dependency>
 
         <!-- Lombok for boilerplate reduction -->

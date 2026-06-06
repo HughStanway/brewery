@@ -1,20 +1,14 @@
-package com.homelab.brewery.api.endpoints;
+package com.homelab.brewery.service.impl;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.homelab.brewery.common.dto.ApiResponse;
 import com.homelab.brewery.common.objects.github.GitHubEventMetadata;
 import com.homelab.brewery.common.objects.requests.JobRequest;
 import com.homelab.brewery.common.objects.requests.JobResponse;
-import jakarta.servlet.http.HttpServletRequest;
+import com.homelab.brewery.common.service.JobTriggerService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.server.ResponseStatusException;
+import org.springframework.stereotype.Service;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -23,13 +17,13 @@ import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.UUID;
-import java.util.HexFormat;
 
-@RestController
-@RequestMapping("api/jobs/init")
-public class InitJobController {
+@Service
+@Slf4j
+public class JobTriggerServiceImpl implements JobTriggerService {
 
     private static final String HMAC_SHA256 = "HmacSHA256";
     private static final String SIGNATURE_PREFIX = "sha256=";
@@ -37,73 +31,88 @@ public class InitJobController {
     private final List<String> allowedEvents;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public InitJobController(
+    @Value("${brewery.github.webhook.secret:}")
+    private String configuredSecret;
+
+    public JobTriggerServiceImpl(
         @Value("${brewery.github.webhook.allowed-events:push,pull_request}") List<String> allowedEvents
     ) {
         this.allowedEvents = allowedEvents;
     }
 
-    @PostMapping
-    public ApiResponse<JobResponse> receiveWebhook(
-        @RequestBody byte[] rawBody,
-        @RequestHeader(value = "X-Hub-Signature-256", required = false) String signature256,
-        @RequestHeader(value = "X-GitHub-Event", required = false) String githubEvent,
-        HttpServletRequest request
-    ) { 
-        if (signature256 == null || signature256.isBlank()) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Missing X-Hub-Signature-256 header");
-        }
-
-        /* 
-        *   Only check the payload signature against the secret key 
-        *   if GITHUB_WEBHOOK_VERIFY enviroment variable is set
-        */
-        String secret = resolveSecret();
-        if (isVerificationEnabled() && !validateSignature(rawBody, signature256, secret)) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid webhook signature" + secret);
-        }
-
-        if (githubEvent == null || githubEvent.isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Missing X-GitHub-Event header");
-        }
-
-        if (!allowedEvents.contains(githubEvent)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unsupported GitHub event: " + githubEvent);
-        }
-
-        JobRequest jobRequest;
-        try {
-            JsonNode payload = objectMapper.readTree(rawBody);
-            jobRequest = parseJobRequest(payload, githubEvent);
-        } catch (Exception e) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Malformed webhook payload", e);
-        }
-
+    @Override
+    public JobResponse triggerJob(JobRequest jobRequest) {
         if (jobRequest.getRepository() == null || jobRequest.getCommit() == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Webhook payload is missing required repository, branch, or commit data");
+            log.error("Failed to trigger job: missing required repository or commit metadata.");
+            throw new IllegalArgumentException("Webhook payload is missing required repository, branch, or commit data");
         }
+
+        UUID buildId = jobRequest.getBuildId() != null ? jobRequest.getBuildId() : UUID.randomUUID();
+        log.info("Triggering build job. buildId={}, repository={}, branch={}, commit={}",
+                 buildId, jobRequest.getRepository(), jobRequest.getBranch(), jobRequest.getCommit());
 
         JobResponse response = new JobResponse();
-        response.setBuildId(jobRequest.getBuildId());
+        response.setBuildId(buildId);
         response.setRepository(jobRequest.getRepository());
         response.setCommit(jobRequest.getCommit());
         response.setBranch(jobRequest.getBranch());
 
-        return ApiResponse.success(response, "Build job queued successfully");
+        return response;
+    }
+
+    @Override
+    public JobResponse triggerFromWebhookPayload(byte[] rawPayload, String eventType, String signatureHeader) {
+        log.info("Received webhook event payload. eventType={}", eventType);
+
+        if (signatureHeader == null || signatureHeader.isBlank()) {
+            log.warn("Rejected webhook payload: missing X-Hub-Signature-256 header");
+            throw new SecurityException("Missing X-Hub-Signature-256 header");
+        }
+
+        String secret = resolveSecret();
+        if (isVerificationEnabled() && !validateSignature(rawPayload, signatureHeader, secret)) {
+            log.error("Rejected webhook payload: invalid signature");
+            throw new SecurityException("Invalid webhook signature");
+        }
+
+        if (eventType == null || eventType.isBlank()) {
+            log.warn("Rejected webhook payload: missing event type");
+            throw new IllegalArgumentException("Missing X-GitHub-Event header");
+        }
+
+        if (!allowedEvents.contains(eventType)) {
+            log.warn("Rejected webhook payload: unsupported event type: {}", eventType);
+            throw new IllegalArgumentException("Unsupported GitHub event: " + eventType);
+        }
+
+        JobRequest jobRequest;
+        try {
+            JsonNode payload = objectMapper.readTree(rawPayload);
+            jobRequest = parseJobRequest(payload, eventType);
+        } catch (Exception e) {
+            log.error("Failed to parse webhook payload for event type {}", eventType, e);
+            throw new IllegalArgumentException("Malformed webhook payload", e);
+        }
+
+        return triggerJob(jobRequest);
     }
 
     private String resolveSecret() {
-        String env =  System.getenv("GITHUB_WEBHOOK_SECRET");
-        if (env == null || env.isBlank()) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "GitHub webhook secret is not configured");
+        String env = System.getenv("GITHUB_WEBHOOK_SECRET");
+        if (env != null && !env.isBlank()) {
+            return env;
         }
-        return env;
+        if (configuredSecret != null && !configuredSecret.isBlank()) {
+            return configuredSecret;
+        }
+        throw new IllegalStateException("GitHub webhook secret is not configured");
     }
 
     private boolean isVerificationEnabled() {
         String env = System.getenv("GITHUB_WEBHOOK_VERIFY");
         if (env == null || env.isBlank()) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "GITHUB_WEBHOOK_VERIFY is not configured");
+            // Default to true if secret is defined to be safe, or check environment
+            throw new IllegalStateException("GITHUB_WEBHOOK_VERIFY is not configured");
         }
         return env.equalsIgnoreCase("1") || env.equalsIgnoreCase("true") || env.equalsIgnoreCase("yes");
     }
@@ -147,7 +156,7 @@ public class InitJobController {
         switch (eventType) {
             case "push" -> parsePushPayload(payload, request);
             case "pull_request" -> parsePullRequestPayload(payload, request);
-            default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unsupported event type: " + eventType);
+            default -> throw new IllegalArgumentException("Unsupported event type: " + eventType);
         }
 
         return request;

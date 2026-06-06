@@ -31,19 +31,29 @@ services:
     env_file:
       - .env
     environment:
-      SPRING_PROFILES_ACTIVE: dev
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
       DB_PASSWORD: ${DB_PASSWORD:-dev_password}
       DOCKER_HOST: unix:///var/run/docker.sock
+      GCP_PROJECT_ID: ${GCP_PROJECT_ID:-brewery-homelab}
+      GCP_CREDENTIALS_LOCATION: ${GCP_CREDENTIALS_LOCATION:-}
     ports:
       - "8080:8080"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - artifact_store:/mnt/artifact-store
+      # Mount standard Google Application Default Credentials (ADC) from host
+      - ~/.config/gcloud:/root/.config/gcloud:ro
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+
+  pubsub-emulator:
+    image: gcr.io/google.com/cloudsdktool/google-cloud-cli:emulators
+    command: gcloud beta emulators pubsub start --host-port=0.0.0.0:8085 --project=brewery-homelab
+    ports:
+      - "8085:8085"
 
 volumes:
   postgres_data:

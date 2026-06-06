@@ -7,7 +7,7 @@ RUN apk add --no-cache maven
 
 COPY pom.xml .
 COPY common ./common
-COPY api ./api
+COPY pubsub ./pubsub
 COPY core ./core
 COPY build-engine ./build-engine
 COPY registry ./registry

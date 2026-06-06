@@ -22,7 +22,7 @@
         </dependency>
         <dependency>
             <groupId>com.homelab.brewery</groupId>
-            <artifactId>api</artifactId>
+            <artifactId>pubsub</artifactId>
         </dependency>
         <dependency>
             <groupId>com.homelab.brewery</groupId>

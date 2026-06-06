@@ -35,6 +35,14 @@ spring:
     serialization:
       write-dates-as-timestamps: false
     default-property-inclusion: non_null
+  
+  cloud:
+    gcp:
+      project-id: ${GCP_PROJECT_ID:brewery-homelab}
+      credentials:
+        location: ${GCP_CREDENTIALS_LOCATION:}
+      pubsub:
+        emulator-host: ${PUBSUB_EMULATOR_HOST:}
 
 server:
   port: 8080
@@ -47,11 +55,11 @@ logging:
   level:
     root: INFO
     com.homelab.brewery: DEBUG
-  pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
-    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
 
 brewery:
+  pubsub:
+    subscription-id: ${BREWERY_JOBS_SUBSCRIPTION:brewery-jobs-sub}
+
   build:
     timeout-seconds: 1800
     max-concurrent-builds: 2
