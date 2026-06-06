@@ -45,6 +45,28 @@ export default function ArtifactDetailsPage() {
     queryFn: () => apiClient.getArtifactVersions(name),
   });
 
+  // Fetch dependency graph for the active version to inspect resolved versions
+  const { data: depGraphData } = useQuery({
+    queryKey: ['dependencyGraph', name, version],
+    queryFn: () => apiClient.getDependencyGraph(name, version, 1, 'forward'),
+  });
+
+  const resolvedVersionsMap = React.useMemo(() => {
+    const map = new Map<string, string>();
+    if (!depGraphData || !depGraphData.graph || !depGraphData.graph.edges) {
+      return map;
+    }
+    depGraphData.graph.edges.forEach((edge: any) => {
+      const parts = edge.to.split('@');
+      if (parts.length >= 2) {
+        const depName = parts[0];
+        const resolvedVer = parts[1];
+        map.set(depName, resolvedVer);
+      }
+    });
+    return map;
+  }, [depGraphData]);
+
   // Mutations for Tagging
   const addTagMutation = useMutation({
     mutationFn: (tag: string) => apiClient.addTag(name, version, tag),
@@ -356,28 +378,39 @@ export default function ArtifactDetailsPage() {
                     <tr className="border-b border-[#1e293b] text-gray-400 font-medium">
                       <th className="py-2.5 px-3">Dependency Name</th>
                       <th className="py-2.5 px-3 font-mono">Range Constraint</th>
+                      <th className="py-2.5 px-3 font-mono">Resolved Version</th>
                       <th className="py-2.5 px-3">Status</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {metadata.dependencies.map((dep: any, index: number) => (
-                      <tr 
-                        key={index} 
-                        className="border-b border-[#1e293b]/60 hover:bg-[#151d30]/20 transition-colors"
-                      >
-                        <td className="py-3 px-3 font-semibold text-white">
-                          {dep.name}
-                        </td>
-                        <td className="py-3 px-3 font-mono text-gray-300">
-                          {dep.version_range}
-                        </td>
-                        <td className="py-3 px-3">
-                          <span className="inline-flex px-2 py-0.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-md">
-                            resolved
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
+                    {metadata.dependencies.map((dep: any, index: number) => {
+                      const resolvedVer = resolvedVersionsMap.get(dep.name);
+                      return (
+                        <tr 
+                          key={index} 
+                          className="border-b border-[#1e293b]/60 hover:bg-[#151d30]/20 transition-colors"
+                        >
+                          <td className="py-3 px-3 font-semibold text-white">
+                            {dep.name}
+                          </td>
+                          <td className="py-3 px-3 font-mono text-gray-300">
+                            {dep.version_range}
+                          </td>
+                          <td className="py-3 px-3 font-mono font-semibold text-blue-400">
+                            {resolvedVer ? resolvedVer : (dep.resolved_version || 'pending resolution...')}
+                          </td>
+                          <td className="py-3 px-3">
+                            <span className={`inline-flex px-2 py-0.5 text-[10px] font-bold rounded-md uppercase tracking-wider ${
+                              resolvedVer 
+                                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' 
+                                : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                            }`}>
+                              {resolvedVer ? 'resolved' : 'pending'}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
