@@ -5,6 +5,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.JdbcTypeCode;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -41,6 +42,26 @@ public class Artifact {
     @Column(name = "checksum")
     private String checksum;
 
+    @JdbcTypeCode(org.hibernate.type.SqlTypes.JSON)
+    @Column(name = "metadata", columnDefinition = "jsonb")
+    private String metadata;
+
+    @JdbcTypeCode(org.hibernate.type.SqlTypes.ARRAY)
+    @Column(name = "tags", columnDefinition = "text[]")
+    private String[] tags;
+
+    @Column(name = "download_count")
+    private Integer downloadCount = 0;
+
+    @Column(name = "last_accessed_at")
+    private Instant lastAccessedAt;
+
+    @Column(name = "is_latest")
+    private Boolean isLatest = false;
+
+    @Column(name = "deprecated_at")
+    private Instant deprecatedAt;
+
     @Column(name = "created_at", insertable = false, updatable = false)
     private Instant createdAt;
 
@@ -48,6 +69,12 @@ public class Artifact {
     public void prePersist() {
         if (id == null) {
             id = UUID.randomUUID();
+        }
+        if (downloadCount == null) {
+            downloadCount = 0;
+        }
+        if (isLatest == null) {
+            isLatest = false;
         }
     }
 }

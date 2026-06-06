@@ -161,3 +161,120 @@ databaseChangeLog:
             tableName: artifacts
             columns:
               - column: build_id
+
+  - changeSet:
+      id: "2-registry-schema"
+      author: "brewery"
+      changes:
+        - createTable:
+            tableName: artifact_metadata
+            columns:
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: artifact_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_metadata_artifacts
+                    references: artifacts(id)
+              - column:
+                  name: description
+                  type: TEXT
+              - column:
+                  name: keywords
+                  type: TEXT
+              - column:
+                  name: license
+                  type: VARCHAR(255)
+              - column:
+                  name: homepage_url
+                  type: VARCHAR(255)
+              - column:
+                  name: repository_url
+                  type: VARCHAR(255)
+              - column:
+                  name: maintainers
+                  type: TEXT[]
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+                  defaultValueComputed: CURRENT_TIMESTAMP
+
+        - createTable:
+            tableName: artifact_tags
+            columns:
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: artifact_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_tags_artifacts
+                    references: artifacts(id)
+              - column:
+                  name: tag
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+                  defaultValueComputed: CURRENT_TIMESTAMP
+
+        - addUniqueConstraint:
+            tableName: artifact_tags
+            columnNames: artifact_id,tag
+            constraintName: uk_artifact_tags_id_tag
+
+        - createTable:
+            tableName: version_aliases
+            columns:
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: artifact_name
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: alias
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: actual_version
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+                  defaultValueComputed: CURRENT_TIMESTAMP
+
+        - addUniqueConstraint:
+            tableName: version_aliases
+            columnNames: artifact_name,alias
+            constraintName: uk_version_aliases_name_alias
+
+        - createIndex:
+            indexName: idx_artifact_tags_tag
+            tableName: artifact_tags
+            columns:
+              - column: tag
+
+        - createIndex:
+            indexName: idx_artifacts_name
+            tableName: artifacts
+            columns:
+              - column: name
