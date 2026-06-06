@@ -103,6 +103,18 @@ public class ArtifactRegistryController {
         }
     }
 
+    @GetMapping("/artifacts")
+    public ResponseEntity<?> listAllArtifacts() {
+        try {
+            List<Artifact> results = registryService.search(null, null, null);
+            return ResponseEntity.ok(results);
+        } catch (Exception e) {
+            log.error("Failed to list all artifacts", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Failed to retrieve artifacts: " + e.getMessage());
+        }
+    }
+
     @GetMapping("/artifacts/{name}")
     public ResponseEntity<?> listVersions(@PathVariable("name") String name) {
         List<Artifact> versions = registryService.listVersions(name);

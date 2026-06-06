@@ -21,6 +21,7 @@ import java.util.Map;
 public class DependencyResolverController {
 
     private final DependencyResolverService dependencyResolverService;
+    private final com.homelab.brewery.common.repository.DependencyConflictRepository dependencyConflictRepository;
 
     @PostMapping("/resolve/{name}/{version}")
     public ResponseEntity<?> resolveDependencies(
@@ -82,6 +83,15 @@ public class DependencyResolverController {
             return ResponseEntity.ok(result);
         } catch (Exception e) {
             return ResponseEntity.internalServerError().body("Failed to check conflicts: " + e.getMessage());
+        }
+    }
+
+    @GetMapping("/conflicts")
+    public ResponseEntity<?> getConflicts() {
+        try {
+            return ResponseEntity.ok(dependencyConflictRepository.findAll());
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body("Failed to retrieve conflict logs: " + e.getMessage());
         }
     }
 

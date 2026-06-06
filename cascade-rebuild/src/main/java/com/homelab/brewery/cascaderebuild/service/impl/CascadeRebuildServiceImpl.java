@@ -251,12 +251,17 @@ public class CascadeRebuildServiceImpl implements CascadeRebuildService {
     @Override
     @Transactional
     public void processPendingTasks() {
+        // 1. First update tasks that are currently building
+        updateBuildingTasks();
+
         log.debug("Processing pending cascade tasks...");
         List<CascadeTask> pendingTasks = cascadeTaskRepository.findByStatus("pending");
         if (pendingTasks.isEmpty()) {
             return;
         }
         log.info("Found {} pending cascade tasks to process", pendingTasks.size());
+
+        List<Build> buildsToEnqueue = new ArrayList<>();
 
         for (CascadeTask task : pendingTasks) {
             try {
@@ -301,8 +306,7 @@ public class CascadeRebuildServiceImpl implements CascadeRebuildService {
                 build.setStatus("pending");
                 Build savedBuild = buildRepository.save(build);
 
-                // Enqueue the build
-                buildQueueManager.enqueue(savedBuild);
+                buildsToEnqueue.add(savedBuild);
 
                 // Update the task to 'building'
                 task.setBuildId(savedBuild.getId());
@@ -310,7 +314,7 @@ public class CascadeRebuildServiceImpl implements CascadeRebuildService {
                 task.setAttemptedAt(Instant.now());
                 cascadeTaskRepository.save(task);
 
-                log.info("Enqueued build {} for cascade task {} (artifact {}@{})",
+                log.info("Prepared build {} for cascade task {} (artifact {}@{})",
                         savedBuild.getId(), task.getId(), artifact.getName(), artifact.getVersion());
 
             } catch (Exception e) {
@@ -330,6 +334,31 @@ public class CascadeRebuildServiceImpl implements CascadeRebuildService {
 
         for (UUID chainId : chainIds) {
             updateChainStatusIfComplete(chainId);
+        }
+
+        // Enqueue builds after transaction commit to avoid race condition/dirty reads in the worker thread
+        if (!buildsToEnqueue.isEmpty()) {
+            if (org.springframework.transaction.support.TransactionSynchronizationManager.isActualTransactionActive()) {
+                org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(
+                    new org.springframework.transaction.support.TransactionSynchronization() {
+                        @Override
+                        public void afterCommit() {
+                            for (Build b : buildsToEnqueue) {
+                                try {
+                                    log.info("Enqueuing build {} after transaction commit", b.getId());
+                                    buildQueueManager.enqueue(b);
+                                } catch (Exception e) {
+                                    log.error("Failed to enqueue build {} after commit", b.getId(), e);
+                                }
+                            }
+                        }
+                    }
+                );
+            } else {
+                for (Build b : buildsToEnqueue) {
+                    buildQueueManager.enqueue(b);
+                }
+            }
         }
     }
 
@@ -446,6 +475,45 @@ public class CascadeRebuildServiceImpl implements CascadeRebuildService {
         return 0;
     }
 
+    private void updateBuildingTasks() {
+        log.debug("Checking for building cascade tasks to update status...");
+        List<CascadeTask> buildingTasks = cascadeTaskRepository.findByStatus("building");
+        if (buildingTasks.isEmpty()) {
+            return;
+        }
+        log.info("Found {} building cascade tasks to check", buildingTasks.size());
+
+        Set<UUID> chainIdsToUpdate = new HashSet<>();
+
+        for (CascadeTask task : buildingTasks) {
+            if (task.getBuildId() == null) {
+                continue;
+            }
+            Optional<Build> buildOpt = buildRepository.findById(task.getBuildId());
+            if (buildOpt.isPresent()) {
+                Build build = buildOpt.get();
+                if ("success".equals(build.getStatus())) {
+                    log.info("Build {} succeeded. Updating cascade task {} to completed", build.getId(), task.getId());
+                    task.setStatus("completed");
+                    task.setCompletedAt(Instant.now());
+                    cascadeTaskRepository.save(task);
+                    chainIdsToUpdate.add(task.getChainId());
+                } else if ("failed".equals(build.getStatus()) || "cancelled".equals(build.getStatus())) {
+                    log.info("Build {} {}. Updating cascade task {} to error", build.getId(), build.getStatus(), task.getId());
+                    task.setStatus("error");
+                    task.setErrorMessage(build.getErrorMessage() != null ? build.getErrorMessage() : "Build failed or cancelled");
+                    task.setCompletedAt(Instant.now());
+                    cascadeTaskRepository.save(task);
+                    chainIdsToUpdate.add(task.getChainId());
+                }
+            }
+        }
+
+        for (UUID chainId : chainIdsToUpdate) {
+            updateChainStatusIfComplete(chainId);
+        }
+    }
+
     /**
      * Updates chain status to 'completed' if all tasks are in a terminal state.
      */
@@ -453,18 +521,27 @@ public class CascadeRebuildServiceImpl implements CascadeRebuildService {
         Optional<RebuildChain> chainOpt = rebuildChainRepository.findById(chainId);
         if (chainOpt.isEmpty()) return;
         RebuildChain chain = chainOpt.get();
-        if ("cancelled".equals(chain.getStatus()) || "completed".equals(chain.getStatus())) {
+        if ("cancelled".equals(chain.getStatus()) || "completed".equals(chain.getStatus()) || "completed_with_errors".equals(chain.getStatus())) {
             return;
         }
         List<CascadeTask> allTasks = cascadeTaskRepository.findByChainId(chainId);
-        boolean allTerminal = allTasks.stream().allMatch(t ->
-                "completed".equals(t.getStatus()) || "error".equals(t.getStatus())
-                        || "skipped".equals(t.getStatus()) || "building".equals(t.getStatus()));
-        if (allTerminal && !allTasks.isEmpty()) {
-            // Mark chain completed once all tasks are at least enqueued/building
+        if (allTasks.isEmpty()) return;
+
+        // Check if all tasks have finished (true terminal state)
+        boolean allFinished = allTasks.stream().allMatch(t ->
+                "completed".equals(t.getStatus()) || "error".equals(t.getStatus()) || "skipped".equals(t.getStatus()));
+
+        if (allFinished) {
             boolean anyError = allTasks.stream().anyMatch(t -> "error".equals(t.getStatus()));
-            chain.setStatus(anyError ? "completed_with_errors" : "running");
+            chain.setStatus(anyError ? "completed_with_errors" : "completed");
+            chain.setCompletedAt(Instant.now());
             rebuildChainRepository.save(chain);
+            log.info("Rebuild chain {} completed. Status: {}", chainId, chain.getStatus());
+        } else {
+            if (!"running".equals(chain.getStatus())) {
+                chain.setStatus("running");
+                rebuildChainRepository.save(chain);
+            }
         }
     }
 }

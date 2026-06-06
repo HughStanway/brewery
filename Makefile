@@ -35,7 +35,7 @@ run: ## Run full stack in Docker Compose
 	$(DOCKER_COMPOSE) up -d --build
 	@echo "$(GREEN)✓ Application started$(NC)"
 
-run-local: ## Run application locally with Docker dependencies (PostgreSQL, Redis, Pub/Sub emulator)
+run-local: ## Run application and UI locally with Docker dependencies (PostgreSQL, Redis, Pub/Sub emulator)
 	@echo "$(BLUE)Starting local dependencies (PostgreSQL, Redis, Pub/Sub emulator)...$(NC)"
 	$(DOCKER_COMPOSE) up -d postgres redis pubsub-emulator
 	@echo "$(BLUE)Waiting for dependencies to start...$(NC)"
@@ -43,8 +43,14 @@ run-local: ## Run application locally with Docker dependencies (PostgreSQL, Redi
 	@echo "$(BLUE)Initializing Pub/Sub emulator topics/subscriptions...$(NC)"
 	@./scripts/init-pubsub-emulator.sh
 	$(MAVEN) clean install -DskipTests
+	@echo "$(BLUE)Starting Next.js dashboard UI locally...$(NC)"
+	cd dashboard && ( [ -d node_modules ] || npm install ) && npm run dev &
 	@echo "$(BLUE)Starting Spring Boot application locally...$(NC)"
 	$(MAVEN) -f core/pom.xml spring-boot:run -Dspring-boot.run.arguments="--spring.profiles.active=dev"
+
+run-ui: ## Run Next.js dashboard UI locally
+	@echo "$(BLUE)Starting Next.js dashboard UI...$(NC)"
+	cd dashboard && ( [ -d node_modules ] || npm install ) && npm run dev
 
 rebuild: ## Rebuild and reload the brewery app container
 	@echo "$(BLUE)Rebuilding brewery image and restarting app container...$(NC)"

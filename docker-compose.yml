@@ -55,6 +55,17 @@ services:
     ports:
       - "8085:8085"
 
+  dashboard:
+    build:
+      context: ./dashboard
+      dockerfile: Dockerfile
+    environment:
+      BACKEND_URL: http://brewery:8080
+    ports:
+      - "3000:3000"
+    depends_on:
+      - brewery
+
 volumes:
   postgres_data:
   artifact_store:

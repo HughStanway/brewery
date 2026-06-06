@@ -21,6 +21,7 @@ import java.util.UUID;
 public class CascadeRebuildController {
 
     private final CascadeRebuildService cascadeRebuildService;
+    private final com.homelab.brewery.common.repository.RebuildChainRepository rebuildChainRepository;
 
     /**
      * POST /api/cascade/trigger/{name}/{version}
@@ -49,6 +50,19 @@ public class CascadeRebuildController {
             return ResponseEntity.notFound().build();
         } catch (Exception e) {
             log.error("Error triggering cascade for {}@{}", name, version, e);
+            return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /**
+     * GET /api/cascade/chains
+     */
+    @GetMapping("/chains")
+    public ResponseEntity<?> listAllChains() {
+        try {
+            return ResponseEntity.ok(rebuildChainRepository.findAll(org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "startedAt")));
+        } catch (Exception e) {
+            log.error("Error listing rebuild chains", e);
             return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
         }
     }
