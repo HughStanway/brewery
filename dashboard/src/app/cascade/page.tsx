@@ -39,6 +39,52 @@ export default function CascadePage() {
     refetchInterval: 5000,
   });
 
+  // Fetch all artifacts for autocomplete
+  const { data: artifacts } = useQuery({
+    queryKey: ['artifacts'],
+    queryFn: apiClient.getArtifacts,
+  });
+
+  const uniqueArtifactNames = React.useMemo(() => {
+    if (!artifacts) return [];
+    const names = new Set(artifacts.map(a => a.name));
+    return Array.from(names).sort();
+  }, [artifacts]);
+
+  // Trigger form versions
+  const { data: triggerVersionsData } = useQuery({
+    queryKey: ['artifactVersions', triggerName],
+    queryFn: () => apiClient.getArtifactVersions(triggerName),
+    enabled: !!triggerName && uniqueArtifactNames.includes(triggerName),
+  });
+  const triggerVersions = triggerVersionsData?.versions || [];
+
+  React.useEffect(() => {
+    if (triggerVersions.length > 0) {
+      const latestVer = triggerVersionsData?.latest || triggerVersions[0].version;
+      if (!triggerVersions.some(v => v.version === triggerVersion)) {
+        setTriggerVersion(latestVer);
+      }
+    }
+  }, [triggerVersions, triggerVersionsData, triggerVersion]);
+
+  // Impact form versions
+  const { data: impactVersionsData } = useQuery({
+    queryKey: ['artifactVersions', impactName],
+    queryFn: () => apiClient.getArtifactVersions(impactName),
+    enabled: !!impactName && uniqueArtifactNames.includes(impactName),
+  });
+  const impactVersions = impactVersionsData?.versions || [];
+
+  React.useEffect(() => {
+    if (impactVersions.length > 0) {
+      const latestVer = impactVersionsData?.latest || impactVersions[0].version;
+      if (!impactVersions.some(v => v.version === impactVersion)) {
+        setImpactVersion(latestVer);
+      }
+    }
+  }, [impactVersions, impactVersionsData, impactVersion]);
+
   // Trigger cascade rebuild mutation
   const triggerMutation = useMutation({
     mutationFn: (args: { name: string, version: string, reason: string, depth: number }) => 
@@ -125,24 +171,45 @@ export default function CascadePage() {
                 <label className="text-[10px] text-gray-400 font-bold uppercase block">Target Artifact</label>
                 <input
                   type="text"
+                  list="cascade-trigger-names"
                   placeholder="e.g. bcrypt"
                   value={triggerName}
                   onChange={(e) => setTriggerName(e.target.value)}
                   className="w-full bg-[#0b0f19] border border-[#1e293b] rounded-xl px-3 py-2 text-xs text-gray-200 placeholder-gray-600 focus:outline-none focus:border-blue-500"
                   required
                 />
+                <datalist id="cascade-trigger-names">
+                  {uniqueArtifactNames.map((name) => (
+                    <option key={name} value={name} />
+                  ))}
+                </datalist>
               </div>
 
               <div className="space-y-1">
                 <label className="text-[10px] text-gray-400 font-bold uppercase block">Trigger Version</label>
-                <input
-                  type="text"
-                  placeholder="e.g. 4.0.1"
-                  value={triggerVersion}
-                  onChange={(e) => setTriggerVersion(e.target.value)}
-                  className="w-full bg-[#0b0f19] border border-[#1e293b] rounded-xl px-3 py-2 text-xs text-gray-200 placeholder-gray-600 focus:outline-none focus:border-blue-500"
-                  required
-                />
+                {triggerVersions && triggerVersions.length > 0 ? (
+                  <select
+                    value={triggerVersion}
+                    onChange={(e) => setTriggerVersion(e.target.value)}
+                    className="w-full bg-[#0b0f19] border border-[#1e293b] rounded-xl px-3 py-2 text-xs text-gray-200 focus:outline-none focus:border-blue-500 cursor-pointer"
+                    required
+                  >
+                    {triggerVersions.map((v: any) => (
+                      <option key={v.version} value={v.version}>
+                        {v.version} {v.version === triggerVersionsData?.latest ? '(latest)' : ''}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    type="text"
+                    placeholder="e.g. 4.0.1"
+                    value={triggerVersion}
+                    onChange={(e) => setTriggerVersion(e.target.value)}
+                    className="w-full bg-[#0b0f19] border border-[#1e293b] rounded-xl px-3 py-2 text-xs text-gray-200 placeholder-gray-600 focus:outline-none focus:border-blue-500"
+                    required
+                  />
+                )}
               </div>
 
               <div className="space-y-1">
@@ -187,23 +254,50 @@ export default function CascadePage() {
             </h3>
 
             <form onSubmit={handleImpactSubmit} className="space-y-4">
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  placeholder="bcrypt"
-                  value={impactName}
-                  onChange={(e) => setImpactName(e.target.value)}
-                  className="flex-1 bg-[#0b0f19] border border-[#1e293b] rounded-xl px-3 py-1.5 text-xs text-gray-200 placeholder-gray-600 focus:outline-none focus:border-blue-500"
-                  required
-                />
-                <input
-                  type="text"
-                  placeholder="4.0.1"
-                  value={impactVersion}
-                  onChange={(e) => setImpactVersion(e.target.value)}
-                  className="w-20 bg-[#0b0f19] border border-[#1e293b] rounded-xl px-3 py-1.5 text-xs text-gray-200 placeholder-gray-600 focus:outline-none focus:border-blue-500"
-                  required
-                />
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <label className="text-[10px] text-gray-400 font-bold uppercase block">Artifact Name</label>
+                  <input
+                    type="text"
+                    list="cascade-impact-names"
+                    placeholder="bcrypt"
+                    value={impactName}
+                    onChange={(e) => setImpactName(e.target.value)}
+                    className="w-full bg-[#0b0f19] border border-[#1e293b] rounded-xl px-3 py-1.5 text-xs text-gray-200 placeholder-gray-600 focus:outline-none focus:border-blue-500"
+                    required
+                  />
+                  <datalist id="cascade-impact-names">
+                    {uniqueArtifactNames.map((name) => (
+                      <option key={name} value={name} />
+                    ))}
+                  </datalist>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] text-gray-400 font-bold uppercase block">Version</label>
+                  {impactVersions && impactVersions.length > 0 ? (
+                    <select
+                      value={impactVersion}
+                      onChange={(e) => setImpactVersion(e.target.value)}
+                      className="w-full bg-[#0b0f19] border border-[#1e293b] rounded-xl px-3 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-blue-500 cursor-pointer"
+                      required
+                    >
+                      {impactVersions.map((v: any) => (
+                        <option key={v.version} value={v.version}>
+                          {v.version} {v.version === impactVersionsData?.latest ? '(latest)' : ''}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      type="text"
+                      placeholder="4.0.1"
+                      value={impactVersion}
+                      onChange={(e) => setImpactVersion(e.target.value)}
+                      className="w-full bg-[#0b0f19] border border-[#1e293b] rounded-xl px-3 py-1.5 text-xs text-gray-200 placeholder-gray-600 focus:outline-none focus:border-blue-500"
+                      required
+                    />
+                  )}
+                </div>
               </div>
 
               <button

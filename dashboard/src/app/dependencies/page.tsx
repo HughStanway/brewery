@@ -81,6 +81,28 @@ export default function DependenciesPage() {
     queryFn: apiClient.getArtifacts,
   });
 
+  const uniqueArtifactNames = React.useMemo(() => {
+    if (!artifacts) return [];
+    const names = new Set(artifacts.map(a => a.name));
+    return Array.from(names).sort();
+  }, [artifacts]);
+
+  const { data: pkgVersionsData } = useQuery({
+    queryKey: ['artifactVersions', pkgName],
+    queryFn: () => apiClient.getArtifactVersions(pkgName),
+    enabled: !!pkgName && uniqueArtifactNames.includes(pkgName),
+  });
+  const pkgVersions = pkgVersionsData?.versions || [];
+
+  React.useEffect(() => {
+    if (pkgVersions.length > 0) {
+      const latestVer = pkgVersionsData?.latest || pkgVersions[0].version;
+      if (!pkgVersions.some(v => v.version === pkgVersion)) {
+        setPkgVersion(latestVer);
+      }
+    }
+  }, [pkgVersions, pkgVersionsData, pkgVersion]);
+
   // Set default package values dynamically based on registered artifacts
   React.useEffect(() => {
     if (artifacts && artifacts.length > 0 && !searchParams.name) {
@@ -250,23 +272,45 @@ export default function DependenciesPage() {
                   <label className="text-[10px] text-gray-400 font-bold uppercase block">Package Name</label>
                   <input
                     type="text"
+                    list="dependency-package-names"
                     value={pkgName}
                     onChange={(e) => setPkgName(e.target.value)}
                     className="w-full bg-[#0b0f19] border border-[#1e293b] rounded-xl px-3 py-2 text-xs text-gray-200 focus:outline-none focus:border-blue-500"
                     required
                   />
+                  <datalist id="dependency-package-names">
+                    {uniqueArtifactNames.map((name) => (
+                      <option key={name} value={name} />
+                    ))}
+                  </datalist>
                 </div>
 
                 {/* Version */}
                 <div className="space-y-1">
                   <label className="text-[10px] text-gray-400 font-bold uppercase block">Target Version</label>
-                  <input
-                    type="text"
-                    value={pkgVersion}
-                    onChange={(e) => setPkgVersion(e.target.value)}
-                    className="w-full bg-[#0b0f19] border border-[#1e293b] rounded-xl px-3 py-2 text-xs text-gray-200 focus:outline-none focus:border-blue-500"
-                    required
-                  />
+                  {pkgVersions && pkgVersions.length > 0 ? (
+                    <select
+                      value={pkgVersion}
+                      onChange={(e) => setPkgVersion(e.target.value)}
+                      className="w-full bg-[#0b0f19] border border-[#1e293b] rounded-xl px-3 py-2 text-xs text-gray-200 focus:outline-none focus:border-blue-500 cursor-pointer"
+                      required
+                    >
+                      {pkgVersions.map((v: any) => (
+                        <option key={v.version} value={v.version}>
+                          {v.version} {v.version === pkgVersionsData?.latest ? '(latest)' : ''}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      type="text"
+                      value={pkgVersion}
+                      onChange={(e) => setPkgVersion(e.target.value)}
+                      className="w-full bg-[#0b0f19] border border-[#1e293b] rounded-xl px-3 py-2 text-xs text-gray-200 focus:outline-none focus:border-blue-500"
+                      placeholder="e.g. 1.0.0"
+                      required
+                    />
+                  )}
                 </div>
 
                 {/* Depth */}
