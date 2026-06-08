@@ -177,6 +177,21 @@ public class DependencyResolverServiceImpl implements DependencyResolverService 
         response.put("conflicts", conflictsList);
         response.put("resolution_time_ms", (System.currentTimeMillis() - startTime));
 
+        // 4. Save conflicts to database
+        try {
+            dependencyConflictRepository.deleteByArtifactId(rootArtifact.getId());
+            for (String conflictDesc : conflictsList) {
+                DependencyConflictEntity conflictEntity = new DependencyConflictEntity();
+                conflictEntity.setArtifactId(rootArtifact.getId());
+                conflictEntity.setConflictDescription(conflictDesc);
+                conflictEntity.setInvolvedArtifacts(new String[]{rootArtifact.getName() + "@" + rootArtifact.getVersion()});
+                conflictEntity.setSuggestedResolutions(new String[]{"Review range constraint settings in build.yaml"});
+                dependencyConflictRepository.save(conflictEntity);
+            }
+        } catch (Exception e) {
+            log.error("Failed to save dependency conflicts to database for {}", rootArtifact.getId(), e);
+        }
+
         return response;
     }
 
