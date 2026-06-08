@@ -56,6 +56,27 @@ export default function ArtifactDetailsPage() {
     return new Set((builds || []).map((b: any) => b.id));
   }, [builds]);
 
+  // Extract versions list and sort them descending (latest first)
+  const versionsList = React.useMemo(() => {
+    const raw = versionsResponse?.versions || [];
+    return [...raw].sort((a: any, b: any) => {
+      const aLatest = a.isLatest || a.is_latest;
+      const bLatest = b.isLatest || b.is_latest;
+      if (aLatest && !bLatest) return -1;
+      if (!aLatest && bLatest) return 1;
+
+      const semverCompare = compareVersions(b.version, a.version);
+      if (semverCompare !== 0) return semverCompare;
+
+      const aTime = a.createdAt || a.created_at;
+      const bTime = b.createdAt || b.created_at;
+      if (aTime && bTime) {
+        return new Date(bTime).getTime() - new Date(aTime).getTime();
+      }
+      return 0;
+    });
+  }, [versionsResponse]);
+
   const renderBuildLink = (buildId: string, full: boolean = false) => {
     if (!buildId) return <span className="text-gray-500 italic">Manual or untracked build</span>;
     
@@ -174,26 +195,7 @@ export default function ArtifactDetailsPage() {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  // Extract versions list and sort them descending (latest first)
-  const versionsList = React.useMemo(() => {
-    const raw = versionsResponse?.versions || [];
-    return [...raw].sort((a: any, b: any) => {
-      const aLatest = a.isLatest || a.is_latest;
-      const bLatest = b.isLatest || b.is_latest;
-      if (aLatest && !bLatest) return -1;
-      if (!aLatest && bLatest) return 1;
-
-      const semverCompare = compareVersions(b.version, a.version);
-      if (semverCompare !== 0) return semverCompare;
-
-      const aTime = a.createdAt || a.created_at;
-      const bTime = b.createdAt || b.created_at;
-      if (aTime && bTime) {
-        return new Date(bTime).getTime() - new Date(aTime).getTime();
-      }
-      return 0;
-    });
-  }, [versionsResponse]);
+  // versionsList hook has been moved to the top of the component to satisfy Rules of Hooks
 
   const downloadUrl = `/api/registry/artifacts/${name}/${version}/download`;
 
