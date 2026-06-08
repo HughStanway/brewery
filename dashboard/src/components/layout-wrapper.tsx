@@ -42,7 +42,7 @@ export default function LayoutWrapper({ children }: LayoutWrapperProps) {
           </div>
           <div>
             <span className="font-bold text-lg text-white tracking-wide block">BREWERY</span>
-            <span className="text-[10px] text-blue-500 font-semibold tracking-wider uppercase block -mt-1">Supply Chain</span>
+            <span className="text-[10px] text-blue-500 font-semibold tracking-wider uppercase block -mt-1">Build & Deploy</span>
           </div>
         </div>
 

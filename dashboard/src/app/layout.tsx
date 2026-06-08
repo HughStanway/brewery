@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Brewery Supply Chain Dashboard",
-  description: "DevOps & Software Supply Chain Platform",
+  title: "Brewery Build & Deployment Dashboard",
+  description: "Continuous Build, Versioning & Deployment Platform",
 };
 
 export default function RootLayout({

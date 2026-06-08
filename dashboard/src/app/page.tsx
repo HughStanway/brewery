@@ -108,7 +108,7 @@ export default function DashboardPage() {
       {/* Welcome Banner */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 bg-gradient-to-r from-blue-950/20 to-indigo-950/10 border border-[#1e293b] rounded-2xl">
         <div>
-          <h2 className="text-xl font-bold text-white tracking-tight">Software Supply Chain Status</h2>
+          <h2 className="text-xl font-bold text-white tracking-tight">Build & Deployment Pipeline Status</h2>
           <p className="text-sm text-gray-400 mt-1">Real-time telemetry and artifact build analysis pipelines.</p>
         </div>
         <div className="flex items-center gap-3 bg-[#0d1325] border border-[#1e293b] px-4 py-2 rounded-xl text-xs font-mono text-gray-400">

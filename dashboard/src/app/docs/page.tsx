@@ -34,7 +34,7 @@ export default function DocsPage() {
           Documentation & Platform Guide
         </h2>
         <p className="text-base text-gray-400 leading-relaxed">
-          Deep-dive technical overview of Brewery supply chain mechanics, system architecture, and API references.
+          Deep-dive technical overview of Brewery build pipeline mechanics, system architecture, and API references.
         </p>
       </div>
 
@@ -103,7 +103,7 @@ export default function DocsPage() {
               What is Brewery?
             </h3>
             <p className="text-sm text-gray-300 leading-relaxed">
-              Brewery is an integrated, state-of-the-art <strong>Software Supply Chain and DevOps Platform</strong>. It automatically coordinates code commit ingestion, containerized builds, artifact registry storage, transitive dependency tracking, conflict detection, and automated cascade rebuilds when dependencies update.
+              Brewery is an integrated, state-of-the-art <strong>Continuous Build, Versioning & Deployment Platform</strong>. It automatically coordinates code commit ingestion, containerized builds, artifact registry storage, transitive dependency tracking, conflict detection, and automated cascade rebuilds when dependencies update.
             </p>
           </div>
 
