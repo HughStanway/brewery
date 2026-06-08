@@ -79,6 +79,9 @@ public class DependencyResolverServiceImpl implements DependencyResolverService 
         visited.add(rootIdStr);
         paths.put(rootIdStr, List.of(rootIdStr));
 
+        // Adjacency list for cycle detection
+        Map<String, List<String>> adjList = new HashMap<>();
+
         // Track resolved versions of package names to check for conflicts (e.g. name -> list of versions)
         Map<String, Set<String>> versionsPerPackage = new HashMap<>();
 
@@ -117,6 +120,9 @@ public class DependencyResolverServiceImpl implements DependencyResolverService 
                 
                 String depIdStr = depName + "@" + resolvedVer;
 
+                // Track for cycle detection
+                adjList.computeIfAbsent(current, k -> new ArrayList<>()).add(depIdStr);
+
                 // Track package versions for conflict detection
                 versionsPerPackage.computeIfAbsent(depName, k -> new HashSet<>()).add(resolvedVer);
 
@@ -151,7 +157,14 @@ public class DependencyResolverServiceImpl implements DependencyResolverService 
             }
         }
 
-        // 2. Format conflicts list
+        // 2. Detect cycles in the resolved graph
+        List<String> cyclesList = new ArrayList<>();
+        if (includeTransitive) {
+            findCycles(rootIdStr, adjList, new HashSet<>(), new HashSet<>(), new ArrayList<>(), cyclesList);
+            conflictsList.addAll(cyclesList);
+        }
+
+        // 3. Format conflicts list
         for (Map.Entry<String, Set<String>> entry : versionsPerPackage.entrySet()) {
             if (entry.getValue().size() > 1) {
                 conflictsList.add("Version conflict detected for package '" + entry.getKey() + 
@@ -534,5 +547,30 @@ public class DependencyResolverServiceImpl implements DependencyResolverService 
         } catch (Exception e) {
             log.error("Failed to persist dependency database relations for {}", rootArtifact.getId(), e);
         }
+    }
+
+    private void findCycles(String current, Map<String, List<String>> adjList, 
+                            Set<String> visited, Set<String> stack, 
+                            List<String> currentPath, List<String> cyclesList) {
+        visited.add(current);
+        stack.add(current);
+        currentPath.add(current);
+
+        List<String> neighbors = adjList.get(current);
+        if (neighbors != null) {
+            for (String neighbor : neighbors) {
+                if (stack.contains(neighbor)) {
+                    int startIndex = currentPath.indexOf(neighbor);
+                    List<String> cyclePath = new ArrayList<>(currentPath.subList(startIndex, currentPath.size()));
+                    cyclePath.add(neighbor);
+                    cyclesList.add("Circular dependency detected: " + String.join(" -> ", cyclePath));
+                } else if (!visited.contains(neighbor)) {
+                    findCycles(neighbor, adjList, visited, stack, currentPath, cyclesList);
+                }
+            }
+        }
+
+        currentPath.remove(currentPath.size() - 1);
+        stack.remove(current);
     }
 }
