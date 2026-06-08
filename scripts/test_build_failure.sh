@@ -30,7 +30,7 @@ metadata:
   name: "failing-lib"
 build:
   image: "alpine:latest"
-  timeout_seconds: 60
+  timeoutSeconds: 60
 steps:
   setup: |
     echo "Running setup..."
