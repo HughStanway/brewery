@@ -46,13 +46,24 @@ export default function BuildsPage() {
 
   const filteredBuilds = React.useMemo(() => {
     if (!builds) return [];
-    return builds.filter(b => {
+    const filtered = builds.filter(b => {
       const matchesStatus = statusFilter === 'all' || b.status === statusFilter;
       const matchesSearch = 
         b.repository.toLowerCase().includes(searchQuery.toLowerCase()) ||
         b.commit.toLowerCase().includes(searchQuery.toLowerCase()) ||
         b.id.toLowerCase().includes(searchQuery.toLowerCase());
       return matchesStatus && matchesSearch;
+    });
+
+    return [...filtered].sort((a, b) => {
+      const aTime = a.startedAt || a.createdAt;
+      const bTime = b.startedAt || b.createdAt;
+      if (aTime && bTime) {
+        return new Date(bTime).getTime() - new Date(aTime).getTime();
+      }
+      if (aTime) return 1;
+      if (bTime) return -1;
+      return b.id.localeCompare(a.id);
     });
   }, [builds, statusFilter, searchQuery]);
 

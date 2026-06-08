@@ -61,10 +61,24 @@ export default function DashboardPage() {
 
   const isLoading = isStatsLoading || isBuildsLoading;
 
+  const sortedBuilds = React.useMemo(() => {
+    if (!builds) return [];
+    return [...builds].sort((a, b) => {
+      const aTime = a.startedAt || a.createdAt;
+      const bTime = b.startedAt || b.createdAt;
+      if (aTime && bTime) {
+        return new Date(bTime).getTime() - new Date(aTime).getTime();
+      }
+      if (aTime) return 1;
+      if (bTime) return -1;
+      return b.id.localeCompare(a.id);
+    });
+  }, [builds]);
+
   // Prepare chart data
   const chartData = React.useMemo(() => {
-    if (!builds || builds.length === 0) return [];
-    return builds
+    if (!sortedBuilds || sortedBuilds.length === 0) return [];
+    return [...sortedBuilds]
       .slice(0, 10)
       .reverse()
       .map((b, idx) => ({
@@ -73,7 +87,7 @@ export default function DashboardPage() {
         status: b.status,
         shortCommit: b.commit ? b.commit.substring(0, 7) : 'N/A'
       }));
-  }, [builds]);
+  }, [sortedBuilds]);
 
   if (isLoading) {
     return (
@@ -101,7 +115,7 @@ export default function DashboardPage() {
     );
   }
 
-  const recentBuilds = builds?.slice(0, 5) || [];
+  const recentBuilds = sortedBuilds.slice(0, 5);
 
   return (
     <div className="space-y-8">
