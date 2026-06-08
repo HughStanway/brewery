@@ -102,7 +102,7 @@ export default function DocsPage() {
               <Activity className="w-6 h-6 text-blue-400" />
               What is Brewery?
             </h3>
-            <p className="text-base text-gray-300 leading-relaxed">
+            <p className="text-sm text-gray-300 leading-relaxed">
               Brewery is an integrated, state-of-the-art <strong>Software Supply Chain and DevOps Platform</strong>. It automatically coordinates code commit ingestion, containerized builds, artifact registry storage, transitive dependency tracking, conflict detection, and automated cascade rebuilds when dependencies update.
             </p>
           </div>
@@ -139,7 +139,7 @@ export default function DocsPage() {
               <Server className="w-6 h-6 text-blue-400" />
               Under-the-Hood Subsystem Internals
             </h3>
-            <p className="text-base text-gray-300 leading-relaxed">
+            <p className="text-sm text-gray-300 leading-relaxed">
               Brewery utilizes a modular Spring Boot 3.x core architecture. It persists all states to a PostgreSQL database and integrates with an external container execution system and a messaging topology.
             </p>
           </div>
@@ -152,7 +152,7 @@ export default function DocsPage() {
                 <Terminal className="w-5 h-5" />
                 1. Build Ingestion & Live Pub/Sub Connection
               </h4>
-              <p className="text-sm text-gray-300 leading-relaxed">
+              <p className="text-sm text-gray-400 leading-relaxed">
                 In local development, the platform integrates with a Google Pub/Sub emulator. In the **production environment**, Brewery establishes a direct, secure connection to a live **Google Cloud Pub/Sub** service instance.
               </p>
               <p className="text-sm text-gray-400 leading-relaxed pl-3 border-l-2 border-blue-500/40">
@@ -166,7 +166,7 @@ export default function DocsPage() {
                 <Cpu className="w-5 h-5" />
                 2. Isolated Docker Build Execution
               </h4>
-              <p className="text-sm text-gray-300 leading-relaxed">
+              <p className="text-sm text-gray-400 leading-relaxed">
                 The Build Executor manages isolated workspace checkouts and container lifecycles:
               </p>
               <ul className="list-disc list-inside text-sm text-gray-400 space-y-2 pl-2">
@@ -184,7 +184,7 @@ export default function DocsPage() {
                 <Network className="w-5 h-5" />
                 3. SemVer Resolution & Directed Dependency Mapping
               </h4>
-              <p className="text-sm text-gray-300 leading-relaxed">
+              <p className="text-sm text-gray-400 leading-relaxed">
                 The Dependency Resolver operates as a graph-traversal engine on top of relational schemas:
               </p>
               <ul className="list-disc list-inside text-sm text-gray-400 space-y-2 pl-2">
@@ -200,7 +200,7 @@ export default function DocsPage() {
                 <RefreshCw className="w-5 h-5" />
                 4. State-Based Rebuild Cascading
               </h4>
-              <p className="text-sm text-gray-300 leading-relaxed">
+              <p className="text-sm text-gray-400 leading-relaxed">
                 The Cascade Engine propagates package changes down the dependency tree:
               </p>
               <ul className="list-disc list-inside text-sm text-gray-400 space-y-2 pl-2">
@@ -224,11 +224,11 @@ export default function DocsPage() {
             
             <div className="space-y-8 text-sm text-gray-300">
               <div className="space-y-3">
-                <h4 className="text-white font-bold text-sm flex items-center gap-2 uppercase tracking-wider border-b border-[#1e293b] pb-2">
+                <h4 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2 border-b border-[#1e293b] pb-3">
                   <ChevronRight className="w-4 h-4 text-blue-500" />
                   1. Define a Repository Build Config
                 </h4>
-                <p className="text-gray-400 leading-relaxed pl-6">
+                <p className="text-sm text-gray-400 leading-relaxed pl-6">
                   To register a project with Brewery's automated Build Engine, place a <code>build.yaml</code> configuration file in the root of your repository:
                 </p>
                 <div className="pl-6">
@@ -250,11 +250,11 @@ dependencies:
               </div>
 
               <div className="space-y-3">
-                <h4 className="text-white font-bold text-sm flex items-center gap-2 uppercase tracking-wider border-b border-[#1e293b] pb-2">
+                <h4 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2 border-b border-[#1e293b] pb-3">
                   <ChevronRight className="w-4 h-4 text-blue-500" />
                   2. Uploading Artifacts to the Registry
                 </h4>
-                <p className="text-gray-400 leading-relaxed pl-6">
+                <p className="text-sm text-gray-400 leading-relaxed pl-6">
                   You can register a library version directly by uploading the pre-compiled binary via the REST API or using the upload interface on the Artifact Registry page:
                 </p>
                 <div className="pl-6">
@@ -272,11 +272,11 @@ dependencies:
               </div>
 
               <div className="space-y-3">
-                <h4 className="text-white font-bold text-sm flex items-center gap-2 uppercase tracking-wider border-b border-[#1e293b] pb-2">
+                <h4 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2 border-b border-[#1e293b] pb-3">
                   <ChevronRight className="w-4 h-4 text-blue-500" />
                   3. Ingesting via Pub/Sub Events
                 </h4>
-                <p className="text-gray-400 leading-relaxed pl-6">
+                <p className="text-sm text-gray-400 leading-relaxed pl-6">
                   Trigger automated builds by publishing a JSON push event payload to the live Google Cloud Pub/Sub topic configured for the environment:
                 </p>
                 <div className="pl-6">
@@ -294,14 +294,14 @@ curl -X POST \\
               </div>
 
               <div className="space-y-3">
-                <h4 className="text-white font-bold text-sm flex items-center gap-2 uppercase tracking-wider border-b border-[#1e293b] pb-2">
+                <h4 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2 border-b border-[#1e293b] pb-3">
                   <ChevronRight className="w-4 h-4 text-blue-500" />
                   4. Monitoring Cascading Rebuilds
                 </h4>
-                <p className="text-gray-400 leading-relaxed pl-6">
+                <p className="text-sm text-gray-400 leading-relaxed pl-6">
                   Once a package is registered, Brewery automatically runs cascade checks. If you publish a new version of a library (e.g. <code>bcrypt@4.0.1</code>), Brewery checks all downstream dependents. If their declared semver requirements are met, it automatically spawns a rebuild chain.
                 </p>
-                <p className="text-gray-400 leading-relaxed pl-6">
+                <p className="text-sm text-gray-400 leading-relaxed pl-6">
                   You can audit active tasks, cancel running rebuild chains, or trace dry-run previews on the <strong>Cascade Rebuilds</strong> dashboard tab.
                 </p>
               </div>
@@ -313,7 +313,8 @@ curl -X POST \\
       {/* Endpoints Content */}
       {activeTab === 'endpoints' && (
         <div className="p-8 bg-[#131b2e] border border-[#1e293b] rounded-2xl shadow-xl space-y-6">
-          <h3 className="text-xl font-bold text-white uppercase tracking-wider border-b border-[#1e293b] pb-3">
+          <h3 className="text-xl font-bold text-white flex items-center gap-2.5 border-b border-[#1e293b] pb-3">
+            <Code className="w-6 h-6 text-blue-400" />
             API Endpoints Reference
           </h3>
           
@@ -425,36 +426,48 @@ curl -X POST \\
       {activeTab === 'limitations' && (
         <div className="space-y-6">
           <div className="p-8 bg-[#131b2e] border border-[#1e293b] rounded-2xl shadow-xl space-y-6">
-            <h3 className="text-xl font-bold text-white uppercase tracking-wider flex items-center gap-2.5">
+            <h3 className="text-xl font-bold text-white flex items-center gap-2.5 border-b border-[#1e293b] pb-3">
               <ShieldAlert className="w-6 h-6 text-amber-400" />
               Platform Constraints & Design Rules
             </h3>
             
             <div className="space-y-6 text-sm text-gray-300">
-              <div className="p-6 bg-black/20 rounded-xl border border-[#1e293b] space-y-2">
-                <strong className="text-white text-base block font-bold">In-place Rebuilding Strategy</strong>
-                <p className="text-gray-400 leading-relaxed">
+              <div className="p-6 bg-black/20 rounded-xl border border-[#1e293b] space-y-3">
+                <h4 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2 border-b border-[#1e293b] pb-3">
+                  <RefreshCw className="w-4 h-4 text-amber-400" />
+                  In-place Rebuilding Strategy
+                </h4>
+                <p className="text-sm text-gray-400 leading-relaxed">
                   When a cascade triggers a rebuild on a dependent package (e.g., rebuilding <code>auth-lib@1.0.0</code> when <code>bcrypt</code> updates), Brewery rebuilds and updates the original target version <strong>in-place</strong> in the registry. It does not auto-increment version strings. This ensures that downstream dependents can continue resolving the artifact range requirements without version inflation.
                 </p>
               </div>
 
-              <div className="p-6 bg-black/20 rounded-xl border border-[#1e293b] space-y-2">
-                <strong className="text-white text-base block font-bold">Sequential Task Scheduler</strong>
-                <p className="text-gray-400 leading-relaxed">
+              <div className="p-6 bg-black/20 rounded-xl border border-[#1e293b] space-y-3">
+                <h4 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2 border-b border-[#1e293b] pb-3">
+                  <Terminal className="w-4 h-4 text-blue-400" />
+                  Sequential Task Scheduler
+                </h4>
+                <p className="text-sm text-gray-400 leading-relaxed">
                   The Cascade Rebuild scheduler operates on a 1-minute loop (or configurable delay), processing pending rebuild jobs sequentially. To prevent local CPU/Docker resource depletion, containerized builds are executed one at a time.
                 </p>
               </div>
 
-              <div className="p-6 bg-black/20 rounded-xl border border-[#1e293b] space-y-2">
-                <strong className="text-white text-base block font-bold">Caret (^) Range Boundary Rules</strong>
-                <p className="text-gray-400 leading-relaxed">
+              <div className="p-6 bg-black/20 rounded-xl border border-[#1e293b] space-y-3">
+                <h4 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2 border-b border-[#1e293b] pb-3">
+                  <Network className="w-4 h-4 text-violet-400" />
+                  Caret (^) Range Boundary Rules
+                </h4>
+                <p className="text-sm text-gray-400 leading-relaxed">
                   The version resolver validates caret conditions based on standard semantic constraints. For instance, <code>^4.0.0</code> is satisfied by version <code>4.0.1</code>, but not by <code>5.0.0</code>. Pre-releases and multi-range union expressions default to strict pinned comparisons.
                 </p>
               </div>
 
-              <div className="p-6 bg-black/20 rounded-xl border border-[#1e293b] space-y-2">
-                <strong className="text-white text-base block font-bold">Mock and Absolute Repositories</strong>
-                <p className="text-gray-400 leading-relaxed">
+              <div className="p-6 bg-black/20 rounded-xl border border-[#1e293b] space-y-3">
+                <h4 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2 border-b border-[#1e293b] pb-3">
+                  <Cpu className="w-4 h-4 text-emerald-400" />
+                  Mock and Absolute Repositories
+                </h4>
+                <p className="text-sm text-gray-400 leading-relaxed">
                   The build executor simulates builds for team namespace repositories (e.g. <code>myteam/auth-lib</code>) using mock files and workspace stubs. Real local directories specified via absolute paths (e.g. <code>/Users/hughstanway/Projects/brewery</code>) are cloned and built using actual git repositories.
                 </p>
               </div>
