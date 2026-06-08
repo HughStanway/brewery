@@ -4,6 +4,7 @@ import React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient, RebuildChain } from '@/api/client';
 import Link from 'next/link';
+import { compareVersions } from '@/utils/semver';
 import { 
   RefreshCw, 
   Play, 
@@ -103,7 +104,17 @@ export default function CascadePage() {
     queryFn: () => apiClient.getArtifactVersions(triggerName),
     enabled: !!triggerName && uniqueArtifactNames.includes(triggerName),
   });
-  const triggerVersions = triggerVersionsData?.versions || [];
+  
+  const triggerVersions = React.useMemo(() => {
+    const raw = triggerVersionsData?.versions || [];
+    return [...raw].sort((a: any, b: any) => {
+      const aLatest = a.isLatest || a.is_latest;
+      const bLatest = b.isLatest || b.is_latest;
+      if (aLatest && !bLatest) return -1;
+      if (!aLatest && bLatest) return 1;
+      return compareVersions(b.version, a.version);
+    });
+  }, [triggerVersionsData]);
 
   React.useEffect(() => {
     if (triggerVersions.length > 0) {
@@ -120,7 +131,17 @@ export default function CascadePage() {
     queryFn: () => apiClient.getArtifactVersions(impactName),
     enabled: !!impactName && uniqueArtifactNames.includes(impactName),
   });
-  const impactVersions = impactVersionsData?.versions || [];
+  
+  const impactVersions = React.useMemo(() => {
+    const raw = impactVersionsData?.versions || [];
+    return [...raw].sort((a: any, b: any) => {
+      const aLatest = a.isLatest || a.is_latest;
+      const bLatest = b.isLatest || b.is_latest;
+      if (aLatest && !bLatest) return -1;
+      if (!aLatest && bLatest) return 1;
+      return compareVersions(b.version, a.version);
+    });
+  }, [impactVersionsData]);
 
   React.useEffect(() => {
     if (impactVersions.length > 0) {

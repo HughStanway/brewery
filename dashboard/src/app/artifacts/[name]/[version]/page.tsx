@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/api/client';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { compareVersions } from '@/utils/semver';
 import { 
   ArrowLeft, 
   Package, 
@@ -173,8 +174,27 @@ export default function ArtifactDetailsPage() {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  // Extract versions list
-  const versionsList = versionsResponse?.versions || [];
+  // Extract versions list and sort them descending (latest first)
+  const versionsList = React.useMemo(() => {
+    const raw = versionsResponse?.versions || [];
+    return [...raw].sort((a: any, b: any) => {
+      const aLatest = a.isLatest || a.is_latest;
+      const bLatest = b.isLatest || b.is_latest;
+      if (aLatest && !bLatest) return -1;
+      if (!aLatest && bLatest) return 1;
+
+      const semverCompare = compareVersions(b.version, a.version);
+      if (semverCompare !== 0) return semverCompare;
+
+      const aTime = a.createdAt || a.created_at;
+      const bTime = b.createdAt || b.created_at;
+      if (aTime && bTime) {
+        return new Date(bTime).getTime() - new Date(aTime).getTime();
+      }
+      return 0;
+    });
+  }, [versionsResponse]);
+
   const downloadUrl = `/api/registry/artifacts/${name}/${version}/download`;
 
   const currentVersionDetails = versionsList.find((v: any) => v.version === version);

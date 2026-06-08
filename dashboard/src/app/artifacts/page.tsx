@@ -13,6 +13,7 @@ import {
   ArrowRight,
   GitBranch
 } from 'lucide-react';
+import { compareVersions } from '@/utils/semver';
 
 export default function ArtifactsPage() {
   const [searchQuery, setSearchQuery] = React.useState<string>('');
@@ -38,8 +39,23 @@ export default function ArtifactsPage() {
 
     return Object.keys(groups).map((name) => {
       const versions = groups[name];
-      // Sort by version (ideally semver, but simple sort works or sort by createdAt)
-      versions.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      // Sort versions descending (newest / latest first)
+      versions.sort((a, b) => {
+        const aLatest = a.isLatest || (a as any).is_latest;
+        const bLatest = b.isLatest || (b as any).is_latest;
+        if (aLatest && !bLatest) return -1;
+        if (!aLatest && bLatest) return 1;
+
+        const semverCompare = compareVersions(b.version, a.version);
+        if (semverCompare !== 0) return semverCompare;
+
+        const aTime = a.createdAt;
+        const bTime = b.createdAt;
+        if (aTime && bTime) {
+          return new Date(bTime).getTime() - new Date(aTime).getTime();
+        }
+        return b.id.localeCompare(a.id);
+      });
       
       const latest = versions[0];
       const tags = Array.from(new Set(versions.flatMap(v => v.tags || [])));

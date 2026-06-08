@@ -3,6 +3,7 @@
 import React from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiClient } from '@/api/client';
+import { compareVersions } from '@/utils/semver';
 import { 
   GitFork, 
   Search, 
@@ -92,7 +93,17 @@ export default function DependenciesPage() {
     queryFn: () => apiClient.getArtifactVersions(pkgName),
     enabled: !!pkgName && uniqueArtifactNames.includes(pkgName),
   });
-  const pkgVersions = pkgVersionsData?.versions || [];
+  
+  const pkgVersions = React.useMemo(() => {
+    const raw = pkgVersionsData?.versions || [];
+    return [...raw].sort((a: any, b: any) => {
+      const aLatest = a.isLatest || a.is_latest;
+      const bLatest = b.isLatest || b.is_latest;
+      if (aLatest && !bLatest) return -1;
+      if (!aLatest && bLatest) return 1;
+      return compareVersions(b.version, a.version);
+    });
+  }, [pkgVersionsData]);
 
   React.useEffect(() => {
     if (pkgVersions.length > 0) {
