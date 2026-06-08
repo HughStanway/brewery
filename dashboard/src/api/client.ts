@@ -135,6 +135,8 @@ export interface RebuildChain {
   trigger_type?: string;
   rootCause?: string;
   root_cause?: string;
+  parentChainId?: string;
+  parent_chain_id?: string;
   status: 'running' | 'completed' | 'completed_with_errors' | 'cancelled';
   depth: number;
   startedAt?: string;

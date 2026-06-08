@@ -75,6 +75,7 @@ public class CascadeRebuildServiceImpl implements CascadeRebuildService {
                 List<CascadeTask> tasks = cascadeTaskRepository.findByBuildId(triggerArtifact.getBuildId());
                 if (tasks != null && !tasks.isEmpty()) {
                     triggerType = "Dependency cascade rebuild";
+                    chain.setParentChainId(tasks.get(0).getChainId());
                 }
             }
         } else {
@@ -179,6 +180,8 @@ public class CascadeRebuildServiceImpl implements CascadeRebuildService {
 
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("chain_id", chain.getId().toString());
+        result.put("parent_chain_id", chain.getParentChainId() != null ? chain.getParentChainId().toString() : null);
+        result.put("parentChainId", chain.getParentChainId() != null ? chain.getParentChainId().toString() : null);
         result.put("root_artifact_id", chain.getRootArtifactId().toString());
         result.put("root_cause", chain.getRootCause());
         result.put("status", chain.getStatus());

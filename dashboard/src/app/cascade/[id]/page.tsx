@@ -91,6 +91,37 @@ export default function CascadeDetailsPage() {
     }
   };
 
+  // Fetch all cascade chains to match downstream sessions
+  const { data: allChains } = useQuery({
+    queryKey: ['cascadeChains'],
+    queryFn: apiClient.getCascadeChains,
+  });
+
+  const getDownstreamSessionLink = (task: any) => {
+    if (!allChains || !task) return null;
+    const taskArtId = task.artifact_id || task.artifactId;
+    if (!taskArtId) return null;
+
+    // Find a chain whose parent is the current chain and whose root artifact is this task's artifact
+    const childChain = allChains.find((c: any) => 
+      (c.parentChainId === chainId || c.parent_chain_id === chainId) &&
+      (c.rootArtifactId === taskArtId || c.root_artifact_id === taskArtId)
+    );
+
+    if (!childChain) return null;
+    const childId = childChain.chainId || childChain.id;
+    if (!childId) return null;
+    return (
+      <Link 
+        href={`/cascade/${childId}`}
+        className="text-violet-500 hover:text-violet-400 hover:underline font-mono font-semibold"
+        title="View downstream rebuild pipeline"
+      >
+        {childId.substring(0, 8)}...
+      </Link>
+    );
+  };
+
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[50vh] gap-4">
@@ -349,6 +380,7 @@ export default function CascadeDetailsPage() {
                     <th className="py-2.5 px-3">Trigger Reason</th>
                     <th className="py-2.5 px-3">Priority</th>
                     <th className="py-2.5 px-3">Attempted At</th>
+                    <th className="py-2.5 px-3">Triggered Session</th>
                     <th className="py-2.5 px-3 text-right"></th>
                   </tr>
                 </thead>
@@ -419,6 +451,9 @@ export default function CascadeDetailsPage() {
                             <td className="py-3.5 px-3 text-gray-400 font-mono text-[11px]">
                               {task.attempted_at || task.attemptedAt ? new Date(task.attempted_at || task.attemptedAt || '').toLocaleTimeString() : '--'}
                             </td>
+                            <td className="py-3.5 px-3">
+                              {getDownstreamSessionLink(task) || <span className="text-gray-500">—</span>}
+                            </td>
                             <td className="py-3.5 px-3 text-right">
                               {(task.build_id || task.buildId) && (
                                 <Link 
@@ -435,7 +470,7 @@ export default function CascadeDetailsPage() {
                           {/* Task Error Message Row */}
                           {(task.error_message || task.errorMessage) && (
                             <tr className="bg-red-950/5 border-b border-[#1e293b]/60">
-                              <td colSpan={8} className="py-2.5 px-3 text-red-400 font-mono text-[11px] leading-relaxed">
+                              <td colSpan={9} className="py-2.5 px-3 text-red-400 font-mono text-[11px] leading-relaxed">
                                 <span className="font-bold uppercase tracking-wider block mb-0.5">Task Failure:</span>
                                 {task.error_message || task.errorMessage}
                               </td>
@@ -446,7 +481,7 @@ export default function CascadeDetailsPage() {
                     })
                   ) : (
                     <tr>
-                      <td colSpan={8} className="py-8 text-center text-gray-500 font-mono text-xs">
+                      <td colSpan={9} className="py-8 text-center text-gray-500 font-mono text-xs">
                         No tasks resolved for this cascade run.
                       </td>
                     </tr>
