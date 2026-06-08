@@ -270,206 +270,192 @@ export default function CascadeDetailsPage() {
           </div>
         </div>
 
-        {/* Tasks Timeline Table */}
-        <div className="lg:col-span-2 p-6 bg-[#131b2e] border border-[#1e293b] rounded-2xl shadow-xl space-y-4">
-          <h3 className="text-sm font-bold text-white uppercase tracking-wider border-b border-[#1e293b] pb-3 flex items-center gap-2">
-            <Layers className="w-4 h-4 text-blue-500" />
-            Task Resolution Execution Path
-          </h3>
+        {/* Right Column: Trigger Source & Tasks timeline */}
+        <div className="lg:col-span-2 space-y-6">
+          
+          {/* Trigger Source Card */}
+          <div className="p-6 bg-[#131b2e] border border-[#1e293b] rounded-2xl shadow-xl space-y-4">
+            <h3 className="text-sm font-bold text-white uppercase tracking-wider border-b border-[#1e293b] pb-3 flex items-center gap-2">
+              <Play className="w-4 h-4 text-emerald-500 animate-pulse" />
+              Trigger Source Event
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-xs">
+              <div className="space-y-1">
+                <span className="text-[10px] text-gray-500 font-semibold block uppercase">Origin Artifact</span>
+                {chain.root_artifact_name || chain.rootArtifactName ? (
+                  <Link 
+                    href={`/artifacts/${chain.root_artifact_name || chain.rootArtifactName}/${chain.root_artifact_version || chain.rootArtifactVersion}`}
+                    className="font-bold text-blue-500 hover:text-blue-400 hover:underline block text-sm font-mono mt-0.5"
+                  >
+                    {chain.root_artifact_name || chain.rootArtifactName}@{chain.root_artifact_version || chain.rootArtifactVersion}
+                  </Link>
+                ) : (
+                  <span className="text-gray-400 block mt-0.5">—</span>
+                )}
+              </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead>
-                <tr className="border-b border-[#1e293b] text-gray-400 font-medium">
-                  <th className="py-2.5 px-3">Dependent Artifact</th>
-                  <th className="py-2.5 px-3 font-mono">Task ID</th>
-                  <th className="py-2.5 px-3 font-mono">Build ID</th>
-                  <th className="py-2.5 px-3">Status</th>
-                  <th className="py-2.5 px-3">Trigger Reason</th>
-                  <th className="py-2.5 px-3">Priority</th>
-                  <th className="py-2.5 px-3">Attempted At</th>
-                  <th className="py-2.5 px-3 text-right"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {/* Triggering / Root Row */}
-                <tr className="border-b border-[#1e293b]/60 bg-[#1e293b]/10 hover:bg-[#151d30]/20 transition-colors">
-                  <td className="py-3.5 px-3 font-semibold text-white">
-                    {chain.root_artifact_name || chain.rootArtifactName ? (
-                      <Link 
-                        href={`/artifacts/${chain.root_artifact_name || chain.rootArtifactName}/${chain.root_artifact_version || chain.rootArtifactVersion}`}
-                        className="text-blue-500 hover:text-blue-400 hover:underline"
-                      >
-                        {chain.root_artifact_name || chain.rootArtifactName}@{chain.root_artifact_version || chain.rootArtifactVersion}
-                      </Link>
-                    ) : (
-                      <span className="text-gray-500">—</span>
-                    )}
-                  </td>
-                  <td className="py-3.5 px-3 font-mono text-gray-500 text-xs">
-                    (root)
-                  </td>
-                  <td className="py-3.5 px-3">
-                    {(() => {
-                      const bId = chain.build_id || chain.buildId;
-                      if (!bId) {
-                        return <span className="text-gray-500 italic text-xs">(manual)</span>;
+              <div className="space-y-1">
+                <span className="text-[10px] text-gray-500 font-semibold block uppercase">Triggering Build ID</span>
+                <div className="mt-0.5 block truncate">
+                  {(() => {
+                    const bId = chain.build_id || chain.buildId;
+                    if (!bId) {
+                      return <span className="text-gray-500 italic block">Manual upload (no build pipeline available)</span>;
+                    }
+                    if (!builds) {
+                      return <span className="text-gray-400 font-mono block">{bId}</span>;
+                    }
+                    if (existingBuildIds.has(bId)) {
+                      return (
+                        <Link 
+                          href={`/builds/${bId}`}
+                          className="text-blue-500 hover:text-blue-400 hover:underline font-mono font-semibold block truncate"
+                          title={bId}
+                        >
+                          {bId}
+                        </Link>
+                      );
+                    } else {
+                      return <span className="text-gray-500 italic block" title={bId}>Manual upload (no build pipeline available)</span>;
+                    }
+                  })()}
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <span className="text-[10px] text-gray-500 font-semibold block uppercase">Trigger Reason</span>
+                <span className="font-medium text-white block mt-0.5 truncate" title={chain.root_cause || chain.rootCause}>
+                  {chain.root_cause || chain.rootCause}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Tasks Timeline Table */}
+          <div className="p-6 bg-[#131b2e] border border-[#1e293b] rounded-2xl shadow-xl space-y-4">
+            <h3 className="text-sm font-bold text-white uppercase tracking-wider border-b border-[#1e293b] pb-3 flex items-center gap-2">
+              <Layers className="w-4 h-4 text-blue-500" />
+              Task Resolution Execution Path
+            </h3>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="border-b border-[#1e293b] text-gray-400 font-medium">
+                    <th className="py-2.5 px-3">Dependent Artifact</th>
+                    <th className="py-2.5 px-3 font-mono">Task ID</th>
+                    <th className="py-2.5 px-3 font-mono">Build ID</th>
+                    <th className="py-2.5 px-3">Status</th>
+                    <th className="py-2.5 px-3">Trigger Reason</th>
+                    <th className="py-2.5 px-3">Priority</th>
+                    <th className="py-2.5 px-3">Attempted At</th>
+                    <th className="py-2.5 px-3 text-right"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {tasks.length > 0 ? (
+                    tasks.map((task: any, index: number) => {
+                      let tStatusBg = 'bg-zinc-800 text-zinc-400 border-zinc-700/50';
+                      let tIcon = Clock;
+                      
+                      if (task.status === 'completed' || task.status === 'success') {
+                        tStatusBg = 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
+                        tIcon = CheckCircle2;
                       }
-                      if (!builds) {
-                        return <span className="text-gray-400 font-mono text-xs">{bId.substring(0, 8)}...</span>;
+                      if (task.status === 'failed' || task.status === 'error') {
+                        tStatusBg = 'bg-red-500/10 text-red-400 border-red-500/20';
+                        tIcon = XCircle;
                       }
-                      if (existingBuildIds.has(bId)) {
-                        return (
-                          <Link 
-                            href={`/builds/${bId}`}
-                            className="text-blue-500 hover:text-blue-400 hover:underline font-mono font-semibold text-xs"
-                            title={bId}
-                          >
-                            {bId.substring(0, 8)}...
-                          </Link>
-                        );
-                      } else {
-                        return <span className="text-gray-500 italic text-xs" title={bId}>(manual)</span>;
+                      if (task.status === 'building') {
+                        tStatusBg = 'bg-blue-500/10 text-blue-400 border-blue-500/20 animate-pulse';
+                        tIcon = Play;
                       }
-                    })()}
-                  </td>
-                  <td className="py-3.5 px-3">
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border uppercase bg-blue-500/10 text-blue-400 border-blue-500/20">
-                      <Play className="w-3 h-3 text-blue-400" />
-                      TRIGGER
-                    </span>
-                  </td>
-                  <td className="py-3.5 px-3 text-gray-300 max-w-[150px] truncate" title={chain.root_cause || chain.rootCause}>
-                    {chain.root_cause || chain.rootCause}
-                  </td>
-                  <td className="py-3.5 px-3 font-mono text-gray-400 font-semibold">
-                    —
-                  </td>
-                  <td className="py-3.5 px-3 text-gray-400 font-mono text-[11px]">
-                    {chain.started_at || chain.startedAt ? new Date(chain.started_at || chain.startedAt || '').toLocaleTimeString() : '--'}
-                  </td>
-                  <td className="py-3.5 px-3 text-right">
-                    {chain.build_id || chain.buildId ? (
-                      (() => {
-                        const bId = chain.build_id || chain.buildId || '';
-                        if (existingBuildIds.has(bId)) {
-                          return (
-                            <Link 
-                              href={`/builds/${bId}`}
-                              className="p-1.5 bg-[#1e293b] hover:bg-blue-600 rounded-lg text-gray-400 hover:text-white transition-all inline-flex items-center justify-center"
-                              title="View Triggering Build"
-                            >
-                              <Terminal className="w-3.5 h-3.5" />
-                            </Link>
-                          );
-                        }
-                        return null;
-                      })()
-                    ) : null}
-                  </td>
-                </tr>
+                      if (task.status === 'pending') {
+                        tStatusBg = 'bg-amber-500/10 text-amber-400 border-amber-500/20';
+                        tIcon = Clock;
+                      }
+                      if (task.status === 'skipped') {
+                        tStatusBg = 'bg-zinc-700/20 text-zinc-500 border-zinc-700/30';
+                        tIcon = XOctagon;
+                      }
 
-                {tasks.length > 0 ? (
-                  tasks.map((task: any, index: number) => {
-                    let tStatusBg = 'bg-zinc-800 text-zinc-400 border-zinc-700/50';
-                    let tIcon = Clock;
-                    
-                    if (task.status === 'completed' || task.status === 'success') {
-                      tStatusBg = 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
-                      tIcon = CheckCircle2;
-                    }
-                    if (task.status === 'failed' || task.status === 'error') {
-                      tStatusBg = 'bg-red-500/10 text-red-400 border-red-500/20';
-                      tIcon = XCircle;
-                    }
-                    if (task.status === 'building') {
-                      tStatusBg = 'bg-blue-500/10 text-blue-400 border-blue-500/20 animate-pulse';
-                      tIcon = Play;
-                    }
-                    if (task.status === 'pending') {
-                      tStatusBg = 'bg-amber-500/10 text-amber-400 border-amber-500/20';
-                      tIcon = Clock;
-                    }
-                    if (task.status === 'skipped') {
-                      tStatusBg = 'bg-zinc-700/20 text-zinc-500 border-zinc-700/30';
-                      tIcon = XOctagon;
-                    }
+                      const TIcon = tIcon;
+                      const artName = task.artifact_name || task.artifactName || 'unknown';
+                      const artVer = task.artifact_version || task.artifactVersion || '';
 
-                    const TIcon = tIcon;
-                    const artName = task.artifact_name || task.artifactName || 'unknown';
-                    const artVer = task.artifact_version || task.artifactVersion || '';
-
-                    return (
-                      <React.Fragment key={task.task_id || task.taskId || index}>
-                        <tr className="border-b border-[#1e293b]/60 hover:bg-[#151d30]/20 transition-colors">
-                          <td className="py-3.5 px-3 font-semibold text-white">
-                            {artName !== 'unknown' && artVer ? (
-                              <Link 
-                                href={`/artifacts/${artName}/${artVer}`}
-                                className="text-blue-500 hover:text-blue-400 hover:underline"
-                              >
-                                {artName}@{artVer}
-                              </Link>
-                            ) : (
-                              <span>{artName} {artVer && `@${artVer}`}</span>
-                            )}
-                          </td>
-                          <td className="py-3.5 px-3 font-mono text-gray-400 text-xs" title={task.task_id || task.taskId}>
-                            {(task.task_id || task.taskId || '').substring(0, 8)}...
-                          </td>
-                          <td className="py-3.5 px-3">
-                            {renderBuildLink(task.build_id || task.buildId)}
-                          </td>
-                          <td className="py-3.5 px-3">
-                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border uppercase ${tStatusBg}`}>
-                              <TIcon className="w-3 h-3" />
-                              {task.status}
-                            </span>
-                          </td>
-                          <td className="py-3.5 px-3 text-gray-300 max-w-[150px] truncate" title={task.reason}>
-                            {task.reason}
-                          </td>
-                          <td className="py-3.5 px-3 font-mono text-gray-400 font-semibold">
-                            P{task.priority}
-                          </td>
-                          <td className="py-3.5 px-3 text-gray-400 font-mono text-[11px]">
-                            {task.attempted_at || task.attemptedAt ? new Date(task.attempted_at || task.attemptedAt || '').toLocaleTimeString() : '--'}
-                          </td>
-                          <td className="py-3.5 px-3 text-right">
-                            {(task.build_id || task.buildId) && (
-                              <Link 
-                                href={`/builds/${task.build_id || task.buildId}`}
-                                className="p-1.5 bg-[#1e293b] hover:bg-blue-600 rounded-lg text-gray-400 hover:text-white transition-all inline-flex items-center justify-center"
-                                title="View Pipeline Run"
-                              >
-                                <Terminal className="w-3.5 h-3.5" />
-                              </Link>
-                            )}
-                          </td>
-                        </tr>
-                        
-                        {/* Task Error Message Row */}
-                        {(task.error_message || task.errorMessage) && (
-                          <tr className="bg-red-950/5 border-b border-[#1e293b]/60">
-                            <td colSpan={8} className="py-2.5 px-3 text-red-400 font-mono text-[11px] leading-relaxed">
-                              <span className="font-bold uppercase tracking-wider block mb-0.5">Task Failure:</span>
-                              {task.error_message || task.errorMessage}
+                      return (
+                        <React.Fragment key={task.task_id || task.taskId || index}>
+                          <tr className="border-b border-[#1e293b]/60 hover:bg-[#151d30]/20 transition-colors">
+                            <td className="py-3.5 px-3 font-semibold text-white">
+                              {artName !== 'unknown' && artVer ? (
+                                <Link 
+                                  href={`/artifacts/${artName}/${artVer}`}
+                                  className="text-blue-500 hover:text-blue-400 hover:underline"
+                                >
+                                  {artName}@{artVer}
+                                </Link>
+                              ) : (
+                                <span>{artName} {artVer && `@${artVer}`}</span>
+                              )}
+                            </td>
+                            <td className="py-3.5 px-3 font-mono text-gray-400 text-xs" title={task.task_id || task.taskId}>
+                              {(task.task_id || task.taskId || '').substring(0, 8)}...
+                            </td>
+                            <td className="py-3.5 px-3">
+                              {renderBuildLink(task.build_id || task.buildId)}
+                            </td>
+                            <td className="py-3.5 px-3">
+                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border uppercase ${tStatusBg}`}>
+                                <TIcon className="w-3 h-3" />
+                                {task.status}
+                              </span>
+                            </td>
+                            <td className="py-3.5 px-3 text-gray-300 max-w-[150px] truncate" title={task.reason}>
+                              {task.reason}
+                            </td>
+                            <td className="py-3.5 px-3 font-mono text-gray-400 font-semibold">
+                              P{task.priority}
+                            </td>
+                            <td className="py-3.5 px-3 text-gray-400 font-mono text-[11px]">
+                              {task.attempted_at || task.attemptedAt ? new Date(task.attempted_at || task.attemptedAt || '').toLocaleTimeString() : '--'}
+                            </td>
+                            <td className="py-3.5 px-3 text-right">
+                              {(task.build_id || task.buildId) && (
+                                <Link 
+                                  href={`/builds/${task.build_id || task.buildId}`}
+                                  className="p-1.5 bg-[#1e293b] hover:bg-blue-600 rounded-lg text-gray-400 hover:text-white transition-all inline-flex items-center justify-center"
+                                  title="View Pipeline Run"
+                                >
+                                  <Terminal className="w-3.5 h-3.5" />
+                                </Link>
+                              )}
                             </td>
                           </tr>
-                        )}
-                      </React.Fragment>
-                    );
-                  })
-                ) : (
-                  <tr>
-                    <td colSpan={8} className="py-8 text-center text-gray-500 font-mono text-xs">
-                      No tasks resolved for this cascade run.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+                          
+                          {/* Task Error Message Row */}
+                          {(task.error_message || task.errorMessage) && (
+                            <tr className="bg-red-950/5 border-b border-[#1e293b]/60">
+                              <td colSpan={8} className="py-2.5 px-3 text-red-400 font-mono text-[11px] leading-relaxed">
+                                <span className="font-bold uppercase tracking-wider block mb-0.5">Task Failure:</span>
+                                {task.error_message || task.errorMessage}
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
+                      );
+                    })
+                  ) : (
+                    <tr>
+                      <td colSpan={8} className="py-8 text-center text-gray-500 font-mono text-xs">
+                        No tasks resolved for this cascade run.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
+
         </div>
 
       </div>
