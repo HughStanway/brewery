@@ -18,11 +18,12 @@ import {
   Hammer,
   Package,
   ArrowRight,
-  Play
+  Play,
+  Server
 } from 'lucide-react';
 
 export default function DocsPage() {
-  const [activeTab, setActiveTab] = React.useState<'overview' | 'guide' | 'endpoints' | 'limitations'>('overview');
+  const [activeTab, setActiveTab] = React.useState<'overview' | 'architecture' | 'guide' | 'endpoints' | 'limitations'>('overview');
 
   return (
     <div className="space-y-8 animate-fade-in max-w-6xl mx-auto">
@@ -32,24 +33,34 @@ export default function DocsPage() {
           <BookOpen className="w-6 h-6 text-blue-500" />
           Documentation & Platform Guide
         </h2>
-        <p className="text-sm text-gray-400">Deep-dive technical overview of Brewery supply chain mechanics, usage guides, and APIs.</p>
+        <p className="text-sm text-gray-400">Deep-dive technical overview of Brewery supply chain mechanics, architecture, and APIs.</p>
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-[#1e293b] gap-2">
+      <div className="flex border-b border-[#1e293b] gap-2 overflow-x-auto">
         <button
           onClick={() => setActiveTab('overview')}
-          className={`px-4 py-2 text-xs font-semibold uppercase tracking-wider transition-all border-b-2 -mb-[2px] ${
+          className={`px-4 py-2 text-xs font-semibold uppercase tracking-wider transition-all border-b-2 -mb-[2px] whitespace-nowrap ${
             activeTab === 'overview'
               ? 'border-blue-500 text-blue-400 font-bold'
               : 'border-transparent text-gray-400 hover:text-gray-200'
           }`}
         >
-          Overview & Architecture
+          System Overview
+        </button>
+        <button
+          onClick={() => setActiveTab('architecture')}
+          className={`px-4 py-2 text-xs font-semibold uppercase tracking-wider transition-all border-b-2 -mb-[2px] whitespace-nowrap ${
+            activeTab === 'architecture'
+              ? 'border-blue-500 text-blue-400 font-bold'
+              : 'border-transparent text-gray-400 hover:text-gray-200'
+          }`}
+        >
+          Under-The-Hood Architecture
         </button>
         <button
           onClick={() => setActiveTab('guide')}
-          className={`px-4 py-2 text-xs font-semibold uppercase tracking-wider transition-all border-b-2 -mb-[2px] ${
+          className={`px-4 py-2 text-xs font-semibold uppercase tracking-wider transition-all border-b-2 -mb-[2px] whitespace-nowrap ${
             activeTab === 'guide'
               ? 'border-blue-500 text-blue-400 font-bold'
               : 'border-transparent text-gray-400 hover:text-gray-200'
@@ -59,7 +70,7 @@ export default function DocsPage() {
         </button>
         <button
           onClick={() => setActiveTab('endpoints')}
-          className={`px-4 py-2 text-xs font-semibold uppercase tracking-wider transition-all border-b-2 -mb-[2px] ${
+          className={`px-4 py-2 text-xs font-semibold uppercase tracking-wider transition-all border-b-2 -mb-[2px] whitespace-nowrap ${
             activeTab === 'endpoints'
               ? 'border-blue-500 text-blue-400 font-bold'
               : 'border-transparent text-gray-400 hover:text-gray-200'
@@ -69,7 +80,7 @@ export default function DocsPage() {
         </button>
         <button
           onClick={() => setActiveTab('limitations')}
-          className={`px-4 py-2 text-xs font-semibold uppercase tracking-wider transition-all border-b-2 -mb-[2px] ${
+          className={`px-4 py-2 text-xs font-semibold uppercase tracking-wider transition-all border-b-2 -mb-[2px] whitespace-nowrap ${
             activeTab === 'limitations'
               ? 'border-blue-500 text-blue-400 font-bold'
               : 'border-transparent text-gray-400 hover:text-gray-200'
@@ -79,7 +90,7 @@ export default function DocsPage() {
         </button>
       </div>
 
-      {/* Overview & Architecture Content */}
+      {/* System Overview Content */}
       {activeTab === 'overview' && (
         <div className="space-y-6">
           <div className="p-6 bg-[#131b2e] border border-[#1e293b] rounded-2xl shadow-xl space-y-4">
@@ -92,55 +103,107 @@ export default function DocsPage() {
             </p>
           </div>
 
-          <div className="p-6 bg-[#131b2e] border border-[#1e293b] rounded-2xl shadow-xl space-y-4">
-            <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-              <Layers className="w-4.5 h-4.5 text-blue-400" />
-              System Architecture & Core Subsystems
-            </h3>
-            <p className="text-xs text-gray-400 leading-relaxed">
-              The platform is built on a modular Spring Boot 3.x core and communicates with a PostgreSQL database, Google Pub/Sub emulator, and local Docker daemon:
-            </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="p-6 bg-[#131b2e] border border-[#1e293b] rounded-2xl shadow-xl space-y-3">
+              <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                <Hammer className="w-4 h-4 text-emerald-400" />
+                Continuous Build Pipelines
+              </h4>
+              <p className="text-xs text-gray-400 leading-relaxed">
+                Builds compile in isolated Docker containers defined by a repository's <code>build.yaml</code>. Successful builds extract artifacts and publish them to the centralized registry, storing critical metadata (checksums, git commit SHAs, and versioning properties).
+              </p>
+            </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-              <div className="p-4 bg-black/20 rounded-xl border border-[#1e293b] space-y-2">
-                <div className="flex items-center gap-2 text-white font-semibold text-xs uppercase tracking-wider">
-                  <Package className="w-4 h-4 text-emerald-400" />
-                  Artifact Registry
-                </div>
-                <p className="text-[11px] text-gray-400 leading-relaxed">
-                  Stores compiled binary archives (such as JARs) alongside complete metadata declarations (checksums, git repositories, commits, versions, and dependencies).
-                </p>
-              </div>
+            <div className="p-6 bg-[#131b2e] border border-[#1e293b] rounded-2xl shadow-xl space-y-3">
+              <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                <Network className="w-4 h-4 text-violet-400" />
+                Stateful Dependency Graph
+              </h4>
+              <p className="text-xs text-gray-400 leading-relaxed">
+                Whenever artifacts declare versioned dependencies (e.g. <code>bcrypt@^4.0.0</code>), Brewery constructs directed acyclic graphs (DAGs). It validates ranges and alerts engineers if circular loops or version mismatches create conflicts.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
-              <div className="p-4 bg-black/20 rounded-xl border border-[#1e293b] space-y-2">
-                <div className="flex items-center gap-2 text-white font-semibold text-xs uppercase tracking-wider">
-                  <Hammer className="w-4 h-4 text-blue-400" />
-                  Build Engine
-                </div>
-                <p className="text-[11px] text-gray-400 leading-relaxed">
-                  Asynchronously checks out workspaces, parses `build.yaml` config specifications, spins up isolated Docker builder containers, runs compile stages, calculates checksums, and publishes resulting files.
-                </p>
-              </div>
+      {/* Under-The-Hood Architecture Content */}
+      {activeTab === 'architecture' && (
+        <div className="space-y-6 animate-fade-in">
+          <div className="p-6 bg-[#131b2e] border border-[#1e293b] rounded-2xl shadow-xl space-y-4">
+            <h3 className="text-base font-bold text-white flex items-center gap-2">
+              <Server className="w-5 h-5 text-blue-400" />
+              Under-the-Hood Subsystem Internals
+            </h3>
+            <p className="text-sm text-gray-300 leading-relaxed">
+              Brewery utilizes a modular Spring Boot 3.x core architecture. It persists all states to a PostgreSQL database and integrates with an external container execution system and a messaging topology.
+            </p>
+          </div>
 
-              <div className="p-4 bg-black/20 rounded-xl border border-[#1e293b] space-y-2">
-                <div className="flex items-center gap-2 text-white font-semibold text-xs uppercase tracking-wider">
-                  <Network className="w-4 h-4 text-violet-400" />
-                  Dependency Resolver
-                </div>
-                <p className="text-[11px] text-gray-400 leading-relaxed">
-                  Constructs the directed dependency graph (DAG), matches caret (<code>^</code>) and inequality ranges, traverses transitive dependencies, and audits the system for version conflicts and cyclic references.
-                </p>
-              </div>
+          {/* Subsystems breakdowns */}
+          <div className="space-y-6">
+            {/* Ingestion & Pub/Sub */}
+            <div className="p-6 bg-[#131b2e] border border-[#1e293b] rounded-2xl shadow-xl space-y-3">
+              <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5 text-blue-400">
+                <Terminal className="w-4 h-4" />
+                1. Build Ingestion & Live Pub/Sub Connection
+              </h4>
+              <p className="text-xs text-gray-300 leading-relaxed">
+                In local development, the platform integrates with a Google Pub/Sub emulator. In the **production environment**, Brewery establishes a direct, secure connection to a live **Google Cloud Pub/Sub** service instance.
+              </p>
+              <p className="text-xs text-gray-400 leading-relaxed font-sans pl-2 border-l-2 border-blue-500/40">
+                When code changes are pushed to a monitored repository, the hosting service publishes a JSON event payload (containing <code>repository</code>, <code>commit</code>, and <code>branch</code>) to a Google Cloud Pub/Sub topic. Brewery's background subscriber service receives the event, decodes the base64 payload, creates a pending <code>Build</code> record in the database, and schedules it for execution.
+              </p>
+            </div>
 
-              <div className="p-4 bg-black/20 rounded-xl border border-[#1e293b] space-y-2">
-                <div className="flex items-center gap-2 text-white font-semibold text-xs uppercase tracking-wider">
-                  <RefreshCw className="w-4 h-4 text-amber-400" />
-                  Cascade Rebuild Engine
-                </div>
-                <p className="text-[11px] text-gray-400 leading-relaxed">
-                  Reacts to new artifact registrations, maps direct/transitive downstream dependents, filters compatible range matches, and enqueues rebuilding tasks to update packages in-place.
-                </p>
-              </div>
+            {/* Docker Container Executor */}
+            <div className="p-6 bg-[#131b2e] border border-[#1e293b] rounded-2xl shadow-xl space-y-3">
+              <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5 text-emerald-400">
+                <Cpu className="w-4 h-4" />
+                2. Isolated Docker Build Execution
+              </h4>
+              <p className="text-xs text-gray-300 leading-relaxed">
+                The Build Executor manages isolated workspace checkouts and container lifecycles:
+              </p>
+              <ul className="list-disc list-inside text-[11px] text-gray-400 space-y-1.5 pl-2">
+                <li>Creates a unique filesystem directory under <code>/tmp/brewery-builds/build-[id]/workspace</code>.</li>
+                <li>Clones the targeted git repository and checkouts the exact commit SHA in the workspace.</li>
+                <li>Parses the <code>build.yaml</code> configuration file to resolve builder image, parameters, and compilation steps.</li>
+                <li>Mounts the temporary workspace folder as a Docker volume and triggers the builder image.</li>
+                <li>Streams container logs to the database in real-time, inspects exit statuses, hashes resulting binaries (SHA-256), and invokes the registry service to catalog the build outputs.</li>
+              </ul>
+            </div>
+
+            {/* DAG Graph & Semantic Parsing */}
+            <div className="p-6 bg-[#131b2e] border border-[#1e293b] rounded-2xl shadow-xl space-y-3">
+              <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5 text-violet-400">
+                <Network className="w-4 h-4" />
+                3. SemVer Resolution & Directed Dependency Mapping
+              </h4>
+              <p className="text-xs text-gray-300 leading-relaxed">
+                The Dependency Resolver operates as a graph-traversal engine on top of relational schemas:
+              </p>
+              <ul className="list-disc list-inside text-[11px] text-gray-400 space-y-1.5 pl-2">
+                <li><strong>Range Parsing:</strong> Translates caret conditions (e.g. <code>^4.0.0</code> matches <code>[4.0.0, 5.0.0)</code>) and inequality ranges (e.g. <code>&gt;=1.2.0</code>) into structured boundaries.</li>
+                <li><strong>Relational Graphs:</strong> When an artifact is registered, its metadata is parsed, and corresponding dependency relations are indexed in <code>dependencies</code> and <code>reverse_dependencies</code> database tables.</li>
+                <li><strong>Cycle & Conflict Auditing:</strong> Performs transitive BFS/DFS traversals. If multiple versions of the same library are pulled in, or if a cyclical dependency exists, warning entities are generated to block broken configurations.</li>
+              </ul>
+            </div>
+
+            {/* State-Based Cascade Queue */}
+            <div className="p-6 bg-[#131b2e] border border-[#1e293b] rounded-2xl shadow-xl space-y-3">
+              <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5 text-amber-400">
+                <RefreshCw className="w-4 h-4" />
+                4. State-Based Rebuild Cascading
+              </h4>
+              <p className="text-xs text-gray-300 leading-relaxed">
+                The Cascade Engine propagates package changes down the dependency tree:
+              </p>
+              <ul className="list-disc list-inside text-[11px] text-gray-400 space-y-1.5 pl-2">
+                <li><strong>Event-Driven Triggers:</strong> A Spring event listener captures successful artifact registrations and triggers the cascade resolver.</li>
+                <li><strong>Chain Scheduling:</strong> Identifies active dependents via reverse dependency mappings and checks if their version ranges are satisfied. It saves a persistent <code>RebuildChain</code> and schedules pending <code>CascadeTask</code> records.</li>
+                <li><strong>In-Place Upgrades:</strong> A background thread pool pulls pending tasks, builds the dependent packages, and registers the output artifacts keeping their original version name. This prevents version inflation while updating the dependency binary bindings in-place.</li>
+              </ul>
             </div>
           </div>
         </div>
@@ -210,7 +273,7 @@ dependencies:
                   3. Ingesting via Pub/Sub Events
                 </h4>
                 <p className="text-gray-400 leading-relaxed pl-5">
-                  Alternatively, you can trigger automated builds by publishing a commit push event payload to the Google Pub/Sub emulator:
+                  Trigger automated builds by publishing a JSON push event payload to the live Google Cloud Pub/Sub topic configured for the environment:
                 </p>
                 <div className="pl-5">
                   <pre className="p-3 bg-black/40 border border-[#1e293b] rounded-xl font-mono text-[11px] text-gray-300 overflow-x-auto">
@@ -221,7 +284,7 @@ BASE64_DATA=$(echo -n $PAYLOAD | base64)
 curl -X POST \\
   -H "Content-Type: application/json" \\
   -d "{\\"messages\\": [{\\"data\\": \\"\${BASE64_DATA}\\"}]}" \\
-  "http://localhost:8085/v1/projects/brewery-homelab/topics/brewery-jobs:publish"`}
+  "https://pubsub.googleapis.com/v1/projects/brewery-production/topics/brewery-jobs:publish"`}
                   </pre>
                 </div>
               </div>
@@ -229,7 +292,7 @@ curl -X POST \\
               <div className="space-y-2">
                 <h4 className="text-white font-bold text-xs flex items-center gap-1.5 uppercase tracking-wider">
                   <ChevronRight className="w-4 h-4 text-blue-500" />
-                  4. Automated Cascading Rebuilds
+                  4. Monitoring Cascading Rebuilds
                 </h4>
                 <p className="text-gray-400 leading-relaxed pl-5">
                   Once a package is registered, Brewery automatically runs cascade checks. If you publish a new version of a library (e.g. <code>bcrypt@4.0.1</code>), Brewery checks all downstream dependents. If their declared semver requirements are met, it automatically spawns a rebuild chain.
@@ -275,6 +338,7 @@ curl -X POST \\
                 </tr>
                 <tr className="border-b border-[#1e293b]/60">
                   <td className="py-3 px-3 text-emerald-400 font-semibold font-sans">Registry</td>
+                  <td className="py-3 px-3"><span className="text-blue-400 font-bold">GET</span></td>
                   <td className="py-3 px-3">/api/registry/artifacts/&#123;name&#125;</td>
                   <td className="py-3 px-3 text-gray-400 font-sans">Get version listing and details for an artifact name.</td>
                 </tr>
