@@ -35,6 +35,9 @@ public class RebuildChain {
     @Column(name = "parent_chain_id")
     private UUID parentChainId;
 
+    @Column(name = "build_id")
+    private UUID buildId;
+
     @Column(name = "trigger_type")
     private String triggerType;
 

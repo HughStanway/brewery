@@ -656,3 +656,17 @@ databaseChangeLog:
                   name: trigger_type
                   type: VARCHAR(100)
 
+  - changeSet:
+      id: "6-add-build-id-to-rebuild-chains"
+      author: "brewery"
+      changes:
+        - addColumn:
+            tableName: rebuild_chains
+            columns:
+              - column:
+                  name: build_id
+                  type: UUID
+                  constraints:
+                    foreignKeyName: fk_rebuild_chains_build
+                    references: builds(id)
+

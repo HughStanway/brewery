@@ -80,14 +80,21 @@ public class CascadeRebuildController {
                 map.put("startedAt", chain.getStartedAt());
                 map.put("completedAt", chain.getCompletedAt());
                 
+                if (chain.getBuildId() != null) {
+                    map.put("buildId", chain.getBuildId().toString());
+                    map.put("build_id", chain.getBuildId().toString());
+                }
+                
                 if (chain.getRootArtifactId() != null) {
                     artifactRepository.findById(chain.getRootArtifactId()).ifPresent(art -> {
                         map.put("rootArtifactName", art.getName());
                         map.put("root_artifact_name", art.getName());
                         map.put("rootArtifactVersion", art.getVersion());
                         map.put("root_artifact_version", art.getVersion());
-                        map.put("buildId", art.getBuildId() != null ? art.getBuildId().toString() : null);
-                        map.put("build_id", art.getBuildId() != null ? art.getBuildId().toString() : null);
+                        if (chain.getBuildId() == null) {
+                            map.put("buildId", art.getBuildId() != null ? art.getBuildId().toString() : null);
+                            map.put("build_id", art.getBuildId() != null ? art.getBuildId().toString() : null);
+                        }
                         
                         String triggerType = chain.getTriggerType();
                         if (triggerType == null) {

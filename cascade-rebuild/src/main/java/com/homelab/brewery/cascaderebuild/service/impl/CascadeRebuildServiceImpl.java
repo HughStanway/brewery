@@ -67,6 +67,7 @@ public class CascadeRebuildServiceImpl implements CascadeRebuildService {
         chain.setRootCause(reason);
         chain.setStatus("running");
         chain.setDepth(0);
+        chain.setBuildId(triggerArtifact.getBuildId());
         
         // Determine trigger type
         String triggerType = "New version publication";
@@ -190,12 +191,19 @@ public class CascadeRebuildServiceImpl implements CascadeRebuildService {
         result.put("completed_at", chain.getCompletedAt() != null ? chain.getCompletedAt().toString() : null);
         result.put("task_count", tasks.size());
         
+        if (chain.getBuildId() != null) {
+            result.put("build_id", chain.getBuildId().toString());
+            result.put("buildId", chain.getBuildId().toString());
+        }
+        
         if (chain.getRootArtifactId() != null) {
             artifactRepository.findById(chain.getRootArtifactId()).ifPresent(art -> {
                 result.put("root_artifact_name", art.getName());
                 result.put("root_artifact_version", art.getVersion());
-                result.put("build_id", art.getBuildId() != null ? art.getBuildId().toString() : null);
-                result.put("buildId", art.getBuildId() != null ? art.getBuildId().toString() : null);
+                if (chain.getBuildId() == null) {
+                    result.put("build_id", art.getBuildId() != null ? art.getBuildId().toString() : null);
+                    result.put("buildId", art.getBuildId() != null ? art.getBuildId().toString() : null);
+                }
                 
                 String triggerType = chain.getTriggerType();
                 if (triggerType == null) {
