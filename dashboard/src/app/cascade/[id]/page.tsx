@@ -45,6 +45,52 @@ export default function CascadeDetailsPage() {
     }
   });
 
+  // Fetch all builds to validate build links
+  const { data: builds } = useQuery({
+    queryKey: ['builds'],
+    queryFn: apiClient.getBuilds,
+  });
+
+  const existingBuildIds = React.useMemo(() => {
+    return new Set((builds || []).map((b: any) => b.id));
+  }, [builds]);
+
+  const renderBuildLink = (buildId: string) => {
+    if (!buildId) return <span className="text-gray-500 font-mono text-xs">—</span>;
+    
+    const displayId = `${buildId.substring(0, 8)}...`;
+    
+    if (!builds) {
+      return (
+        <span className="text-gray-400 font-mono text-xs" title={buildId}>
+          {displayId}
+        </span>
+      );
+    }
+
+    const isValid = existingBuildIds.has(buildId);
+    if (isValid) {
+      return (
+        <Link 
+          href={`/builds/${buildId}`}
+          className="text-blue-500 hover:text-blue-400 hover:underline font-mono font-semibold text-xs"
+          title={buildId}
+        >
+          {displayId}
+        </Link>
+      );
+    } else {
+      return (
+        <span 
+          className="text-gray-500 font-mono text-xs" 
+          title={`${buildId} (Manual or untracked build)`}
+        >
+          {displayId} <span className="text-[10px] text-gray-500 font-sans italic font-normal">(manual)</span>
+        </span>
+      );
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[50vh] gap-4">
@@ -206,6 +252,8 @@ export default function CascadeDetailsPage() {
               <thead>
                 <tr className="border-b border-[#1e293b] text-gray-400 font-medium">
                   <th className="py-2.5 px-3">Dependent Artifact</th>
+                  <th className="py-2.5 px-3 font-mono">Task ID</th>
+                  <th className="py-2.5 px-3 font-mono">Build ID</th>
                   <th className="py-2.5 px-3">Status</th>
                   <th className="py-2.5 px-3">Trigger Reason</th>
                   <th className="py-2.5 px-3">Priority</th>
@@ -250,6 +298,12 @@ export default function CascadeDetailsPage() {
                           <td className="py-3.5 px-3 font-semibold text-white">
                             {artName} {artVer && `@${artVer}`}
                           </td>
+                          <td className="py-3.5 px-3 font-mono text-gray-400 text-xs" title={task.task_id || task.taskId}>
+                            {(task.task_id || task.taskId || '').substring(0, 8)}...
+                          </td>
+                          <td className="py-3.5 px-3">
+                            {renderBuildLink(task.build_id || task.buildId)}
+                          </td>
                           <td className="py-3.5 px-3">
                             <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border uppercase ${tStatusBg}`}>
                               <TIcon className="w-3 h-3" />
@@ -281,7 +335,7 @@ export default function CascadeDetailsPage() {
                         {/* Task Error Message Row */}
                         {(task.error_message || task.errorMessage) && (
                           <tr className="bg-red-950/5 border-b border-[#1e293b]/60">
-                            <td colSpan={6} className="py-2.5 px-3 text-red-400 font-mono text-[11px] leading-relaxed">
+                            <td colSpan={8} className="py-2.5 px-3 text-red-400 font-mono text-[11px] leading-relaxed">
                               <span className="font-bold uppercase tracking-wider block mb-0.5">Task Failure:</span>
                               {task.error_message || task.errorMessage}
                             </td>
@@ -292,7 +346,7 @@ export default function CascadeDetailsPage() {
                   })
                 ) : (
                   <tr>
-                    <td colSpan={6} className="py-8 text-center text-gray-500 font-mono text-xs">
+                    <td colSpan={8} className="py-8 text-center text-gray-500 font-mono text-xs">
                       No tasks resolved for this cascade run.
                     </td>
                   </tr>

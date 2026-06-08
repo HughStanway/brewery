@@ -134,6 +134,8 @@ public class ArtifactRegistryController {
             detail.put("tags", art.getTags());
             detail.put("is_latest", art.getIsLatest());
             detail.put("deprecated_at", art.getDeprecatedAt() != null ? art.getDeprecatedAt().toString() : null);
+            detail.put("build_id", art.getBuildId() != null ? art.getBuildId().toString() : null);
+            detail.put("buildId", art.getBuildId() != null ? art.getBuildId().toString() : null);
             detail.put("download_url", "/api/registry/artifacts/" + name + "/" + art.getVersion() + "/download");
             versionDetails.add(detail);
 

@@ -45,6 +45,53 @@ export default function ArtifactDetailsPage() {
     queryFn: () => apiClient.getArtifactVersions(name),
   });
 
+  // Fetch all builds to validate build links
+  const { data: builds } = useQuery({
+    queryKey: ['builds'],
+    queryFn: apiClient.getBuilds,
+  });
+
+  const existingBuildIds = React.useMemo(() => {
+    return new Set((builds || []).map((b: any) => b.id));
+  }, [builds]);
+
+  const renderBuildLink = (buildId: string, full: boolean = false) => {
+    if (!buildId) return <span className="text-gray-500 italic">Manual or untracked build</span>;
+    
+    const displayId = full ? buildId : `${buildId.substring(0, 8)}...`;
+    
+    if (!builds) {
+      return (
+        <span className="text-gray-400 font-mono" title={buildId}>
+          {displayId}
+        </span>
+      );
+    }
+
+    const isValid = existingBuildIds.has(buildId);
+    if (isValid) {
+      return (
+        <Link 
+          href={`/builds/${buildId}`}
+          className="text-blue-500 hover:text-blue-400 hover:underline font-mono font-semibold"
+          title={buildId}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {displayId}
+        </Link>
+      );
+    } else {
+      return (
+        <span 
+          className="text-gray-500 font-mono" 
+          title={`${buildId} (Manual or untracked build)`}
+        >
+          {displayId} <span className="text-[10px] text-gray-500 font-sans italic font-normal">(manual)</span>
+        </span>
+      );
+    }
+  };
+
   // Fetch dependency graph for the active version to inspect resolved versions
   const { data: depGraphData } = useQuery({
     queryKey: ['dependencyGraph', name, version],
@@ -240,30 +287,37 @@ export default function ArtifactDetailsPage() {
                 const verIsLatest = ver.is_latest || ver.isLatest;
                 const verIsDeprecated = !!(ver.deprecated_at || ver.deprecatedAt);
                 return (
-                  <Link
+                  <div
                     key={ver.version}
-                    href={`/artifacts/${name}/${ver.version}`}
-                    className={`flex items-center justify-between p-2.5 rounded-xl text-xs font-mono transition-all border ${
+                    onClick={() => router.push(`/artifacts/${name}/${ver.version}`)}
+                    className={`flex items-center justify-between p-2.5 rounded-xl text-xs font-mono transition-all border cursor-pointer ${
                       isCurrent 
                         ? 'bg-blue-600/10 border-blue-500/20 text-blue-400 font-bold' 
                         : 'border-transparent text-gray-400 hover:bg-[#151d30] hover:text-gray-200'
                     }`}
                   >
-                    <div className="flex items-center gap-1.5">
-                      <span>{ver.version}</span>
+                    <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                      <span className="truncate">{ver.version}</span>
                       {verIsLatest && (
-                        <span className="px-1 py-0.2 bg-emerald-500/15 text-emerald-400 text-[8px] font-bold rounded border border-emerald-500/25 uppercase tracking-wider">
+                        <span className="px-1 py-0.2 bg-emerald-500/15 text-emerald-400 text-[8px] font-bold rounded border border-emerald-500/25 uppercase tracking-wider shrink-0">
                           latest
                         </span>
                       )}
                       {verIsDeprecated && (
-                        <span className="px-1 py-0.2 bg-amber-500/15 text-amber-400 text-[8px] font-bold rounded border border-amber-500/25 uppercase tracking-wider">
+                        <span className="px-1 py-0.2 bg-amber-500/15 text-amber-400 text-[8px] font-bold rounded border border-amber-500/25 uppercase tracking-wider shrink-0">
                           deprecated
                         </span>
                       )}
                     </div>
-                    <ChevronRight className={`w-4 h-4 ${isCurrent ? 'text-blue-400' : 'text-gray-600'}`} />
-                  </Link>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {(ver.build_id || ver.buildId) && (
+                        <span className="text-[10px]" onClick={(e) => e.stopPropagation()}>
+                          {renderBuildLink(ver.build_id || ver.buildId, false)}
+                        </span>
+                      )}
+                      <ChevronRight className={`w-4 h-4 ${isCurrent ? 'text-blue-400' : 'text-gray-600'}`} />
+                    </div>
+                  </div>
                 );
               })}
             </div>
@@ -299,16 +353,9 @@ export default function ArtifactDetailsPage() {
               </div>
               <div className="space-y-1 md:col-span-2">
                 <span className="text-[10px] text-gray-500 font-semibold block uppercase">Build Pipeline Link</span>
-                {metadata.build_id ? (
-                  <Link 
-                    href={`/builds/${metadata.build_id}`}
-                    className="font-mono text-blue-500 hover:text-blue-400 hover:underline font-semibold block truncate"
-                  >
-                    {metadata.build_id}
-                  </Link>
-                ) : (
-                  <span className="text-gray-500 italic block">Manual or untracked build</span>
-                )}
+                <div className="block truncate">
+                  {renderBuildLink(metadata.build_id, true)}
+                </div>
               </div>
             </div>
           </div>
