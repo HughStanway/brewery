@@ -195,9 +195,12 @@ export default function CascadeDetailsPage() {
             <div>
               <span className="text-[10px] text-gray-500 font-semibold block uppercase">Trigger Artifact</span>
               {chain.root_artifact_name || chain.rootArtifactName ? (
-                <span className="font-semibold text-white block mt-1 font-mono">
+                <Link 
+                  href={`/artifacts/${chain.root_artifact_name || chain.rootArtifactName}/${chain.root_artifact_version || chain.rootArtifactVersion}`}
+                  className="font-semibold text-blue-500 hover:text-blue-400 hover:underline block mt-1 font-mono"
+                >
                   {chain.root_artifact_name || chain.rootArtifactName}@{chain.root_artifact_version || chain.rootArtifactVersion}
-                </span>
+                </Link>
               ) : (
                 <span className="text-gray-500 block mt-1">—</span>
               )}
@@ -289,6 +292,83 @@ export default function CascadeDetailsPage() {
                 </tr>
               </thead>
               <tbody>
+                {/* Triggering / Root Row */}
+                <tr className="border-b border-[#1e293b]/60 bg-[#1e293b]/10 hover:bg-[#151d30]/20 transition-colors">
+                  <td className="py-3.5 px-3 font-semibold text-white">
+                    {chain.root_artifact_name || chain.rootArtifactName ? (
+                      <Link 
+                        href={`/artifacts/${chain.root_artifact_name || chain.rootArtifactName}/${chain.root_artifact_version || chain.rootArtifactVersion}`}
+                        className="text-blue-500 hover:text-blue-400 hover:underline"
+                      >
+                        {chain.root_artifact_name || chain.rootArtifactName}@{chain.root_artifact_version || chain.rootArtifactVersion}
+                      </Link>
+                    ) : (
+                      <span className="text-gray-500">—</span>
+                    )}
+                  </td>
+                  <td className="py-3.5 px-3 font-mono text-gray-500 text-xs">
+                    (root)
+                  </td>
+                  <td className="py-3.5 px-3">
+                    {(() => {
+                      const bId = chain.build_id || chain.buildId;
+                      if (!bId) {
+                        return <span className="text-gray-500 italic text-xs">(manual)</span>;
+                      }
+                      if (!builds) {
+                        return <span className="text-gray-400 font-mono text-xs">{bId.substring(0, 8)}...</span>;
+                      }
+                      if (existingBuildIds.has(bId)) {
+                        return (
+                          <Link 
+                            href={`/builds/${bId}`}
+                            className="text-blue-500 hover:text-blue-400 hover:underline font-mono font-semibold text-xs"
+                            title={bId}
+                          >
+                            {bId.substring(0, 8)}...
+                          </Link>
+                        );
+                      } else {
+                        return <span className="text-gray-500 italic text-xs" title={bId}>(manual)</span>;
+                      }
+                    })()}
+                  </td>
+                  <td className="py-3.5 px-3">
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border uppercase bg-blue-500/10 text-blue-400 border-blue-500/20">
+                      <Play className="w-3 h-3 text-blue-400" />
+                      TRIGGER
+                    </span>
+                  </td>
+                  <td className="py-3.5 px-3 text-gray-300 max-w-[150px] truncate" title={chain.root_cause || chain.rootCause}>
+                    {chain.root_cause || chain.rootCause}
+                  </td>
+                  <td className="py-3.5 px-3 font-mono text-gray-400 font-semibold">
+                    —
+                  </td>
+                  <td className="py-3.5 px-3 text-gray-400 font-mono text-[11px]">
+                    {chain.started_at || chain.startedAt ? new Date(chain.started_at || chain.startedAt || '').toLocaleTimeString() : '--'}
+                  </td>
+                  <td className="py-3.5 px-3 text-right">
+                    {chain.build_id || chain.buildId ? (
+                      (() => {
+                        const bId = chain.build_id || chain.buildId || '';
+                        if (existingBuildIds.has(bId)) {
+                          return (
+                            <Link 
+                              href={`/builds/${bId}`}
+                              className="p-1.5 bg-[#1e293b] hover:bg-blue-600 rounded-lg text-gray-400 hover:text-white transition-all inline-flex items-center justify-center"
+                              title="View Triggering Build"
+                            >
+                              <Terminal className="w-3.5 h-3.5" />
+                            </Link>
+                          );
+                        }
+                        return null;
+                      })()
+                    ) : null}
+                  </td>
+                </tr>
+
                 {tasks.length > 0 ? (
                   tasks.map((task: any, index: number) => {
                     let tStatusBg = 'bg-zinc-800 text-zinc-400 border-zinc-700/50';

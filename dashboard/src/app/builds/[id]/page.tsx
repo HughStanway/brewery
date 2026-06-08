@@ -17,7 +17,9 @@ import {
   Calendar,
   Code,
   GitBranch,
-  FileCode
+  FileCode,
+  Package,
+  Layers
 } from 'lucide-react';
 
 export default function BuildDetailsPage() {
@@ -64,6 +66,17 @@ export default function BuildDetailsPage() {
     if (!artifacts || !build) return null;
     return artifacts.find((a) => a.buildId === build.id);
   }, [artifacts, build]);
+
+  // Fetch cascade chains to check if this build triggered one
+  const { data: chains } = useQuery({
+    queryKey: ['cascadeChains'],
+    queryFn: apiClient.getCascadeChains,
+  });
+
+  const triggeredChain = React.useMemo(() => {
+    if (!chains || !build) return null;
+    return chains.find((c: any) => c.build_id === build.id || c.buildId === build.id);
+  }, [chains, build]);
 
   // Fetch the dependency graph for the produced artifact to inspect its resolved dependencies
   const { data: graphData } = useQuery({
@@ -259,6 +272,38 @@ export default function BuildDetailsPage() {
                 <span className="font-medium text-white block">{new Date(build.createdAt).toLocaleString()}</span>
               </div>
             </div>
+
+            {/* Produced Artifact */}
+            {buildArtifact && (
+              <div className="flex items-start gap-3">
+                <Package className="w-5 h-5 text-blue-500 mt-0.5 shrink-0" />
+                <div>
+                  <span className="text-[11px] text-gray-500 font-semibold block uppercase">Produced Artifact</span>
+                  <Link 
+                    href={`/artifacts/${buildArtifact.name}/${buildArtifact.version}`}
+                    className="text-blue-500 hover:text-blue-400 hover:underline font-semibold block text-xs"
+                  >
+                    {buildArtifact.name}@{buildArtifact.version}
+                  </Link>
+                </div>
+              </div>
+            )}
+
+            {/* Triggered Rebuild Session */}
+            {triggeredChain && (
+              <div className="flex items-start gap-3">
+                <Layers className="w-5 h-5 text-violet-500 mt-0.5 shrink-0" />
+                <div>
+                  <span className="text-[11px] text-gray-500 font-semibold block uppercase">Rebuild Session</span>
+                  <Link 
+                    href={`/cascade/${triggeredChain.id || triggeredChain.chainId}`}
+                    className="text-violet-500 hover:text-violet-400 hover:underline font-semibold block text-xs"
+                  >
+                    View Cascade Timeline
+                  </Link>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
