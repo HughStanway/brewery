@@ -1,0 +1,14 @@
+{
+  "name": "github-app-publisher",
+  "version": "1.0.0",
+  "description": "Lightweight proxy that receives GitHub App webhooks, validates signatures, and forwards raw payloads to GCP Pub/Sub.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@google-cloud/pubsub": "^4.8.0",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2"
+  }
+}
