@@ -284,6 +284,24 @@ public class ArtifactRegistryController {
         }
     }
 
+    @DeleteMapping("/artifacts/{name}/{version}")
+    public ResponseEntity<?> deleteArtifact(
+            @PathVariable("name") String name,
+            @PathVariable("version") String version) {
+        log.info("Received request to delete artifact: {} version {}", name, version);
+        try {
+            registryService.deleteArtifact(name, version);
+            return ResponseEntity.noContent().build();
+        } catch (IllegalArgumentException e) {
+            log.warn("Artifact not found for deletion: {} version {}", name, version);
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            log.error("Failed to delete artifact: {} version {}", name, version, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Failed to delete artifact: " + e.getMessage());
+        }
+    }
+
     @PostMapping("/aliases")
     public ResponseEntity<?> createAlias(@RequestBody Map<String, String> requestBody) {
         String name = requestBody.get("name");

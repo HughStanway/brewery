@@ -196,6 +196,8 @@ export const apiClient = {
     }),
   removeTag: (name: string, version: string, tag: string) => 
     request<void>(`/registry/artifacts/${name}/${version}/tags/${tag}`, { method: 'DELETE' }),
+  deleteArtifact: (name: string, version: string) => 
+    request<void>(`/registry/artifacts/${name}/${version}`, { method: 'DELETE' }),
 
   // Dependencies API
   getDependencyGraph: (name: string, version: string, depth = 2, direction = 'forward') => 

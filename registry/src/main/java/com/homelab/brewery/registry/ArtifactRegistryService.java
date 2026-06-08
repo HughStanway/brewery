@@ -48,4 +48,6 @@ public interface ArtifactRegistryService {
     void saveExtendedMetadata(String name, String version, ArtifactMetadata metadata);
 
     void recordDownload(String name, String version, String userAgent);
+
+    void deleteArtifact(String name, String version);
 }

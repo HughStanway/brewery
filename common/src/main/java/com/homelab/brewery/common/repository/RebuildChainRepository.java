@@ -11,4 +11,5 @@ import java.util.UUID;
 public interface RebuildChainRepository extends JpaRepository<RebuildChain, UUID> {
     List<RebuildChain> findByStatus(String status);
     List<RebuildChain> findByRootArtifactId(UUID rootArtifactId);
+    void deleteByRootArtifactId(UUID rootArtifactId);
 }

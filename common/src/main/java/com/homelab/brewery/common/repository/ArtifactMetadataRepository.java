@@ -10,4 +10,5 @@ import java.util.UUID;
 @Repository
 public interface ArtifactMetadataRepository extends JpaRepository<ArtifactMetadata, UUID> {
     Optional<ArtifactMetadata> findByArtifactId(UUID artifactId);
+    void deleteByArtifactId(UUID artifactId);
 }

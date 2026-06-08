@@ -10,4 +10,5 @@ import java.util.UUID;
 @Repository
 public interface VersionAliasRepository extends JpaRepository<VersionAlias, UUID> {
     Optional<VersionAlias> findByArtifactNameAndAlias(String artifactName, String alias);
+    void deleteByArtifactNameAndActualVersion(String artifactName, String actualVersion);
 }

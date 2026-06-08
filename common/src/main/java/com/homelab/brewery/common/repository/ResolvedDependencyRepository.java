@@ -13,4 +13,5 @@ public interface ResolvedDependencyRepository extends JpaRepository<ResolvedDepe
     List<ResolvedDependency> findByArtifactId(UUID artifactId);
     Optional<ResolvedDependency> findByArtifactIdAndDependencyId(UUID artifactId, UUID dependencyId);
     void deleteByArtifactId(UUID artifactId);
+    void deleteByResolvedToArtifactId(UUID resolvedToArtifactId);
 }

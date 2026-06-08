@@ -80,7 +80,27 @@ RESOLVE_RESPONSE=$(curl -s --fail-with-body "${REGISTRY_URL}/aliases/dummy-lib/l
 echo "Response:"
 echo "${RESOLVE_RESPONSE}"
 
-# 10. Clean up local files
+# 10. Delete the artifact
+echo -e "\n9. Deleting artifact 'dummy-lib' version '1.0.0'..."
+DELETE_RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" -X DELETE "${REGISTRY_URL}/artifacts/dummy-lib/1.0.0")
+echo "HTTP Status Code: ${DELETE_RESPONSE}"
+if [ "${DELETE_RESPONSE}" -ne 204 ]; then
+  echo "✗ Failed to delete artifact, status: ${DELETE_RESPONSE}"
+  exit 1
+fi
+echo "✓ Artifact deleted successfully (status 204)"
+
+# 11. Verify deletion (retrieve metadata should fail with 404)
+echo -e "\n10. Verifying deletion of 'dummy-lib' version '1.0.0'..."
+VERIFY_GET_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${REGISTRY_URL}/artifacts/dummy-lib/1.0.0")
+echo "HTTP Status Code for GET: ${VERIFY_GET_STATUS}"
+if [ "${VERIFY_GET_STATUS}" -ne 404 ]; then
+  echo "✗ Expected 404 for deleted artifact metadata, got: ${VERIFY_GET_STATUS}"
+  exit 1
+fi
+echo "✓ Confirmed artifact is deleted from database"
+
+# 12. Clean up local files
 rm -f dummy-lib-1.0.0.jar downloaded-dummy.jar
 
 echo -e "\n=== Registry API Verification Completed Successfully! ==="

@@ -14,4 +14,6 @@ public interface CascadeTaskRepository extends JpaRepository<CascadeTask, UUID> 
     List<CascadeTask> findByChainIdAndStatus(UUID chainId, String status);
     List<CascadeTask> findByArtifactId(UUID artifactId);
     List<CascadeTask> findByBuildId(UUID buildId);
+    void deleteByArtifactId(UUID artifactId);
+    void deleteByDependencyArtifactId(UUID dependencyArtifactId);
 }

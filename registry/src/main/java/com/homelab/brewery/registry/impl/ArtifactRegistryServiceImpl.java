@@ -10,6 +10,10 @@ import com.homelab.brewery.common.repository.ArtifactMetadataRepository;
 import com.homelab.brewery.common.repository.ArtifactRepository;
 import com.homelab.brewery.common.repository.ArtifactTagRepository;
 import com.homelab.brewery.common.repository.VersionAliasRepository;
+import com.homelab.brewery.common.repository.DependencyRepository;
+import com.homelab.brewery.common.repository.ResolvedDependencyRepository;
+import com.homelab.brewery.common.repository.CascadeTaskRepository;
+import com.homelab.brewery.common.repository.RebuildChainRepository;
 import com.homelab.brewery.registry.ArtifactRegistryService;
 import com.homelab.brewery.registry.ArtifactStorageManager;
 import com.homelab.brewery.registry.SemanticVersionResolver;
@@ -41,6 +45,10 @@ public class ArtifactRegistryServiceImpl implements ArtifactRegistryService {
     private final ArtifactMetadataRepository metadataRepository;
     private final ArtifactTagRepository tagRepository;
     private final VersionAliasRepository aliasRepository;
+    private final DependencyRepository dependencyRepository;
+    private final ResolvedDependencyRepository resolvedDependencyRepository;
+    private final CascadeTaskRepository cascadeTaskRepository;
+    private final RebuildChainRepository rebuildChainRepository;
     private final ArtifactStorageManager storageManager;
     private final SemanticVersionResolver versionResolver;
     private final ApplicationEventPublisher eventPublisher;
@@ -335,5 +343,51 @@ public class ArtifactRegistryServiceImpl implements ArtifactRegistryService {
             log.info("Recorded download of {} version {}. Total={}, User-Agent={}", 
                     name, version, artifact.getDownloadCount(), userAgent);
         }
+    }
+
+    @Override
+    @Transactional
+    public void deleteArtifact(String name, String version) {
+        log.info("Deleting artifact: {} version {}", name, version);
+        Optional<Artifact> artifactOpt = findArtifact(name, version);
+        if (artifactOpt.isEmpty()) {
+            throw new IllegalArgumentException("Artifact not found: " + name + " version " + version);
+        }
+        Artifact artifact = artifactOpt.get();
+        UUID artifactId = artifact.getId();
+
+        // 1. Delete associated relational tag records
+        tagRepository.deleteByArtifactId(artifactId);
+
+        // 2. Delete associated metadata record
+        metadataRepository.deleteByArtifactId(artifactId);
+
+        // 3. Nullify dependency resolutions pointing to this artifact as a dependency
+        dependencyRepository.nullifyDependencyResolutions(artifactId);
+
+        // 4. Delete resolved dependencies pointing to this artifact as a resolved target
+        resolvedDependencyRepository.deleteByResolvedToArtifactId(artifactId);
+
+        // 5. Delete rebuild chains and cascade tasks referencing this artifact
+        cascadeTaskRepository.deleteByArtifactId(artifactId);
+        cascadeTaskRepository.deleteByDependencyArtifactId(artifactId);
+        rebuildChainRepository.deleteByRootArtifactId(artifactId);
+
+        // 6. Delete version aliases pointing to this actual version
+        aliasRepository.deleteByArtifactNameAndActualVersion(name, version);
+
+        // 7. Delete the artifact record itself
+        artifactRepository.delete(artifact);
+
+        // 8. Delete the artifact directory from disk storage
+        try {
+            storageManager.deleteArtifact(name, version);
+            log.info("Successfully deleted artifact files from storage for: {} version {}", name, version);
+        } catch (Exception e) {
+            log.error("Failed to delete artifact files from storage for: {} version {}", name, version, e);
+            throw new RuntimeException("Failed to delete artifact files from storage", e);
+        }
+        
+        log.info("Successfully deleted artifact {} version {} from database and storage", name, version);
     }
 }
