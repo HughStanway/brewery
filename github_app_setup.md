@@ -1,6 +1,6 @@
 # GitHub App Setup & Integration Guide
 
-To trigger automated builds in Brewery from private networks without exposing public HTTP ports, you can deploy a standalone **GitHub App Webhook Proxy** in a separate repository. This document explains how to name, register, and implement this publisher proxy.
+To trigger automated builds in Brewery from private networks without exposing public HTTP ports, you can deploy a standalone **GitHub App Webhook Proxy** in a separate repository using **Google Cloud Functions (Serverless)**. This document explains how to name, register, and implement this publisher proxy.
 
 ---
 
@@ -24,11 +24,11 @@ Since the main project is **Brewery**, here are some themed names prefixed with 
    - **GitHub App name**: Enter your chosen name (e.g., `brewery-tap`).
    - **Homepage URL**: Enter your main system URL or repository (e.g., `https://github.com/your-org/brewery`).
    - **Active Webhook**: Check the **Active** box.
-   - **Webhook URL**: Enter the public URL where your standalone webhook proxy will be hosted (e.g., a Vercel function, GCP Cloud Function, or an `ngrok` URL for local testing).
+   - **Webhook URL**: Enter the public URL of your deployed Cloud Function (e.g., `https://us-central1-your-project.cloudfunctions.net/brewery-tap`).
    - **Webhook secret**: Enter a strong, random password. Keep this secret safe; the proxy will use it to verify the signature of incoming events.
 
 3. **Configure Permissions**:
-   Under **Repository permissions**, enable:
+   Under **Permissions & events** > **Repository permissions**, enable:
    - **Contents**: `Read-only` (allows Brewery to clone/checkout code during a build).
    - **Metadata**: `Read-only` (selected by default, grants access to repository metadata).
    - **Commit statuses**: `Read & write` (allows the build engine to report build status directly to GitHub commits).
@@ -46,39 +46,36 @@ Since the main project is **Brewery**, here are some themed names prefixed with 
 ---
 
 ## 3. Proxy Codebase Implementation
-You can create a new, separate repository (e.g., `yeast-node-proxy`) containing the following three files to run your proxy serverless on Node.js.
+Create a new, separate repository (e.g., `brewery-tap`) containing the following files to run your proxy serverless on Node.js using the **Google Cloud Functions Framework**.
 
 ### `package.json`
 ```json
 {
-  "name": "yeast-node-proxy",
+  "name": "brewery-tap",
   "version": "1.0.0",
-  "description": "Receives GitHub App webhooks and forwards them to GCP Pub/Sub.",
+  "description": "Receives GitHub App webhooks and forwards them to GCP Pub/Sub via Cloud Functions.",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "npx @google-cloud/functions-framework --target=breweryWebhook"
   },
   "dependencies": {
+    "@google-cloud/functions-framework": "^3.4.0",
     "@google-cloud/pubsub": "^4.8.0",
-    "dotenv": "^16.4.5",
-    "express": "^4.19.2"
+    "dotenv": "^16.4.5"
   }
 }
 ```
 
 ### `index.js`
 ```javascript
-const express = require('express');
+const functions = require('@google-cloud/functions-framework');
 const crypto = require('crypto');
 const { PubSub } = require('@google-cloud/pubsub');
 
+// Load environment variables (only used for local development)
 require('dotenv').config();
 
-const app = express();
-
-// Capture raw body bytes (mandatory for HMAC verification)
-app.use(express.raw({ type: 'application/json' }));
-
+// Initialize GCP Pub/Sub client
 const pubSubClient = new PubSub({
   projectId: process.env.GCP_PROJECT_ID || 'brewery-homelab',
   apiEndpoint: process.env.PUBSUB_EMULATOR_HOST || undefined
@@ -87,6 +84,9 @@ const pubSubClient = new PubSub({
 const TOPIC_NAME = process.env.PUBSUB_TOPIC_NAME || 'brewery-jobs';
 const WEBHOOK_SECRET = process.env.GITHUB_WEBHOOK_SECRET;
 
+/**
+ * Validates request payload hash matches header to verify authenticity
+ */
 function verifySignature(payload, signatureHeader) {
   if (!WEBHOOK_SECRET) {
     console.warn('Warning: GITHUB_WEBHOOK_SECRET is not configured. Skipping signature verification.');
@@ -100,7 +100,8 @@ function verifySignature(payload, signatureHeader) {
   return crypto.timingSafeEqual(Buffer.from(signatureHeader), Buffer.from(digest));
 }
 
-app.post('/webhook', async (req, res) => {
+// Register the HTTP function with the Functions Framework
+functions.http('breweryWebhook', async (req, res) => {
   const signatureHeader = req.headers['x-hub-signature-256'];
   const eventType = req.headers['x-github-event'];
   
@@ -108,22 +109,34 @@ app.post('/webhook', async (req, res) => {
     return res.status(400).send('Missing X-GitHub-Event header');
   }
 
-  if (!verifySignature(req.body, signatureHeader)) {
+  // Google Cloud Functions framework automatically populates raw request bytes to req.rawBody
+  const rawBody = req.rawBody;
+  if (!rawBody) {
+    return res.status(400).send('Missing request body');
+  }
+
+  // 1. Verify webhook signature
+  if (!verifySignature(rawBody, signatureHeader)) {
     console.error('Signature verification failed.');
     return res.status(401).send('Signature verification failed');
   }
 
-  console.log(`Received event: ${eventType}`);
+  console.log(`Received GitHub event: ${eventType}`);
 
   try {
+    // 2. Publish raw payload to GCP Pub/Sub
     const topic = pubSubClient.topic(TOPIC_NAME);
-    const attributes = { 'x-github-event': eventType };
+    
+    // Pass event metadata inside headers/attributes
+    const attributes = {
+      'x-github-event': eventType
+    };
     if (signatureHeader) {
       attributes['x-hub-signature-256'] = signatureHeader;
     }
 
     const messageId = await topic.publishMessage({
-      data: req.body,
+      data: rawBody,
       attributes: attributes
     });
 
@@ -134,20 +147,39 @@ app.post('/webhook', async (req, res) => {
     res.status(500).send('Internal Server Error');
   }
 });
-
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Webhook proxy listening on port ${PORT}`);
-});
 ```
 
-### `.env.example`
-```env
-PORT=3000
-GCP_PROJECT_ID=brewery-homelab
-PUBSUB_TOPIC_NAME=brewery-jobs
-GITHUB_WEBHOOK_SECRET=your_github_webhook_secret_here
+---
 
-# For local testing against the pubsub emulator:
-PUBSUB_EMULATOR_HOST=localhost:8085
+## 4. Local Testing & Deployment
+
+### Local Development Configuration
+To test the proxy locally against your Pub/Sub emulator:
+1. Create a `.env` file in your proxy repository folder:
+   ```env
+   PORT=8080
+   GCP_PROJECT_ID=brewery-homelab
+   PUBSUB_TOPIC_NAME=brewery-jobs
+   GITHUB_WEBHOOK_SECRET=your_github_webhook_secret_here
+   PUBSUB_EMULATOR_HOST=localhost:8085
+   ```
+2. Start the local server:
+   ```bash
+   npm install
+   npm start
+   ```
+   The Functions Framework will spin up a local server on port 8080. You can expose this port to GitHub via `ngrok http 8080` for end-to-end local webhook testing.
+
+### Deploying to Google Cloud Functions
+To deploy the proxy directly to Google Cloud without running any servers:
+```bash
+gcloud functions deploy brewery-tap \
+  --gen2 \
+  --runtime=nodejs20 \
+  --region=us-central1 \
+  --trigger-http \
+  --allow-unauthenticated \
+  --entry-point=breweryWebhook \
+  --set-env-vars GCP_PROJECT_ID=brewery-homelab,PUBSUB_TOPIC_NAME=brewery-jobs,GITHUB_WEBHOOK_SECRET=your_secret_here
 ```
+Once deployed, copy the **HTTPS Trigger URL** printed by the `gcloud` CLI and set it as the **Webhook URL** in your GitHub App settings page.
