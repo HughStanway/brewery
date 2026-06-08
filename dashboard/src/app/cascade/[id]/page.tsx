@@ -373,14 +373,14 @@ export default function CascadeDetailsPage() {
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
                   <tr className="border-b border-[#1e293b] text-gray-400 font-medium">
-                    <th className="py-2.5 px-3">Dependent Artifact</th>
+                    <th className="py-2.5 px-3">Build Artifact</th>
                     <th className="py-2.5 px-3 font-mono">Task ID</th>
                     <th className="py-2.5 px-3 font-mono">Build ID</th>
                     <th className="py-2.5 px-3">Status</th>
                     <th className="py-2.5 px-3">Trigger Reason</th>
                     <th className="py-2.5 px-3">Priority</th>
                     <th className="py-2.5 px-3">Attempted At</th>
-                    <th className="py-2.5 px-3">Triggered Session</th>
+                    <th className="py-2.5 px-3">Audit Session</th>
                     <th className="py-2.5 px-3 text-right"></th>
                   </tr>
                 </thead>
