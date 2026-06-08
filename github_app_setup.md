@@ -5,12 +5,12 @@ To trigger automated builds in Brewery from private networks without exposing pu
 ---
 
 ## 1. Project Naming Concepts
-Since the main project is **Brewery**, here are some themed names for your GitHub App and its webhook repository:
+Since the main project is **Brewery**, here are some themed names prefixed with `brewery-` for your GitHub App and its webhook repository:
 
-* **YeastNode** (Recommended for Node.js): Yeast is the biological catalyst that triggers fermentation (the build). YeastNode acts as the catalyst starting the build via a Node.js proxy.
-* **WortFlow**: "Wort" is the sweet liquid extracted during the mashing process before fermentation. WortFlow represents the push events and workflow metadata flowing into the build engine.
-* **Taproom**: The taproom is the public-facing bar where beer is served. Similarly, the Taproom proxy acts as the public-facing gateway receiving webhooks from the outside world.
-* **MashTun**: The vessel where malt is mixed with water to extract fermentable sugars. It represents the entry point where code and triggers are mixed.
+* **brewery-tap** (Highly Recommended): A "tap" connects the brewery's casks/kegs to the outside world. Similarly, `brewery-tap` connects GitHub webhooks directly to your internal pub/sub build system.
+* **brewery-yeast**: Yeast is the catalyst that starts the fermentation (build) process. This represents the component that kickstarts the build cycle.
+* **brewery-valve**: A valve controls the flow of liquid. This represents controlling and forwarding the stream of commit/push events.
+* **brewery-gateway**: A straightforward name representing the public ingress gateway for repository events.
 
 ---
 
@@ -21,7 +21,7 @@ Since the main project is **Brewery**, here are some themed names for your GitHu
    - In the left sidebar, click **Developer settings** > **GitHub Apps** > **New GitHub App**.
 
 2. **Fill in General Settings**:
-   - **GitHub App name**: Enter your chosen name (e.g., `YeastNode` or `WortFlow`).
+   - **GitHub App name**: Enter your chosen name (e.g., `brewery-tap`).
    - **Homepage URL**: Enter your main system URL or repository (e.g., `https://github.com/your-org/brewery`).
    - **Active Webhook**: Check the **Active** box.
    - **Webhook URL**: Enter the public URL where your standalone webhook proxy will be hosted (e.g., a Vercel function, GCP Cloud Function, or an `ngrok` URL for local testing).
