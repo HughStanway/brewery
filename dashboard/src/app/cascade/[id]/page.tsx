@@ -203,6 +203,33 @@ export default function CascadeDetailsPage() {
               )}
             </div>
 
+            {/* Triggering Build */}
+            <div>
+              <span className="text-[10px] text-gray-500 font-semibold block uppercase">Triggering Build</span>
+              {(() => {
+                const bId = chain.build_id || chain.buildId;
+                if (!bId) {
+                  return <span className="text-gray-500 italic block mt-1">Manual upload (no build pipeline available)</span>;
+                }
+                if (!builds) {
+                  return <span className="text-gray-400 font-mono block mt-1">{bId}</span>;
+                }
+                if (existingBuildIds.has(bId)) {
+                  return (
+                    <Link 
+                      href={`/builds/${bId}`}
+                      className="text-blue-500 hover:text-blue-400 hover:underline font-mono font-semibold block mt-1 truncate"
+                      title={bId}
+                    >
+                      {bId}
+                    </Link>
+                  );
+                } else {
+                  return <span className="text-gray-500 italic block mt-1" title={bId}>Manual upload (no build pipeline available)</span>;
+                }
+              })()}
+            </div>
+
             <div>
               <span className="text-[10px] text-gray-500 font-semibold block uppercase">Root Trigger Cause</span>
               <p className="font-medium text-white block leading-relaxed bg-black/30 p-2.5 rounded-lg border border-[#1e293b] mt-1">
@@ -296,7 +323,16 @@ export default function CascadeDetailsPage() {
                       <React.Fragment key={task.task_id || task.taskId || index}>
                         <tr className="border-b border-[#1e293b]/60 hover:bg-[#151d30]/20 transition-colors">
                           <td className="py-3.5 px-3 font-semibold text-white">
-                            {artName} {artVer && `@${artVer}`}
+                            {artName !== 'unknown' && artVer ? (
+                              <Link 
+                                href={`/artifacts/${artName}/${artVer}`}
+                                className="text-blue-500 hover:text-blue-400 hover:underline"
+                              >
+                                {artName}@{artVer}
+                              </Link>
+                            ) : (
+                              <span>{artName} {artVer && `@${artVer}`}</span>
+                            )}
                           </td>
                           <td className="py-3.5 px-3 font-mono text-gray-400 text-xs" title={task.task_id || task.taskId}>
                             {(task.task_id || task.taskId || '').substring(0, 8)}...

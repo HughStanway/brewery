@@ -191,6 +191,8 @@ public class CascadeRebuildServiceImpl implements CascadeRebuildService {
             artifactRepository.findById(chain.getRootArtifactId()).ifPresent(art -> {
                 result.put("root_artifact_name", art.getName());
                 result.put("root_artifact_version", art.getVersion());
+                result.put("build_id", art.getBuildId() != null ? art.getBuildId().toString() : null);
+                result.put("buildId", art.getBuildId() != null ? art.getBuildId().toString() : null);
                 
                 String triggerType = chain.getTriggerType();
                 if (triggerType == null) {

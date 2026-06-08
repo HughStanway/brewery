@@ -146,6 +146,8 @@ export interface RebuildChain {
   taskStatusCounts?: Record<string, number>;
   task_status_counts?: Record<string, number>;
   tasks: CascadeTask[];
+  buildId?: string;
+  build_id?: string;
 }
 
 export interface DependencyConflict {

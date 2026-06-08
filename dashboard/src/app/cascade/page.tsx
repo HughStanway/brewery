@@ -45,6 +45,52 @@ export default function CascadePage() {
     queryFn: apiClient.getArtifacts,
   });
 
+  // Fetch all builds to validate build links
+  const { data: builds } = useQuery({
+    queryKey: ['builds'],
+    queryFn: apiClient.getBuilds,
+  });
+
+  const existingBuildIds = React.useMemo(() => {
+    return new Set((builds || []).map((b: any) => b.id));
+  }, [builds]);
+
+  const renderBuildLink = (buildId: string) => {
+    if (!buildId) return <span className="text-gray-500 font-mono text-[11px] italic">manual</span>;
+    
+    const displayId = `${buildId.substring(0, 8)}...`;
+    
+    if (!builds) {
+      return (
+        <span className="text-gray-400 font-mono text-[11px]" title={buildId}>
+          {displayId}
+        </span>
+      );
+    }
+
+    const isValid = existingBuildIds.has(buildId);
+    if (isValid) {
+      return (
+        <Link 
+          href={`/builds/${buildId}`}
+          className="text-blue-500 hover:text-blue-400 hover:underline font-mono font-semibold text-[11px]"
+          title={buildId}
+        >
+          {displayId}
+        </Link>
+      );
+    } else {
+      return (
+        <span 
+          className="text-gray-500 font-mono text-[11px]" 
+          title={`${buildId} (Manual upload or untracked build)`}
+        >
+          {displayId} <span className="text-[9px] text-gray-500 font-sans italic font-normal">(manual)</span>
+        </span>
+      );
+    }
+  };
+
   const uniqueArtifactNames = React.useMemo(() => {
     if (!artifacts) return [];
     const names = new Set(artifacts.map(a => a.name));
@@ -347,6 +393,7 @@ export default function CascadePage() {
               <thead>
                 <tr className="border-b border-[#1e293b] text-gray-400 font-medium">
                   <th className="py-3 px-4 text-xs tracking-wider uppercase">Chain ID</th>
+                  <th className="py-3 px-4 text-xs tracking-wider uppercase">Triggering Build</th>
                   <th className="py-3 px-4 text-xs tracking-wider uppercase">Status</th>
                   <th className="py-3 px-4 text-xs tracking-wider uppercase">Trigger Type</th>
                   <th className="py-3 px-4 text-xs tracking-wider uppercase">Trigger Artifact</th>
@@ -377,6 +424,9 @@ export default function CascadePage() {
                       >
                         <td className="py-4 px-4 font-mono text-xs font-semibold text-gray-300">
                           {chainIdVal.substring(0, 8)}...
+                        </td>
+                        <td className="py-4 px-4">
+                          {renderBuildLink(chain.build_id || chain.buildId || '')}
                         </td>
                         <td className="py-4 px-4">
                           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${statusBg}`}>
@@ -422,7 +472,7 @@ export default function CascadePage() {
                   })
                 ) : (
                   <tr>
-                    <td colSpan={8} className="py-8 text-center text-gray-500 font-mono text-xs">
+                    <td colSpan={9} className="py-8 text-center text-gray-500 font-mono text-xs">
                       No rebuild chains generated in this session.
                     </td>
                   </tr>

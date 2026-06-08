@@ -86,6 +86,8 @@ public class CascadeRebuildController {
                         map.put("root_artifact_name", art.getName());
                         map.put("rootArtifactVersion", art.getVersion());
                         map.put("root_artifact_version", art.getVersion());
+                        map.put("buildId", art.getBuildId() != null ? art.getBuildId().toString() : null);
+                        map.put("build_id", art.getBuildId() != null ? art.getBuildId().toString() : null);
                         
                         String triggerType = chain.getTriggerType();
                         if (triggerType == null) {
