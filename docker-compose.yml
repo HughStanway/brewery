@@ -30,6 +30,7 @@ services:
       - DB_URL=jdbc:postgresql://postgres:5432/supply_chain
       - PUBSUB_EMULATOR_HOST=${PUBSUB_EMULATOR_HOST:-pubsub-emulator:8085}
       - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-prod}
+      - ARTIFACT_STORE_PATH=/mnt/artifact-store
     ports:
       - "127.0.0.1:${BREWERY_PORT:-8080}:8080"
     volumes:
@@ -39,6 +40,10 @@ services:
       - ~/.config/gcloud:/root/.config/gcloud:ro
       # Mount GCP service account credentials folder
       - ${GCP_CREDENTIALS_HOST_PATH:-./gcp-keys}:${GCP_CREDENTIALS_CONTAINER_PATH:-/app/gcp-keys}:ro
+      # Mount project directory for local repository git cloning (development tests)
+      - .:${PWD:-/app/src}:ro
+      # Mount temporary builds directory for sibling container builds (DooD)
+      - /tmp/brewery-builds:/tmp/brewery-builds
     depends_on:
       postgres:
         condition: service_healthy
@@ -47,7 +52,7 @@ services:
 
   pubsub-emulator:
     image: gcr.io/google.com/cloudsdktool/google-cloud-cli:emulators
-    command: gcloud beta emulators pubsub start --host-port=0.0.0.0:8085 --project=brewery-homelab
+    command: gcloud beta emulators pubsub start --host-port=0.0.0.0:8085 --project=${GCP_PROJECT_ID:-brewery-homelab}
     profiles:
       - dev
     ports:

@@ -30,7 +30,7 @@ brewery:
   docker:
     host: ${DOCKER_HOST:unix:///Users/hughstanway/.docker/run/docker.sock}
   artifact-store:
-    base-path: /Users/hughstanway/Projects/brewery/artifact-store
+    base-path: ${ARTIFACT_STORE_PATH:/Users/hughstanway/Projects/brewery/artifact-store}
   dependency-resolver:
     scheduler:
       delay-ms: 30000

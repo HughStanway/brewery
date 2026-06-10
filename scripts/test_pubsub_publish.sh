@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Configuration
-PROJECT_ID="brewery-homelab"
+# Load .env file from project root if it exists
+if [ -f "$(dirname "$0")/../.env" ]; then
+    export $(grep -v '^#' "$(dirname "$0")/../.env" | xargs)
+fi
+PROJECT_ID=${GCP_PROJECT_ID:-brewery-homelab}
 TOPIC_NAME="brewery-jobs"
 EMULATOR_URL="http://localhost:8085/v1/projects/${PROJECT_ID}/topics/${TOPIC_NAME}:publish"
 REGISTRY_URL="http://localhost:8080/api/registry"

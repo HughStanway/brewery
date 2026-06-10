@@ -1,7 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-PROJECT_ID="brewery-homelab"
+# Load .env file from project root if it exists
+if [ -f "$(dirname "$0")/../.env" ]; then
+    export $(grep -v '^#' "$(dirname "$0")/../.env" | xargs)
+fi
+PROJECT_ID=${GCP_PROJECT_ID:-brewery-homelab}
 TOPIC_NAME="brewery-jobs"
 EMULATOR_URL="http://localhost:8085/v1/projects/${PROJECT_ID}/topics/${TOPIC_NAME}:publish"
 REGISTRY_URL="http://localhost:8080/api/registry"
@@ -14,8 +18,9 @@ ERRORS=0
 echo "=== Testing Build Failure on Test Step Failure ==="
 echo ""
 
-# 1. Create a temporary Git repository to simulate a failing codebase
-TEMP_REPO_DIR=$(mktemp -d -t brewery-failing-repo-XXXXXX)
+# 1. Create a temporary Git repository to simulate a failing codebase (inside shared /tmp/brewery-builds)
+mkdir -p /tmp/brewery-builds
+TEMP_REPO_DIR=$(mktemp -d /tmp/brewery-builds/brewery-failing-repo-XXXXXX)
 echo "Creating temporary git repository at ${TEMP_REPO_DIR}..."
 
 cd "${TEMP_REPO_DIR}"
