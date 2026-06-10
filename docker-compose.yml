@@ -3,8 +3,6 @@ services:
     image: postgres:15-alpine
     env_file:
       - .env
-    ports:
-      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -15,8 +13,6 @@ services:
 
   redis:
     image: redis:7-alpine
-    ports:
-      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -52,8 +48,6 @@ services:
     command: gcloud beta emulators pubsub start --host-port=0.0.0.0:8085 --project=brewery-homelab
     profiles:
       - dev
-    ports:
-      - "127.0.0.1:${PUBSUB_PORT:-8085}:8085"
 
   dashboard:
     build:
