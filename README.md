@@ -123,7 +123,7 @@ docker-compose logs -f brewery
 
 PostgreSQL is used for persistent state. Database schema is managed by Liquibase.
 
-Schema location: `core/src/main/resources/db/changelog/master.xml`
+Schema location: `core/src/main/resources/db/changelog/master.yaml`
 
 ## Contributing
 
