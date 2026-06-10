@@ -5,6 +5,7 @@ import com.homelab.brewery.common.objects.requests.JobRequest;
 import com.homelab.brewery.common.service.JobTriggerService;
 import com.google.cloud.pubsub.v1.Subscriber;
 import com.google.cloud.spring.pubsub.core.PubSubTemplate;
+import com.google.cloud.spring.pubsub.PubSubAdmin;
 import com.google.cloud.spring.pubsub.support.BasicAcknowledgeablePubsubMessage;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
@@ -22,6 +23,7 @@ public class PubSubJobListener {
     private final JobTriggerService jobTriggerService;
     private final ObjectMapper objectMapper;
     private final String subscriptionId;
+    private final PubSubAdmin pubSubAdmin;
     
     private Subscriber subscriber;
 
@@ -29,15 +31,40 @@ public class PubSubJobListener {
             PubSubTemplate pubSubTemplate,
             JobTriggerService jobTriggerService,
             ObjectMapper objectMapper,
-            @Value("${brewery.pubsub.subscription-id:brewery-jobs-sub}") String subscriptionId) {
+            @Value("${brewery.pubsub.subscription-id:brewery-jobs-sub}") String subscriptionId,
+            PubSubAdmin pubSubAdmin) {
         this.pubSubTemplate = pubSubTemplate;
         this.jobTriggerService = jobTriggerService;
         this.objectMapper = objectMapper;
         this.subscriptionId = subscriptionId;
+        this.pubSubAdmin = pubSubAdmin;
     }
 
     @PostConstruct
     public void startListening() {
+        try {
+            String topicId = "brewery-jobs";
+            log.info("Ensuring Pub/Sub topic '{}' and subscription '{}' exist...", topicId, subscriptionId);
+            try {
+                if (pubSubAdmin.getTopic(topicId) == null) {
+                    pubSubAdmin.createTopic(topicId);
+                    log.info("Created Pub/Sub topic: {}", topicId);
+                }
+            } catch (Exception e) {
+                log.debug("Topic might already exist or failed to query: {}", e.getMessage());
+            }
+            try {
+                if (pubSubAdmin.getSubscription(subscriptionId) == null) {
+                    pubSubAdmin.createSubscription(subscriptionId, topicId);
+                    log.info("Created Pub/Sub subscription: {}", subscriptionId);
+                }
+            } catch (Exception e) {
+                log.debug("Subscription might already exist or failed to query: {}", e.getMessage());
+            }
+        } catch (Exception e) {
+            log.warn("Could not verify/create Pub/Sub topic and subscription: {}", e.getMessage());
+        }
+
         log.info("Starting Google Cloud Pub/Sub subscriber. subscriptionId={}", subscriptionId);
         try {
             this.subscriber = pubSubTemplate.subscribe(subscriptionId, this::handleMessage);
