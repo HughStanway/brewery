@@ -5,7 +5,7 @@ services:
       POSTGRES_DB: supply_chain
       POSTGRES_PASSWORD: ${DB_PASSWORD:-dev_password}
     ports:
-      - "127.0.0.1:5432:5432"
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -17,7 +17,7 @@ services:
   redis:
     image: redis:7-alpine
     ports:
-      - "127.0.0.1:6379:6379"
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -39,7 +39,7 @@ services:
       GCP_PROJECT_ID: ${GCP_PROJECT_ID:-brewery-homelab}
       GCP_CREDENTIALS_LOCATION: ${GCP_CREDENTIALS_LOCATION:-}
     ports:
-      - "127.0.0.1:8080:8080"
+      - "127.0.0.1:${BREWERY_PORT:-8080}:8080"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - artifact_store:/mnt/artifact-store
@@ -55,7 +55,7 @@ services:
     image: gcr.io/google.com/cloudsdktool/google-cloud-cli:emulators
     command: gcloud beta emulators pubsub start --host-port=0.0.0.0:8085 --project=brewery-homelab
     ports:
-      - "127.0.0.1:8085:8085"
+      - "127.0.0.1:${PUBSUB_PORT:-8085}:8085"
 
   dashboard:
     build:
@@ -64,7 +64,7 @@ services:
     environment:
       BACKEND_URL: http://brewery:8080
     ports:
-      - "127.0.0.1:3000:3000"
+      - "127.0.0.1:${DASHBOARD_PORT:-3000}:3000"
     depends_on:
       - brewery
 
