@@ -2,20 +2,24 @@ import { NextRequest, NextResponse } from "next/server";
 
 const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8080";
 
-export async function GET(request: NextRequest, { params }: { params: { path?: string[] } }) {
-  return handleProxy(request, params.path);
+export async function GET(request: NextRequest, { params }: { params: Promise<{ path?: string[] }> }) {
+  const resolvedParams = await params;
+  return handleProxy(request, resolvedParams.path);
 }
 
-export async function POST(request: NextRequest, { params }: { params: { path?: string[] } }) {
-  return handleProxy(request, params.path);
+export async function POST(request: NextRequest, { params }: { params: Promise<{ path?: string[] }> }) {
+  const resolvedParams = await params;
+  return handleProxy(request, resolvedParams.path);
 }
 
-export async function PUT(request: NextRequest, { params }: { params: { path?: string[] } }) {
-  return handleProxy(request, params.path);
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ path?: string[] }> }) {
+  const resolvedParams = await params;
+  return handleProxy(request, resolvedParams.path);
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: { path?: string[] } }) {
-  return handleProxy(request, params.path);
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ path?: string[] }> }) {
+  const resolvedParams = await params;
+  return handleProxy(request, resolvedParams.path);
 }
 
 async function handleProxy(request: NextRequest, pathSegments?: string[]) {
