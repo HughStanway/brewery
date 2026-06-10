@@ -28,6 +28,8 @@ services:
     environment:
       - DOCKER_HOST=unix:///var/run/docker.sock
       - DB_URL=jdbc:postgresql://postgres:5432/supply_chain
+      - PUBSUB_EMULATOR_HOST=${PUBSUB_EMULATOR_HOST:-pubsub-emulator:8085}
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-prod}
     ports:
       - "127.0.0.1:${BREWERY_PORT:-8080}:8080"
     volumes:
@@ -48,6 +50,8 @@ services:
     command: gcloud beta emulators pubsub start --host-port=0.0.0.0:8085 --project=brewery-homelab
     profiles:
       - dev
+    ports:
+      - "127.0.0.1:${PUBSUB_PORT:-8085}:8085"
 
   dashboard:
     build:

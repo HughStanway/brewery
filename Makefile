@@ -35,18 +35,14 @@ run: ## Run full stack in Docker Compose in production mode
 	SPRING_PROFILES_ACTIVE=prod $(DOCKER_COMPOSE) up -d --build
 	@echo "$(GREEN)✓ Application started in production mode$(NC)"
 
-run-local: ## Run application and UI locally with Docker dependencies (PostgreSQL, Redis, Pub/Sub emulator)
-	@echo "$(BLUE)Starting local dependencies (PostgreSQL, Redis, Pub/Sub emulator)...$(NC)"
-	$(DOCKER_COMPOSE) up -d postgres redis pubsub-emulator
-	@echo "$(BLUE)Waiting for dependencies to start...$(NC)"
-	@sleep 3
+run-local: ## Run full-stack in Docker Compose in development mode (using Pub/Sub emulator)
+	@echo "$(BLUE)Building Docker images and starting all containers in development mode...$(NC)"
+	SPRING_PROFILES_ACTIVE=dev $(DOCKER_COMPOSE) --profile dev up -d --build
+	@echo "$(BLUE)Waiting for services to boot...$(NC)"
+	@sleep 5
 	@echo "$(BLUE)Initializing Pub/Sub emulator topics/subscriptions...$(NC)"
 	@./scripts/init-pubsub-emulator.sh
-	$(MAVEN) clean install -DskipTests
-	@echo "$(BLUE)Starting Next.js dashboard UI locally...$(NC)"
-	cd dashboard && ( [ -d node_modules ] || npm install ) && npm run dev &
-	@echo "$(BLUE)Starting Spring Boot application locally...$(NC)"
-	$(MAVEN) -f core/pom.xml spring-boot:run -Dspring-boot.run.arguments="--spring.profiles.active=dev"
+	@echo "$(GREEN)✓ Local development environment started in Docker (port 3000)$(NC)"
 
 run-ui: ## Run Next.js dashboard UI locally
 	@echo "$(BLUE)Starting Next.js dashboard UI...$(NC)"
