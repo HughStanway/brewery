@@ -4,8 +4,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.homelab.brewery.common.entity.Artifact;
 import com.homelab.brewery.common.entity.ArtifactMetadata;
 import com.homelab.brewery.common.entity.ArtifactTag;
+import com.homelab.brewery.common.entity.Build;
 import com.homelab.brewery.common.entity.VersionAlias;
 import com.homelab.brewery.common.event.ArtifactRegisteredEvent;
+import com.homelab.brewery.common.repository.BuildRepository;
 import com.homelab.brewery.common.repository.ArtifactMetadataRepository;
 import com.homelab.brewery.common.repository.ArtifactRepository;
 import com.homelab.brewery.common.repository.ArtifactTagRepository;
@@ -52,6 +54,7 @@ public class ArtifactRegistryServiceImpl implements ArtifactRegistryService {
     private final ArtifactStorageManager storageManager;
     private final SemanticVersionResolver versionResolver;
     private final ApplicationEventPublisher eventPublisher;
+    private final BuildRepository buildRepository;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
@@ -126,7 +129,24 @@ public class ArtifactRegistryServiceImpl implements ArtifactRegistryService {
             artifact.setName(name);
             artifact.setVersion(version);
             artifact.setArtifactType(artifactType);
-            artifact.setBuildId(UUID.fromString(buildId));
+            // Ensure build exists in the database to satisfy the foreign key constraint
+            UUID bId = UUID.fromString(buildId);
+            if (!buildRepository.existsById(bId)) {
+                log.info("Build {} not found. Creating placeholder build to satisfy database foreign key constraint.", buildId);
+                Build placeholderBuild = new Build();
+                placeholderBuild.setId(bId);
+                placeholderBuild.setRepository(repository != null ? repository : "placeholder/repo");
+                placeholderBuild.setBranch(branch != null ? branch : "main");
+                placeholderBuild.setCommit(commit != null ? commit : "placeholdercommit");
+                placeholderBuild.setStatus("success");
+                placeholderBuild.setStartedAt(Instant.now());
+                placeholderBuild.setCompletedAt(Instant.now());
+                placeholderBuild.setDurationSeconds(0);
+                placeholderBuild.setLogs("Placeholder build generated during direct artifact registry upload");
+                buildRepository.save(placeholderBuild);
+            }
+
+            artifact.setBuildId(bId);
             artifact.setStoragePath(artifactFile.toAbsolutePath().toString());
             artifact.setFileSizeBytes(fileSizeBytes);
             artifact.setChecksum(checksum);
