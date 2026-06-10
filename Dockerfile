@@ -1,9 +1,7 @@
-FROM eclipse-temurin:21-jdk-alpine
+# Build stage using a pre-installed Maven image on top of Eclipse Temurin JDK 21
+FROM maven:3.9.6-eclipse-temurin-21 AS build
 
 WORKDIR /app
-
-# Install Maven
-RUN apk add --no-cache maven
 
 COPY pom.xml .
 COPY common ./common
@@ -18,13 +16,13 @@ COPY cascade-rebuild ./cascade-rebuild
 # Build the application
 RUN mvn clean package -DskipTests -q
 
-# Runtime stage
-FROM eclipse-temurin:21-jre-alpine
+# Runtime stage using standard glibc-based Eclipse Temurin JRE 21 (fixes netty ARM64 SIGSEGV on Alpine)
+FROM eclipse-temurin:21-jre
 
 WORKDIR /app
 
 # Copy JAR from build stage
-COPY --from=0 /app/core/target/core-0.1.0-SNAPSHOT.jar app.jar
+COPY --from=build /app/core/target/core-0.1.0-SNAPSHOT.jar app.jar
 
 EXPOSE 8080
 
