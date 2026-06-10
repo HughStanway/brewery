@@ -41,7 +41,6 @@ spring:
       project-id: ${GCP_PROJECT_ID:brewery-homelab}
       credentials:
         location: ${GCP_CREDENTIALS_LOCATION:}
-        encoded-key: ${GCP_CREDENTIALS_ENCODED_KEY:}
 
 server:
   port: 8080
