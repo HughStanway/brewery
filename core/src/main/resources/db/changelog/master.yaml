@@ -63,20 +63,20 @@ databaseChangeLog:
             indexName: idx_builds_repo_branch
             tableName: builds
             columns:
-              - column: repository
-              - column: branch
+              - column: { name: repository }
+              - column: { name: branch }
         
         - createIndex:
             indexName: idx_builds_status
             tableName: builds
             columns:
-              - column: status
+              - column: { name: status }
         
         - createIndex:
             indexName: idx_builds_created_at
             tableName: builds
             columns:
-              - column: created_at
+              - column: { name: created_at }
         
         - createTable:
             tableName: artifacts
@@ -153,14 +153,14 @@ databaseChangeLog:
             indexName: idx_artifacts_name_version
             tableName: artifacts
             columns:
-              - column: name
-              - column: version
+              - column: { name: name }
+              - column: { name: version }
         
         - createIndex:
             indexName: idx_artifacts_build_id
             tableName: artifacts
             columns:
-              - column: build_id
+              - column: { name: build_id }
 
   - changeSet:
       id: "2-registry-schema"
@@ -271,13 +271,13 @@ databaseChangeLog:
             indexName: idx_artifact_tags_tag
             tableName: artifact_tags
             columns:
-              - column: tag
+              - column: { name: tag }
 
         - createIndex:
             indexName: idx_artifacts_name
             tableName: artifacts
             columns:
-              - column: name
+              - column: { name: name }
 
   - changeSet:
       id: "3-dependencies-schema"
@@ -344,19 +344,19 @@ databaseChangeLog:
             indexName: idx_dependencies_artifact
             tableName: dependencies
             columns:
-              - column: artifact_id
+              - column: { name: artifact_id }
 
         - createIndex:
             indexName: idx_dependencies_name
             tableName: dependencies
             columns:
-              - column: dependency_name
+              - column: { name: dependency_name }
 
         - createIndex:
             indexName: idx_dependencies_resolved
             tableName: dependencies
             columns:
-              - column: resolved_version
+              - column: { name: resolved_version }
 
         - createTable:
             tableName: resolved_dependencies
@@ -408,7 +408,7 @@ databaseChangeLog:
             indexName: idx_resolved_dep_artifact
             tableName: resolved_dependencies
             columns:
-              - column: artifact_id
+              - column: { name: artifact_id }
 
         - createTable:
             tableName: reverse_dependencies
@@ -448,13 +448,13 @@ databaseChangeLog:
             indexName: idx_reverse_dep_artifact
             tableName: reverse_dependencies
             columns:
-              - column: artifact_id
+              - column: { name: artifact_id }
 
         - createIndex:
             indexName: idx_reverse_dep_dependent
             tableName: reverse_dependencies
             columns:
-              - column: dependent_artifact_id
+              - column: { name: dependent_artifact_id }
 
         - createTable:
             tableName: dependency_conflicts
@@ -494,7 +494,7 @@ databaseChangeLog:
             indexName: idx_conflicts_artifact
             tableName: dependency_conflicts
             columns:
-              - column: artifact_id
+              - column: { name: artifact_id }
 
   - changeSet:
       id: "4-cascade-schema"
@@ -548,19 +548,19 @@ databaseChangeLog:
             indexName: idx_chains_root
             tableName: rebuild_chains
             columns:
-              - column: root_artifact_id
+              - column: { name: root_artifact_id }
 
         - createIndex:
             indexName: idx_chains_status
             tableName: rebuild_chains
             columns:
-              - column: status
+              - column: { name: status }
 
         - createIndex:
             indexName: idx_chains_parent
             tableName: rebuild_chains
             columns:
-              - column: parent_chain_id
+              - column: { name: parent_chain_id }
 
         - createTable:
             tableName: cascade_tasks
@@ -631,19 +631,19 @@ databaseChangeLog:
             indexName: idx_cascade_tasks_chain
             tableName: cascade_tasks
             columns:
-              - column: chain_id
+              - column: { name: chain_id }
 
         - createIndex:
             indexName: idx_cascade_tasks_status
             tableName: cascade_tasks
             columns:
-              - column: status
+              - column: { name: status }
 
         - createIndex:
             indexName: idx_cascade_tasks_artifact
             tableName: cascade_tasks
             columns:
-              - column: artifact_id
+              - column: { name: artifact_id }
 
   - changeSet:
       id: "5-add-trigger-type-to-rebuild-chains"
