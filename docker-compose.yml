@@ -36,6 +36,8 @@ services:
       - artifact_store:/mnt/artifact-store
       # Mount standard Google Application Default Credentials (ADC) from host
       - ~/.config/gcloud:/root/.config/gcloud:ro
+      # Mount GCP service account credentials folder
+      - ${GCP_CREDENTIALS_HOST_PATH:-./gcp-keys}:${GCP_CREDENTIALS_CONTAINER_PATH:-/app/gcp-keys}:ro
     depends_on:
       postgres:
         condition: service_healthy
