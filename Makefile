@@ -55,13 +55,13 @@ rebuild: ## Rebuild and reload the brewery app container
 
 stop: ## Stop all Docker services
 	@echo "$(BLUE)Stopping application and services...$(NC)"
-	$(DOCKER_COMPOSE) down
+	$(DOCKER_COMPOSE) --profile dev down
 	@echo "$(GREEN)✓ Stopped$(NC)"
 
 clean: ## Clean build and Docker artifacts
 	@echo "$(BLUE)Cleaning build artifacts and Docker artifacts...$(NC)"
 	$(MAVEN) clean
-	$(DOCKER_COMPOSE) down -v --rmi all
+	$(DOCKER_COMPOSE) --profile dev down -v --rmi all
 	@echo "$(GREEN)✓ Cleaned$(NC)"
 
 .DEFAULT_GOAL := help
