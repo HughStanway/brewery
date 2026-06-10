@@ -1,9 +1,8 @@
 services:
   postgres:
     image: postgres:15-alpine
-    environment:
-      POSTGRES_DB: supply_chain
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-dev_password}
+    env_file:
+      - .env
     ports:
       - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     volumes:
@@ -30,14 +29,6 @@ services:
       dockerfile: Dockerfile
     env_file:
       - .env
-    environment:
-      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
-      DB_URL: jdbc:postgresql://postgres:5432/supply_chain
-      DB_USERNAME: postgres
-      DB_PASSWORD: ${DB_PASSWORD:-dev_password}
-      DOCKER_HOST: unix:///var/run/docker.sock
-      GCP_PROJECT_ID: ${GCP_PROJECT_ID:-brewery-homelab}
-      GCP_CREDENTIALS_LOCATION: ${GCP_CREDENTIALS_LOCATION:-}
     ports:
       - "127.0.0.1:${BREWERY_PORT:-8080}:8080"
     volumes:
@@ -61,8 +52,8 @@ services:
     build:
       context: ./dashboard
       dockerfile: Dockerfile
-    environment:
-      BACKEND_URL: http://brewery:8080
+    env_file:
+      - .env
     ports:
       - "127.0.0.1:${DASHBOARD_PORT:-3000}:3000"
     depends_on:
