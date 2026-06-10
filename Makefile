@@ -30,10 +30,10 @@ logs: ## Follow logs from all docker compose services
 logs-brewery: ## Follow logs from brewery service container
 	$(DOCKER_COMPOSE) logs -f brewery
 
-run: ## Run full stack in Docker Compose
-	@echo "$(BLUE)Building Docker image and starting container...$(NC)"
-	$(DOCKER_COMPOSE) up -d --build
-	@echo "$(GREEN)✓ Application started$(NC)"
+run: ## Run full stack in Docker Compose in production mode
+	@echo "$(BLUE)Building Docker image and starting containers in production mode...$(NC)"
+	SPRING_PROFILES_ACTIVE=prod $(DOCKER_COMPOSE) up -d --build
+	@echo "$(GREEN)✓ Application started in production mode$(NC)"
 
 run-local: ## Run application and UI locally with Docker dependencies (PostgreSQL, Redis, Pub/Sub emulator)
 	@echo "$(BLUE)Starting local dependencies (PostgreSQL, Redis, Pub/Sub emulator)...$(NC)"
