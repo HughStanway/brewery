@@ -24,6 +24,7 @@ logging:
     root: INFO
     com.homelab.brewery: DEBUG
     org.springframework.web: DEBUG
+    com.google.cloud.spring.core.DefaultCredentialsProvider: ERROR
 
 brewery:
   docker:

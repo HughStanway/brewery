@@ -32,6 +32,8 @@ services:
       - .env
     environment:
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
+      DB_URL: jdbc:postgresql://postgres:5432/supply_chain
+      DB_USERNAME: postgres
       DB_PASSWORD: ${DB_PASSWORD:-dev_password}
       DOCKER_HOST: unix:///var/run/docker.sock
       GCP_PROJECT_ID: ${GCP_PROJECT_ID:-brewery-homelab}

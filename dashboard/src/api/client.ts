@@ -1,4 +1,6 @@
-const BASE_URL = typeof window === 'undefined' ? 'http://localhost:8080/api' : '/api';
+const BASE_URL = typeof window === 'undefined'
+  ? (process.env.BACKEND_URL ? `${process.env.BACKEND_URL}/api` : 'http://localhost:8080/api')
+  : '/api';
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const url = `${BASE_URL}${path}`;

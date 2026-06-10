@@ -3,8 +3,8 @@ spring:
     name: brewery-orchestrator
   
   datasource:
-    url: jdbc:postgresql://localhost:5432/supply_chain
-    username: postgres
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/supply_chain}
+    username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD:dev_password}
     driver-class-name: org.postgresql.Driver
     hikari:
@@ -29,7 +29,7 @@ spring:
   liquibase:
     enabled: true
     change-log: classpath:db/changelog/master.xml
-    contexts: ${LIQUIBASE_CONTEXT:dev}
+    contexts: ${LIQUIBASE_CONTEXT:prod}
   
   jackson:
     serialization:
@@ -67,8 +67,8 @@ brewery:
     container-cpus: 2
   
   artifact-store:
-    base-path: /mnt/artifact-store
-    retention-days: 90
+    base-path: ${ARTIFACT_STORE_PATH:/mnt/artifact-store}
+    retention-days: ${ARTIFACT_RETENTION_DAYS:90}
   
   docker:
     host: ${DOCKER_HOST:unix:///var/run/docker.sock}
