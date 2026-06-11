@@ -670,3 +670,13 @@ databaseChangeLog:
                     foreignKeyName: fk_rebuild_chains_build
                     references: builds(id)
 
+  - changeSet:
+      id: "7-make-build-id-nullable-on-artifacts"
+      author: "brewery"
+      changes:
+        - dropNotNullConstraint:
+            tableName: artifacts
+            columnName: build_id
+            columnDataType: UUID
+
+

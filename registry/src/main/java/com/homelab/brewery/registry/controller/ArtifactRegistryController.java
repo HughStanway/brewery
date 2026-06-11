@@ -52,12 +52,13 @@ public class ArtifactRegistryController {
             @RequestParam("name") String name,
             @RequestParam("version") String version,
             @RequestParam("artifact_type") String artifactType,
-            @RequestParam("build_id") String buildId,
-            @RequestParam("repository") String repository,
-            @RequestParam("branch") String branch,
-            @RequestParam("commit") String commit,
+            @RequestParam(value = "build_id", required = false) String buildId,
+            @RequestParam(value = "repository", required = false) String repository,
+            @RequestParam(value = "branch", required = false) String branch,
+            @RequestParam(value = "commit", required = false) String commit,
             @RequestParam(value = "dependencies", required = false) String dependenciesJson,
             @RequestParam(value = "tags", required = false) List<String> tags) {
+
 
         log.info("Received artifact upload request: {} version {}", name, version);
 

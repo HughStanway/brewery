@@ -92,7 +92,7 @@ public class BuildExecutorImpl implements BuildExecutor {
             
             boolean isMockRepo = false;
             String repo = build.getRepository();
-            if (repo != null && (repo.startsWith("myteam/") || (!new File(repo).isAbsolute() && !new File(repo).exists() && !repo.contains("github.com") && repo.split("/").length == 2))) {
+            if (repo != null && repo.startsWith("myteam/")) {
                 isMockRepo = true;
             }
 

@@ -30,7 +30,7 @@ public class Artifact {
     @Column(name = "artifact_type", nullable = false)
     private String artifactType;
 
-    @Column(name = "build_id", nullable = false)
+    @Column(name = "build_id", nullable = true)
     private UUID buildId;
 
     @Column(name = "storage_path", nullable = false)
