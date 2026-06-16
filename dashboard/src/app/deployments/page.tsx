@@ -84,6 +84,15 @@ export default function DeploymentsPage() {
     return deployments?.find(d => d.id === selectedId) || null;
   }, [deployments, selectedId]);
 
+  const sortedEvents = React.useMemo(() => {
+    if (!currentEvents) return [];
+    return [...currentEvents].sort((a, b) => {
+      const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return dateB - dateA;
+    });
+  }, [currentEvents]);
+
   // Sync edited yaml when switching selected deployment
   React.useEffect(() => {
     if (selectedDeployment) {
@@ -587,8 +596,8 @@ export default function DeploymentsPage() {
                   <div className="space-y-4">
                     <div className="border border-[#1e293b] rounded-xl overflow-hidden bg-[#0b0f19]/20 max-h-[50vh] overflow-y-auto">
                       <div className="divide-y divide-[#1e293b]/60">
-                        {currentEvents && currentEvents.length > 0 ? (
-                          currentEvents.map((evt) => {
+                        {sortedEvents && sortedEvents.length > 0 ? (
+                          sortedEvents.map((evt) => {
                             let icon = Clock;
                             let color = 'text-blue-500 bg-blue-500/10';
                             if (evt.eventType === 'succeeded') {
