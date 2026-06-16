@@ -15,7 +15,7 @@ steps:
   test: |
     echo "Testing..."
 artifacts:
-  - name: txt-file
+  - name: brewery
     pattern: "target_artifact.txt"
     type: text
 

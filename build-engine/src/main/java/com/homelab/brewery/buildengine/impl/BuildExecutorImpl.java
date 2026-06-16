@@ -299,8 +299,6 @@ public class BuildExecutorImpl implements BuildExecutor {
                 log.warn("Failed to retrieve cascade task version for build {}, using commit version fallback", build.getId(), e);
             }
 
-            String artifactName = config.getMetadata().getName();
-
             // Map declared dependencies from build.yaml to registry descriptor model
             List<com.homelab.brewery.registry.model.ArtifactMetadataJson.DependencyInfo> dependencies = new ArrayList<>();
             if (config.getDependencies() != null) {
@@ -323,10 +321,14 @@ public class BuildExecutorImpl implements BuildExecutor {
                     throw new IOException("No files matched pattern '" + artConfig.getPattern() + "' in workspace");
                 }
 
+                String name = artConfig.getName() != null && !artConfig.getName().isBlank()
+                        ? artConfig.getName()
+                        : config.getMetadata().getName();
+
                 for (File file : files) {
                     try (InputStream is = new FileInputStream(file)) {
                         registryService.registerArtifact(
-                                artifactName,
+                                name,
                                 artifactVersion,
                                 artConfig.getType() != null ? artConfig.getType() : "binary",
                                 build.getId().toString(),
