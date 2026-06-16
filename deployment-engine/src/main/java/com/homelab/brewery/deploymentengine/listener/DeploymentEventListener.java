@@ -7,7 +7,8 @@ import com.homelab.brewery.deploymentengine.service.DeploymentService;
 import com.homelab.brewery.registry.SemanticVersionResolver;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.event.EventListener;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
 import org.springframework.stereotype.Component;
 import org.yaml.snakeyaml.Yaml;
 
@@ -22,7 +23,7 @@ public class DeploymentEventListener {
     private final DeploymentService deploymentService;
     private final SemanticVersionResolver versionResolver;
 
-    @EventListener
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     public void onArtifactRegistered(ArtifactRegisteredEvent event) {
         log.info("Received ArtifactRegisteredEvent for {}@{}", event.getArtifactName(), event.getArtifactVersion());
 
