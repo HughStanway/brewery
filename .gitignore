@@ -52,3 +52,4 @@ artifact-store/
 
 # Misc
 scripts/sample_webhook.json
+build-proposed.yaml
