@@ -29,7 +29,8 @@ public class DeploymentEvent {
     @Column(columnDefinition = "TEXT")
     private String message;
 
-    @Column(columnDefinition = "JSONB")
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.JSON)
+    @Column(name = "metadata", columnDefinition = "jsonb")
     private String metadata;
 
     @Column(name = "created_at", insertable = false, updatable = false)

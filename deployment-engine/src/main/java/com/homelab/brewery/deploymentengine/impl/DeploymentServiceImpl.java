@@ -400,8 +400,14 @@ public class DeploymentServiceImpl implements DeploymentService {
                             ServiceHealthCheck hc = new ServiceHealthCheck();
                             hc.setDeploymentId(deploymentId);
                             hc.setServiceName(serviceName);
+                            hc.setCheckCount(0);
+                            hc.setConsecutiveFailures(0);
                             return hc;
                         });
+
+                // Ensure non-null values if loaded from a state with null values
+                if (healthCheck.getCheckCount() == null) healthCheck.setCheckCount(0);
+                if (healthCheck.getConsecutiveFailures() == null) healthCheck.setConsecutiveFailures(0);
 
                 healthCheck.setCheckCount(healthCheck.getCheckCount() + 1);
                 healthCheck.setLastCheckedAt(Instant.now());

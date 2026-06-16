@@ -29,7 +29,8 @@ public class DeploymentVersion {
     @Column(name = "compose_config", nullable = false, columnDefinition = "TEXT")
     private String composeConfig;
 
-    @Column(name = "artifact_versions", nullable = false, columnDefinition = "JSONB")
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.JSON)
+    @Column(name = "artifact_versions", nullable = false, columnDefinition = "jsonb")
     private String artifactVersions;
 
     @Column(name = "deployed_at", insertable = false, updatable = false)

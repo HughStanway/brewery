@@ -100,6 +100,11 @@ public class ArtifactRegistryServiceImpl implements ArtifactRegistryService {
             // 3. Retrieve computed file details
             Path dir = storageManager.getArtifactDirectoryPath(name, version);
             Path artifactFile = dir.resolve(filename);
+            try {
+                artifactFile.toFile().setExecutable(true, false);
+            } catch (Exception e) {
+                log.warn("Failed to set executable permission on file: {}", artifactFile, e);
+            }
             long fileSizeBytes = Files.size(artifactFile);
 
             Path shaFile = dir.resolve(filename + ".sha256");
