@@ -606,4 +606,150 @@ public class DeploymentServiceImpl implements DeploymentService {
             "online", false
         );
     }
+
+    @Override
+    @Transactional
+    public Deployment pauseDeployment(UUID deploymentId) {
+        Deployment deployment = deploymentRepository.findById(deploymentId)
+                .orElseThrow(() -> new IllegalArgumentException("Deployment not found: " + deploymentId));
+
+        log.info("Pausing deployment stack: {}", deployment.getName());
+        
+        File deployDir = new File("/tmp/brewery-builds/deployments/deploy-" + deploymentId);
+        File composeFile = new File(deployDir, "docker-compose.yml");
+        if (!composeFile.exists()) {
+            throw new IllegalStateException("Docker compose file not found. Deployment must be active to pause.");
+        }
+
+        try {
+            List<String> command = List.of("docker", "compose", "-p", deployment.getName(), "-f", composeFile.getAbsolutePath(), "pause");
+            executeCommand(command);
+            
+            deployment.setStatus("paused");
+            deployment = deploymentRepository.save(deployment);
+            
+            recordEvent(deploymentId, "progressed", "Deployment stack paused manually", null);
+            return deployment;
+        } catch (Exception e) {
+            log.error("Failed pausing deployment stack: {}", deployment.getName(), e);
+            throw new RuntimeException("Failed pausing stack", e);
+        }
+    }
+
+    @Override
+    @Transactional
+    public Deployment resumeDeployment(UUID deploymentId) {
+        Deployment deployment = deploymentRepository.findById(deploymentId)
+                .orElseThrow(() -> new IllegalArgumentException("Deployment not found: " + deploymentId));
+
+        log.info("Resuming deployment stack: {}", deployment.getName());
+        
+        File deployDir = new File("/tmp/brewery-builds/deployments/deploy-" + deploymentId);
+        File composeFile = new File(deployDir, "docker-compose.yml");
+        if (!composeFile.exists()) {
+            throw new IllegalStateException("Docker compose file not found. Deployment must be active to resume.");
+        }
+
+        try {
+            List<String> command = List.of("docker", "compose", "-p", deployment.getName(), "-f", composeFile.getAbsolutePath(), "unpause");
+            executeCommand(command);
+            
+            deployment.setStatus("healthy");
+            deployment = deploymentRepository.save(deployment);
+            
+            recordEvent(deploymentId, "progressed", "Deployment stack resumed manually", null);
+            
+            // Trigger health check to confirm health status
+            checkAndRemediateHealth(deploymentId);
+            
+            return deployment;
+        } catch (Exception e) {
+            log.error("Failed resuming deployment stack: {}", deployment.getName(), e);
+            throw new RuntimeException("Failed resuming stack", e);
+        }
+    }
+
+    @Override
+    @Transactional
+    public Deployment restartDeployment(UUID deploymentId) {
+        Deployment deployment = deploymentRepository.findById(deploymentId)
+                .orElseThrow(() -> new IllegalArgumentException("Deployment not found: " + deploymentId));
+
+        log.info("Restarting deployment stack: {}", deployment.getName());
+        
+        File deployDir = new File("/tmp/brewery-builds/deployments/deploy-" + deploymentId);
+        File composeFile = new File(deployDir, "docker-compose.yml");
+        if (!composeFile.exists()) {
+            throw new IllegalStateException("Docker compose file not found. Deployment must be active to restart.");
+        }
+
+        try {
+            List<String> command = List.of("docker", "compose", "-p", deployment.getName(), "-f", composeFile.getAbsolutePath(), "restart");
+            executeCommand(command);
+            
+            deployment.setStatus("healthy");
+            deployment = deploymentRepository.save(deployment);
+            
+            recordEvent(deploymentId, "progressed", "Deployment stack restarted manually", null);
+            
+            // Trigger health check to confirm health status
+            checkAndRemediateHealth(deploymentId);
+            
+            return deployment;
+        } catch (Exception e) {
+            log.error("Failed restarting deployment stack: {}", deployment.getName(), e);
+            throw new RuntimeException("Failed restarting stack", e);
+        }
+    }
+
+    @Override
+    @Transactional
+    public void deleteDeployment(UUID deploymentId) {
+        Deployment deployment = deploymentRepository.findById(deploymentId)
+                .orElseThrow(() -> new IllegalArgumentException("Deployment not found: " + deploymentId));
+
+        log.info("Deleting deployment: {}", deployment.getName());
+        
+        try {
+            File deployDir = new File("/tmp/brewery-builds/deployments/deploy-" + deploymentId);
+            File composeFile = new File(deployDir, "docker-compose.yml");
+            if (composeFile.exists()) {
+                List<String> stopCommand = List.of("docker", "compose", "-p", deployment.getName(), "-f", composeFile.getAbsolutePath(), "down", "--volumes", "--remove-orphans");
+                try {
+                    executeCommand(stopCommand);
+                } catch (Exception e) {
+                    log.warn("Failed to stop Docker containers for delete: {}", e.getMessage());
+                }
+                deleteDirectory(deployDir);
+            }
+        } catch (Exception e) {
+            log.error("Failed executing Docker compose down during deletion", e);
+        }
+
+        // Delete database records in dependency order
+        List<ServiceHealthCheck> healthChecks = healthCheckRepository.findByDeploymentId(deploymentId);
+        healthCheckRepository.deleteAll(healthChecks);
+
+        List<DeploymentEvent> events = eventRepository.findByDeploymentIdOrderByCreatedAtDesc(deploymentId);
+        eventRepository.deleteAll(events);
+
+        List<DeploymentVersion> versions = versionRepository.findByDeploymentIdOrderByVersionNumberDesc(deploymentId);
+        versionRepository.deleteAll(versions);
+
+        deploymentRepository.delete(deployment);
+    }
+
+    private void deleteDirectory(File dir) {
+        File[] files = dir.listFiles();
+        if (files != null) {
+            for (File f : files) {
+                if (f.isDirectory()) {
+                    deleteDirectory(f);
+                } else {
+                    f.delete();
+                }
+            }
+        }
+        dir.delete();
+    }
 }

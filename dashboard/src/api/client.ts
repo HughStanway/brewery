@@ -181,7 +181,7 @@ export interface Deployment {
   id: string;
   name: string;
   description?: string;
-  status: 'pending' | 'deploying' | 'healthy' | 'unhealthy' | 'failed' | 'rolled_back';
+  status: 'pending' | 'deploying' | 'healthy' | 'unhealthy' | 'failed' | 'rolled_back' | 'paused';
   deploymentSpec: string;
   deployedAt?: string;
   completedAt?: string;
@@ -297,4 +297,8 @@ export const apiClient = {
   triggerHealthCheck: (id: string) => request<any>(`/deployments/${id}/health/check`, { method: 'POST' }),
   getContainerLogs: (id: string, serviceName: string) => request<{ logs: string }>(`/deployments/${id}/logs/${serviceName}`),
   getContainerStats: (id: string, serviceName: string) => request<ContainerStats>(`/deployments/${id}/stats/${serviceName}`),
+  pause: (id: string) => request<Deployment>(`/deployments/${id}/pause`, { method: 'POST' }),
+  resume: (id: string) => request<Deployment>(`/deployments/${id}/resume`, { method: 'POST' }),
+  restart: (id: string) => request<Deployment>(`/deployments/${id}/restart`, { method: 'POST' }),
+  deleteDeployment: (id: string) => request<void>(`/deployments/${id}`, { method: 'DELETE' }),
 };

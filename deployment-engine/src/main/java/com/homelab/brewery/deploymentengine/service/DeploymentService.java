@@ -22,4 +22,8 @@ public interface DeploymentService {
     void checkAndRemediateHealth(UUID deploymentId);
     String getContainerLogs(UUID id, String serviceName);
     Map<String, Object> getContainerStats(UUID id, String serviceName);
+    Deployment pauseDeployment(UUID id);
+    Deployment resumeDeployment(UUID id);
+    Deployment restartDeployment(UUID id);
+    void deleteDeployment(UUID id);
 }

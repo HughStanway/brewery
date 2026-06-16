@@ -12,6 +12,8 @@ import {
   History, 
   Save, 
   Play, 
+  Pause,
+  Trash2,
   RefreshCw, 
   CheckCircle2, 
   XCircle, 
@@ -547,6 +549,51 @@ export default function DeploymentsPage() {
     }
   });
 
+  const pauseMutation = useMutation({
+    mutationFn: (id: string) => apiClient.pause(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['deployments'] });
+      alert('Deployment stack paused successfully.');
+    },
+    onError: (err: any) => {
+      alert('Pause failed: ' + err.message);
+    }
+  });
+
+  const resumeMutation = useMutation({
+    mutationFn: (id: string) => apiClient.resume(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['deployments'] });
+      alert('Deployment stack resumed successfully.');
+    },
+    onError: (err: any) => {
+      alert('Resume failed: ' + err.message);
+    }
+  });
+
+  const restartMutation = useMutation({
+    mutationFn: (id: string) => apiClient.restart(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['deployments'] });
+      alert('Deployment stack restarted successfully.');
+    },
+    onError: (err: any) => {
+      alert('Restart failed: ' + err.message);
+    }
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => apiClient.deleteDeployment(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['deployments'] });
+      setSelectedId(null);
+      alert('Deployment stack deleted successfully.');
+    },
+    onError: (err: any) => {
+      alert('Deletion failed: ' + err.message);
+    }
+  });
+
   const filteredDeployments = React.useMemo(() => {
     if (!deployments) return [];
     return deployments.filter(d => 
@@ -627,6 +674,7 @@ export default function DeploymentsPage() {
                   if (d.status === 'unhealthy' || d.status === 'failed') statusColor = 'text-red-400 bg-red-500/10 border-red-500/20';
                   if (d.status === 'deploying') statusColor = 'text-blue-400 bg-blue-500/10 border-blue-500/20 animate-pulse';
                   if (d.status === 'rolled_back') statusColor = 'text-amber-400 bg-amber-500/10 border-amber-500/20';
+                  if (d.status === 'paused') statusColor = 'text-amber-500 bg-amber-500/10 border-amber-500/20';
 
                   return (
                     <button
@@ -736,6 +784,8 @@ export default function DeploymentsPage() {
                         ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' 
                         : selectedDeployment.status === 'deploying'
                         ? 'text-blue-400 bg-blue-500/10 border-blue-500/20 animate-pulse'
+                        : selectedDeployment.status === 'paused'
+                        ? 'text-amber-500 bg-amber-500/10 border-amber-500/20'
                         : 'text-amber-400 bg-amber-500/10 border-amber-500/20'
                     }`}>
                       {selectedDeployment.status}
@@ -744,7 +794,7 @@ export default function DeploymentsPage() {
                   <p className="text-xs text-gray-400">{selectedDeployment.description || 'No description configured'}</p>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <button
                     onClick={() => checkHealthMutation.mutate(selectedDeployment.id)}
                     disabled={checkHealthMutation.isPending}
@@ -752,6 +802,40 @@ export default function DeploymentsPage() {
                     title="Refresh Health Status"
                   >
                     <RefreshCw className={`w-4 h-4 ${checkHealthMutation.isPending ? 'animate-spin' : ''}`} />
+                  </button>
+
+                  {/* Pause / Resume button */}
+                  {selectedDeployment.status === 'paused' ? (
+                    <button
+                      onClick={() => resumeMutation.mutate(selectedDeployment.id)}
+                      disabled={resumeMutation.isPending}
+                      className="bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition-colors"
+                      title="Resume stack containers"
+                    >
+                      <Play className="w-3.5 h-3.5 fill-current" />
+                      Resume
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => pauseMutation.mutate(selectedDeployment.id)}
+                      disabled={pauseMutation.isPending}
+                      className="bg-amber-600 hover:bg-amber-500 text-white px-3.5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition-colors"
+                      title="Pause stack containers"
+                    >
+                      <Pause className="w-3.5 h-3.5 fill-current" />
+                      Pause
+                    </button>
+                  )}
+
+                  {/* Restart button */}
+                  <button
+                    onClick={() => restartMutation.mutate(selectedDeployment.id)}
+                    disabled={restartMutation.isPending}
+                    className="bg-[#1e293b] hover:bg-[#2e3b56] text-gray-200 border border-[#2e3b56] px-3.5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition-colors"
+                    title="Restart all stack containers"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${restartMutation.isPending ? 'animate-spin' : ''}`} />
+                    Restart
                   </button>
                   
                   <button
@@ -761,6 +845,20 @@ export default function DeploymentsPage() {
                   >
                     <Play className="w-3.5 h-3.5 fill-current" />
                     Deploy Rollout
+                  </button>
+
+                  {/* Delete button */}
+                  <button
+                    onClick={() => {
+                      if (confirm(`ARE YOU ABSOLUTELY SURE you want to delete the stack "${selectedDeployment.name}"?\nThis will stop all running containers and delete all history and configuration.`)) {
+                        deleteMutation.mutate(selectedDeployment.id);
+                      }
+                    }}
+                    disabled={deleteMutation.isPending}
+                    className="bg-red-950/40 border border-red-500/20 text-red-400 hover:bg-red-500 hover:text-white p-2 rounded-xl transition-all inline-flex items-center justify-center"
+                    title="Delete Stack Entirely"
+                  >
+                    <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
               </div>

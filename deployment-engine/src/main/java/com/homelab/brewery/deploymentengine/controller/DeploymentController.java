@@ -123,4 +123,48 @@ public class DeploymentController {
             @PathVariable("serviceName") String serviceName) {
         return ResponseEntity.ok(deploymentService.getContainerStats(id, serviceName));
     }
+
+    @PostMapping("/{id}/pause")
+    public ResponseEntity<?> pauseDeployment(@PathVariable("id") UUID id) {
+        try {
+            Deployment deployment = deploymentService.pauseDeployment(id);
+            return ResponseEntity.ok(deployment);
+        } catch (Exception e) {
+            log.error("Failed to pause deployment {}", id, e);
+            return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/{id}/resume")
+    public ResponseEntity<?> resumeDeployment(@PathVariable("id") UUID id) {
+        try {
+            Deployment deployment = deploymentService.resumeDeployment(id);
+            return ResponseEntity.ok(deployment);
+        } catch (Exception e) {
+            log.error("Failed to resume deployment {}", id, e);
+            return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/{id}/restart")
+    public ResponseEntity<?> restartDeployment(@PathVariable("id") UUID id) {
+        try {
+            Deployment deployment = deploymentService.restartDeployment(id);
+            return ResponseEntity.ok(deployment);
+        } catch (Exception e) {
+            log.error("Failed to restart deployment {}", id, e);
+            return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deleteDeployment(@PathVariable("id") UUID id) {
+        try {
+            deploymentService.deleteDeployment(id);
+            return ResponseEntity.ok(Map.of("status", "success", "message", "Deployment deleted successfully"));
+        } catch (Exception e) {
+            log.error("Failed to delete deployment {}", id, e);
+            return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
+        }
+    }
 }
