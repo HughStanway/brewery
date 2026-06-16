@@ -19,8 +19,10 @@ RUN mvn clean package -DskipTests -q
 # Runtime stage using standard glibc-based Eclipse Temurin JRE 21 (fixes netty ARM64 SIGSEGV on Alpine)
 FROM eclipse-temurin:21-jre
 
-# Install git
-RUN apt-get update && apt-get install -y git && rm -rf /var/lib/apt/lists/*
+# Install git and Docker CLI (which includes docker compose plugin)
+RUN apt-get update && apt-get install -y git curl && \
+    curl -fsSL https://get.docker.com | sh && \
+    rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 

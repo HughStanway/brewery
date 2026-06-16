@@ -679,4 +679,219 @@ databaseChangeLog:
             columnName: build_id
             columnDataType: UUID
 
+  - changeSet:
+      id: "8-deployments-schema"
+      author: "brewery"
+      changes:
+        - createTable:
+            tableName: deployments
+            columns:
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: name
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: description
+                  type: TEXT
+              - column:
+                  name: status
+                  type: VARCHAR(50)
+                  defaultValue: pending
+                  constraints:
+                    nullable: false
+              - column:
+                  name: deployment_spec
+                  type: TEXT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: deployed_at
+                  type: TIMESTAMP
+              - column:
+                  name: completed_at
+                  type: TIMESTAMP
+              - column:
+                  name: deployed_by
+                  type: VARCHAR(255)
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+                  defaultValueComputed: CURRENT_TIMESTAMP
+              - column:
+                  name: updated_at
+                  type: TIMESTAMP
+                  defaultValueComputed: CURRENT_TIMESTAMP
+
+        - createIndex:
+            indexName: idx_deployments_status
+            tableName: deployments
+            columns:
+              - column: { name: status }
+
+        - createIndex:
+            indexName: idx_deployments_name
+            tableName: deployments
+            columns:
+              - column: { name: name }
+
+        - createTable:
+            tableName: deployment_versions
+            columns:
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: deployment_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_versions_deployments
+                    references: deployments(id)
+                    deleteCascade: true
+              - column:
+                  name: version_number
+                  type: INT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: compose_config
+                  type: TEXT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: artifact_versions
+                  type: JSONB
+                  constraints:
+                    nullable: false
+              - column:
+                  name: deployed_at
+                  type: TIMESTAMP
+                  defaultValueComputed: CURRENT_TIMESTAMP
+              - column:
+                  name: undeployed_at
+                  type: TIMESTAMP
+              - column:
+                  name: status
+                  type: VARCHAR(50)
+                  defaultValue: active
+                  constraints:
+                    nullable: false
+              - column:
+                  name: docker_compose_output
+                  type: TEXT
+
+        - addUniqueConstraint:
+            tableName: deployment_versions
+            columnNames: deployment_id,version_number
+            constraintName: uk_deployment_versions_id_number
+
+        - createIndex:
+            indexName: idx_versions_deployment
+            tableName: deployment_versions
+            columns:
+              - column: { name: deployment_id }
+
+        - createTable:
+            tableName: deployment_events
+            columns:
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: deployment_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_events_deployments
+                    references: deployments(id)
+                    deleteCascade: true
+              - column:
+                  name: event_type
+                  type: VARCHAR(50)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: message
+                  type: TEXT
+              - column:
+                  name: metadata
+                  type: JSONB
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+                  defaultValueComputed: CURRENT_TIMESTAMP
+
+        - createIndex:
+            indexName: idx_events_deployment
+            tableName: deployment_events
+            columns:
+              - column: { name: deployment_id }
+
+        - createTable:
+            tableName: service_health_checks
+            columns:
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: deployment_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_health_checks_deployments
+                    references: deployments(id)
+                    deleteCascade: true
+              - column:
+                  name: service_name
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: VARCHAR(50)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: last_checked_at
+                  type: TIMESTAMP
+                  defaultValueComputed: CURRENT_TIMESTAMP
+              - column:
+                  name: response_time_ms
+                  type: INT
+              - column:
+                  name: error_message
+                  type: TEXT
+              - column:
+                  name: check_count
+                  type: INT
+                  defaultValue: 0
+              - column:
+                  name: consecutive_failures
+                  type: INT
+                  defaultValue: 0
+
+        - addUniqueConstraint:
+            tableName: service_health_checks
+            columnNames: deployment_id,service_name
+            constraintName: uk_health_checks_id_service
+
+        - createIndex:
+            indexName: idx_health_checks_deployment
+            tableName: service_health_checks
+            columns:
+              - column: { name: deployment_id }
+
 
