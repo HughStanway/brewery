@@ -89,7 +89,10 @@ export default function DeploymentsPage() {
     return [...currentEvents].sort((a, b) => {
       const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
       const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-      return dateB - dateA;
+      if (dateB !== dateA) {
+        return dateB - dateA;
+      }
+      return currentEvents.indexOf(b) - currentEvents.indexOf(a);
     });
   }, [currentEvents]);
 
@@ -619,16 +622,17 @@ export default function DeploymentsPage() {
                                 <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${color}`}>
                                   <LogIcon className="w-4 h-4" />
                                 </div>
-                                <div className="space-y-0.5">
-                                  <div className="flex items-center gap-2">
+                                <div className="space-y-1">
+                                  <div className="flex items-center gap-2 flex-wrap">
                                     <span className="text-xs font-bold uppercase tracking-wider text-gray-300 font-mono">
                                       {evt.eventType}
                                     </span>
-                                    <span className="text-[10px] text-gray-500 font-mono">
+                                    <span className="text-gray-600 text-[10px]">•</span>
+                                    <span className="text-[10px] text-gray-400 font-mono bg-[#1b253b] px-2 py-0.5 rounded border border-[#2e3b56]/40">
                                       {evt.createdAt ? new Date(evt.createdAt).toLocaleString() : ''}
                                     </span>
                                   </div>
-                                  <p className="text-xs text-gray-400 font-semibold">{evt.message}</p>
+                                  <p className="text-xs text-gray-300">{evt.message}</p>
                                 </div>
                               </div>
                             );
