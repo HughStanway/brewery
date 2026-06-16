@@ -181,9 +181,12 @@ public class BuildExecutorImpl implements BuildExecutor {
 
             // 4. Pull Builder Image
             String image = config.getBuild().getImage();
-            log.info("Pulling builder container image. buildId={}, image={}", build.getId(), image);
-            dockerClient.pullImageCmd(image)
-                    .exec(new PullImageResultCallback())
+            log.info("Pulling builder container image. buildId={}, image={}, platform={}", build.getId(), image, config.getBuild().getPlatform());
+            com.github.dockerjava.api.command.PullImageCmd pullCmd = dockerClient.pullImageCmd(image);
+            if (config.getBuild().getPlatform() != null && !config.getBuild().getPlatform().isBlank()) {
+                pullCmd.withPlatform(config.getBuild().getPlatform());
+            }
+            pullCmd.exec(new PullImageResultCallback())
                     .awaitCompletion(5, TimeUnit.MINUTES);
 
             // 5. Generate Shell Execution Script inside the workspace
@@ -223,11 +226,14 @@ public class BuildExecutorImpl implements BuildExecutor {
                 }
             }
 
-            CreateContainerResponse container = dockerClient.createContainerCmd(image)
+            com.github.dockerjava.api.command.CreateContainerCmd createCmd = dockerClient.createContainerCmd(image)
                     .withHostConfig(hostConfig)
                     .withCmd("/bin/sh", "brewery_run.sh")
-                    .withWorkingDir("/workspace")
-                    .exec();
+                    .withWorkingDir("/workspace");
+            if (config.getBuild().getPlatform() != null && !config.getBuild().getPlatform().isBlank()) {
+                createCmd.withPlatform(config.getBuild().getPlatform());
+            }
+            CreateContainerResponse container = createCmd.exec();
 
             containerId = container.getId();
             log.info("Starting builder container. buildId={}, containerId={}", build.getId(), containerId);

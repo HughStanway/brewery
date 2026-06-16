@@ -23,6 +23,7 @@ public class BuildYamlConfig {
         private Integer timeoutSeconds;
         private String memory;
         private Integer cpus;
+        private String platform;
     }
 
     @Data
