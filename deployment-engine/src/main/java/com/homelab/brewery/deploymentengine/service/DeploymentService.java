@@ -20,4 +20,6 @@ public interface DeploymentService {
     List<DeploymentEvent> getDeploymentEvents(UUID deploymentId);
     List<ServiceHealthCheck> getServiceHealthChecks(UUID deploymentId);
     void checkAndRemediateHealth(UUID deploymentId);
+    String getContainerLogs(UUID id, String serviceName);
+    Map<String, Object> getContainerStats(UUID id, String serviceName);
 }

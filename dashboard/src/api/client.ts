@@ -211,6 +211,14 @@ export interface DeploymentEvent {
   createdAt: string;
 }
 
+export interface ContainerStats {
+  cpu: string;
+  memoryUsage: string;
+  memoryPercent: string;
+  network: string;
+  online: boolean;
+}
+
 export interface ServiceHealthCheck {
   id: string;
   deploymentId: string;
@@ -287,4 +295,6 @@ export const apiClient = {
   getDeploymentEvents: (id: string) => request<DeploymentEvent[]>(`/deployments/${id}/events`),
   getServiceHealthChecks: (id: string) => request<ServiceHealthCheck[]>(`/deployments/${id}/health`),
   triggerHealthCheck: (id: string) => request<any>(`/deployments/${id}/health/check`, { method: 'POST' }),
+  getContainerLogs: (id: string, serviceName: string) => request<{ logs: string }>(`/deployments/${id}/logs/${serviceName}`),
+  getContainerStats: (id: string, serviceName: string) => request<ContainerStats>(`/deployments/${id}/stats/${serviceName}`),
 };

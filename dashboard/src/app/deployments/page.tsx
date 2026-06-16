@@ -43,6 +43,314 @@ services:
       memory: "256m"
 `;
 
+function parseYamlServices(yamlStr: string): Record<string, { artifact: string; type: string; depends_on?: string[] }> {
+  const services: Record<string, any> = {};
+  const lines = yamlStr.split('\n');
+  let inServices = false;
+  let currentService: string | null = null;
+  
+  for (const line of lines) {
+    const indent = line.search(/\S/);
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+    
+    if (trimmed.startsWith('services:')) {
+      inServices = true;
+      currentService = null;
+      continue;
+    }
+    
+    if (inServices) {
+      if (indent === 0 && !trimmed.startsWith('services:')) {
+        inServices = false;
+        currentService = null;
+        continue;
+      }
+      
+      if (indent === 2 && trimmed.endsWith(':')) {
+        currentService = trimmed.substring(0, trimmed.length - 1).trim();
+        services[currentService] = { depends_on: [] };
+        continue;
+      }
+      
+      if (currentService && indent >= 4) {
+        if (trimmed.startsWith('artifact:')) {
+          services[currentService].artifact = trimmed.substring('artifact:'.length).replace(/['"]/g, '').trim();
+        } else if (trimmed.startsWith('type:')) {
+          services[currentService].type = trimmed.substring('type:'.length).replace(/['"]/g, '').trim();
+        } else if (trimmed.startsWith('depends_on:')) {
+          services[currentService].rawDepends = true;
+        } else if (services[currentService].rawDepends && trimmed.startsWith('-')) {
+          const dep = trimmed.substring(1).trim().replace(/['"]/g, '');
+          services[currentService].depends_on.push(dep);
+        } else if (indent === 4 && !trimmed.startsWith('-')) {
+          services[currentService].rawDepends = false;
+        }
+      }
+    }
+  }
+  return services;
+}
+
+function ServiceMetricsCard({ deploymentId, serviceName, serviceType, isSelected, onClick }: {
+  deploymentId: string;
+  serviceName: string;
+  serviceType: string;
+  isSelected: boolean;
+  onClick: () => void;
+}) {
+  const { data: stats } = useQuery({
+    queryKey: ['containerStats', deploymentId, serviceName],
+    queryFn: () => apiClient.getContainerStats(deploymentId, serviceName),
+    refetchInterval: 5000,
+  });
+
+  const isOnline = stats?.online || false;
+
+  return (
+    <div 
+      onClick={onClick}
+      className={`p-4 rounded-xl border transition-all cursor-pointer relative overflow-hidden group ${
+        isSelected 
+          ? 'bg-blue-950/20 border-blue-500 shadow-lg shadow-blue-500/10' 
+          : 'bg-[#0d1325]/40 border-[#1e293b] hover:border-[#2e3b56]'
+      }`}
+    >
+      <div className="flex items-center justify-between mb-3">
+        <div>
+          <h5 className="font-semibold text-sm text-white group-hover:text-blue-400 transition-colors">{serviceName}</h5>
+          <span className="text-[10px] text-gray-500 font-mono uppercase">{serviceType}</span>
+        </div>
+        <span className={`w-2.5 h-2.5 rounded-full ${isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-gray-600'}`} />
+      </div>
+
+      <div className="space-y-2 text-xs">
+        <div className="space-y-1">
+          <div className="flex justify-between text-gray-400 text-[10px]">
+            <span>CPU USAGE</span>
+            <span className="font-mono font-bold text-gray-200">{stats?.cpu || '0.0%'}</span>
+          </div>
+          <div className="w-full bg-[#131b2e] rounded-full h-1.5 overflow-hidden">
+            <div 
+              className="bg-blue-500 h-1.5 rounded-full transition-all duration-500" 
+              style={{ width: isOnline ? Math.min(100, parseFloat(stats?.cpu || '0') * 2) + '%' : '0%' }}
+            />
+          </div>
+        </div>
+
+        <div className="space-y-1">
+          <div className="flex justify-between text-gray-400 text-[10px]">
+            <span>MEMORY</span>
+            <span className="font-mono font-bold text-gray-200">{stats?.memoryPercent || '0.0%'}</span>
+          </div>
+          <div className="w-full bg-[#131b2e] rounded-full h-1.5 overflow-hidden">
+            <div 
+              className="bg-emerald-500 h-1.5 rounded-full transition-all duration-500" 
+              style={{ width: isOnline ? (stats?.memoryPercent || '0%') : '0%' }}
+            />
+          </div>
+        </div>
+
+        <div className="flex justify-between text-gray-500 text-[9px] font-mono pt-1">
+          <span>NET I/O</span>
+          <span>{stats?.network || '--'}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ServiceLogsTerminal({ deploymentId, serviceName }: { deploymentId: string; serviceName: string }) {
+  const [isPaused, setIsPaused] = React.useState(false);
+  const [clearedLogs, setClearedLogs] = React.useState<string | null>(null);
+
+  const { data } = useQuery({
+    queryKey: ['containerLogs', deploymentId, serviceName],
+    queryFn: () => apiClient.getContainerLogs(deploymentId, serviceName),
+    refetchInterval: isPaused ? false : 3000,
+    enabled: !!serviceName,
+  });
+
+  const displayLogs = React.useMemo(() => {
+    if (clearedLogs !== null) {
+      if (!data?.logs) return '';
+      const idx = data.logs.indexOf(clearedLogs);
+      if (idx !== -1) {
+        return data.logs.substring(idx + clearedLogs.length);
+      }
+    }
+    return data?.logs || 'Loading logs...';
+  }, [data, clearedLogs]);
+
+  return (
+    <div className="border border-[#1e293b] rounded-xl overflow-hidden bg-[#070b14] shadow-2xl flex flex-col h-[40vh]">
+      <div className="px-4 py-2 border-b border-[#1e293b] bg-[#0c1220] flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Terminal className="w-4 h-4 text-amber-500 animate-pulse" />
+          <span className="text-xs font-mono font-bold text-gray-300">CONTAINER LOGS: {serviceName}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={() => setIsPaused(!isPaused)}
+            className={`px-3 py-1 rounded-lg text-xs font-semibold border transition-all ${
+              isPaused 
+                ? 'bg-amber-600/10 border-amber-500/30 text-amber-400' 
+                : 'bg-[#131b2e] border-[#1e293b] text-gray-400 hover:text-gray-200'
+            }`}
+          >
+            {isPaused ? 'Resume' : 'Pause'}
+          </button>
+          <button 
+            onClick={() => setClearedLogs(data?.logs || '')}
+            className="px-3 py-1 bg-[#131b2e] border border-[#1e293b] hover:border-red-500/30 hover:text-red-400 text-gray-400 rounded-lg text-xs font-semibold transition-all"
+          >
+            Clear
+          </button>
+        </div>
+      </div>
+      <div className="p-4 flex-1 font-mono text-xs text-gray-300 overflow-auto whitespace-pre select-text">
+        {displayLogs || '[No log statements recorded for this container]'}
+      </div>
+    </div>
+  );
+}
+
+function TopologyMap({ yamlStr, activeServiceName, onSelectService }: {
+  yamlStr: string;
+  activeServiceName: string | null;
+  onSelectService: (name: string) => void;
+}) {
+  const services = React.useMemo(() => {
+    try {
+      return parseYamlServices(yamlStr);
+    } catch (e) {
+      return {};
+    }
+  }, [yamlStr]);
+
+  const serviceNames = Object.keys(services);
+
+  if (serviceNames.length === 0) {
+    return (
+      <div className="p-8 text-center text-gray-500 text-sm font-mono border border-dashed border-[#1e293b] rounded-xl">
+        Failed to parse services topology.
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-[#0c1220]/60 border border-[#1e293b] p-6 rounded-2xl flex flex-col gap-6 relative min-h-[200px]">
+      <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400 flex items-center gap-1.5">
+        <Activity className="w-4 h-4 text-emerald-500 animate-pulse" />
+        Stack Topology Map
+      </h4>
+      <div className="flex flex-wrap items-center justify-center gap-8 py-4 relative">
+        {serviceNames.map((name) => {
+          const svc = services[name];
+          const isSelected = name === activeServiceName;
+
+          return (
+            <div key={name} className="relative flex flex-col items-center">
+              <button
+                onClick={() => onSelectService(name)}
+                className={`px-5 py-3 rounded-xl border flex flex-col items-center gap-1 min-w-[140px] text-center transition-all ${
+                  isSelected 
+                    ? 'bg-blue-600/10 border-blue-500 shadow-lg shadow-blue-500/20 text-white' 
+                    : 'bg-[#131b2e] border-[#1e293b] hover:border-gray-700 text-gray-300'
+                }`}
+              >
+                <span className="font-semibold text-xs">{name}</span>
+                <span className="text-[9px] text-gray-500 font-mono uppercase">{svc.type}</span>
+              </button>
+
+              {svc.depends_on && svc.depends_on.length > 0 && (
+                <div className="text-[9px] text-gray-500 font-mono mt-1 max-w-[150px] text-center">
+                  depends on: {svc.depends_on.join(', ')}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function RolloutStepper({ deploymentStatus, events }: { deploymentStatus: string; events: any[] }) {
+  const steps = [
+    { id: 1, label: 'Version Resolution', desc: 'Resolving SemVer ranges and latest version aliases' },
+    { id: 2, label: 'Compose Workspace Generation', desc: 'Writing docker-compose.yml configuration to disk' },
+    { id: 3, label: 'Container Stack Rollout', desc: 'Running docker-compose up sibling rollout commands' },
+    { id: 4, label: 'Active Health Probes', desc: 'Evaluating container execution and polling health checks' }
+  ];
+
+  const getStepStatus = (stepId: number) => {
+    if (deploymentStatus === 'healthy' || deploymentStatus === 'active') return 'completed';
+    if (deploymentStatus === 'failed' || deploymentStatus === 'unhealthy') return 'failed';
+    
+    const hasStarted = events.some(e => e.eventType === 'started');
+    const hasSucceeded = events.some(e => e.eventType === 'succeeded');
+    const hasFailed = events.some(e => e.eventType === 'failed');
+
+    if (hasFailed) return 'failed';
+
+    switch (stepId) {
+      case 1:
+        return 'completed';
+      case 2:
+        return 'completed';
+      case 3:
+        if (hasSucceeded) return 'completed';
+        if (hasStarted) return 'active';
+        return 'pending';
+      case 4:
+        if (hasSucceeded) return 'completed';
+        if (hasStarted) return 'active';
+        return 'pending';
+      default:
+        return 'pending';
+    }
+  };
+
+  return (
+    <div className="bg-[#131b2e] border border-[#1e293b] p-6 rounded-2xl shadow-xl space-y-4">
+      <h3 className="text-sm font-bold uppercase tracking-wider text-blue-400 animate-pulse">Stack Rollout in Progress</h3>
+      <div className="space-y-4 relative before:absolute before:left-4 before:top-2 before:bottom-2 before:w-0.5 before:bg-[#1e293b]">
+        {steps.map((s) => {
+          const status = getStepStatus(s.id);
+          let color = 'bg-gray-800 border-gray-700 text-gray-500';
+          let DotIcon = Clock;
+
+          if (status === 'completed') {
+            color = 'bg-emerald-500/10 border-emerald-500 text-emerald-400';
+            DotIcon = CheckCircle2;
+          } else if (status === 'active') {
+            color = 'bg-blue-500/10 border-blue-500 text-blue-400 animate-pulse';
+            DotIcon = RefreshCw;
+          } else if (status === 'failed') {
+            color = 'bg-red-500/10 border-red-500 text-red-400';
+            DotIcon = XCircle;
+          }
+
+          const StepIcon = DotIcon;
+
+          return (
+            <div key={s.id} className="flex gap-4 items-start pl-1 relative">
+              <div className={`w-8 h-8 rounded-full border flex items-center justify-center shrink-0 z-10 ${color}`}>
+                <StepIcon className={`w-4 h-4 ${status === 'active' ? 'animate-spin' : ''}`} />
+              </div>
+              <div className="space-y-0.5 pt-1">
+                <h4 className="font-semibold text-xs text-white">{s.label}</h4>
+                <p className="text-[11px] text-gray-400">{s.desc}</p>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export default function DeploymentsPage() {
   const queryClient = useQueryClient();
   const [selectedId, setSelectedId] = React.useState<string | null>(null);
@@ -51,6 +359,7 @@ export default function DeploymentsPage() {
   const [newName, setNewName] = React.useState('');
   const [yamlContent, setYamlContent] = React.useState(BOILERPLATE_SPEC);
   const [searchQuery, setSearchQuery] = React.useState('');
+  const [selectedService, setSelectedService] = React.useState<string | null>(null);
 
   // Queries
   const { data: deployments, isLoading } = useQuery({
@@ -95,6 +404,24 @@ export default function DeploymentsPage() {
       return currentEvents.indexOf(b) - currentEvents.indexOf(a);
     });
   }, [currentEvents]);
+
+  const parsedServices = React.useMemo(() => {
+    try {
+      return parseYamlServices(selectedDeployment?.deploymentSpec || '');
+    } catch (e) {
+      return {};
+    }
+  }, [selectedDeployment]);
+
+  const serviceNames = Object.keys(parsedServices);
+
+  React.useEffect(() => {
+    if (serviceNames.length > 0) {
+      setSelectedService(serviceNames[0]);
+    } else {
+      setSelectedService(null);
+    }
+  }, [selectedId, serviceNames.length]);
 
   // Sync edited yaml when switching selected deployment
   React.useEffect(() => {
@@ -415,72 +742,71 @@ export default function DeploymentsPage() {
                 {/* 1. Dashboard Info Tab */}
                 {activeTab === 'dashboard' && (
                   <div className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="bg-[#0b0f19]/40 border border-[#1e293b] p-4 rounded-xl space-y-1">
-                        <span className="text-[10px] uppercase font-bold text-gray-500">Last Deployed</span>
-                        <p className="text-sm font-semibold text-gray-200">
-                          {selectedDeployment.deployedAt ? new Date(selectedDeployment.deployedAt).toLocaleString() : 'Never'}
-                        </p>
-                      </div>
-                      <div className="bg-[#0b0f19]/40 border border-[#1e293b] p-4 rounded-xl space-y-1">
-                        <span className="text-[10px] uppercase font-bold text-gray-500">Deployed By</span>
-                        <p className="text-sm font-semibold text-gray-200 font-mono">
-                          {selectedDeployment.deployedBy || '--'}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="space-y-3">
-                      <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400">Services & Health Metrics</h4>
-                      
-                      <div className="border border-[#1e293b] rounded-xl overflow-hidden divide-y divide-[#1e293b] bg-[#0b0f19]/20">
-                        {currentHealth && currentHealth.length > 0 ? (
-                          currentHealth.map((hc) => {
-                            let healthBadge = 'text-gray-400 bg-gray-800 border-gray-700/50';
-                            let HealthIcon = Info;
-                            if (hc.status === 'healthy') {
-                              healthBadge = 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20';
-                              HealthIcon = CheckCircle2;
-                            }
-                            if (hc.status === 'unhealthy') {
-                              healthBadge = 'text-red-400 bg-red-500/10 border-red-500/20';
-                              HealthIcon = XCircle;
-                            }
-
-                            return (
-                              <div key={hc.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                                <div className="space-y-1">
-                                  <h5 className="font-semibold text-sm text-white">{hc.serviceName}</h5>
-                                  {hc.errorMessage && (
-                                    <p className="text-xs text-red-400 font-mono">{hc.errorMessage}</p>
-                                  )}
-                                  <div className="flex gap-4 text-[11px] text-gray-500">
-                                    <span>Checks: {hc.checkCount}</span>
-                                    <span>Failures: {hc.consecutiveFailures}</span>
-                                  </div>
-                                </div>
-
-                                <div className="flex items-center gap-4">
-                                  {hc.responseTimeMs !== undefined && hc.responseTimeMs > 0 && (
-                                    <span className="text-xs font-mono text-gray-400">
-                                      {hc.responseTimeMs}ms response
-                                    </span>
-                                  )}
-                                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${healthBadge}`}>
-                                    <HealthIcon className="w-3.5 h-3.5" />
-                                    {hc.status}
-                                  </span>
-                                </div>
-                              </div>
-                            );
-                          })
-                        ) : (
-                          <div className="p-8 text-center text-gray-500 text-xs font-mono">
-                            No health check reports. Trigger "Deploy Rollout" to start monitoring.
+                    {/* Stepper when deploying */}
+                    {selectedDeployment.status === 'deploying' ? (
+                      <RolloutStepper 
+                        deploymentStatus={selectedDeployment.status} 
+                        events={currentEvents || []} 
+                      />
+                    ) : (
+                      <>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="bg-[#0b0f19]/40 border border-[#1e293b] p-4 rounded-xl space-y-1">
+                            <span className="text-[10px] uppercase font-bold text-gray-500">Last Deployed</span>
+                            <p className="text-sm font-semibold text-gray-200">
+                              {selectedDeployment.deployedAt ? new Date(selectedDeployment.deployedAt).toLocaleString() : 'Never'}
+                            </p>
                           </div>
+                          <div className="bg-[#0b0f19]/40 border border-[#1e293b] p-4 rounded-xl space-y-1">
+                            <span className="text-[10px] uppercase font-bold text-gray-500">Deployed By</span>
+                            <p className="text-sm font-semibold text-gray-200 font-mono">
+                              {selectedDeployment.deployedBy || '--'}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Interactive Topology map */}
+                        <TopologyMap 
+                          yamlStr={selectedDeployment.deploymentSpec} 
+                          activeServiceName={selectedService} 
+                          onSelectService={(name) => setSelectedService(name)} 
+                        />
+
+                        {/* Service Metrics Card Grid */}
+                        <div className="space-y-3">
+                          <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400">Services & Performance Gauges</h4>
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            {serviceNames.length > 0 ? (
+                              serviceNames.map((name) => {
+                                const svc = parsedServices[name];
+                                return (
+                                  <ServiceMetricsCard 
+                                    key={name}
+                                    deploymentId={selectedDeployment.id} 
+                                    serviceName={name} 
+                                    serviceType={svc.type} 
+                                    isSelected={name === selectedService} 
+                                    onClick={() => setSelectedService(name)} 
+                                  />
+                                );
+                              })
+                            ) : (
+                              <div className="p-8 text-center text-gray-500 text-xs font-mono col-span-3 border border-dashed border-[#1e293b] rounded-xl">
+                                No services detected in stack spec.
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Logs Console */}
+                        {selectedService && (
+                          <ServiceLogsTerminal 
+                            deploymentId={selectedDeployment.id} 
+                            serviceName={selectedService} 
+                          />
                         )}
-                      </div>
-                    </div>
+                      </>
+                    )}
                   </div>
                 )}
 
@@ -503,12 +829,39 @@ export default function DeploymentsPage() {
                       </button>
                     </div>
 
-                    <textarea
-                      rows={14}
-                      value={yamlContent}
-                      onChange={(e) => setYamlContent(e.target.value)}
-                      className="w-full bg-[#0b0f19] border border-[#1e293b] rounded-xl p-4 text-xs font-mono text-gray-300 focus:outline-none focus:border-blue-500 transition-colors"
-                    />
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                      <div className="lg:col-span-8">
+                        <textarea
+                          rows={16}
+                          value={yamlContent}
+                          onChange={(e) => setYamlContent(e.target.value)}
+                          className="w-full bg-[#0b0f19] border border-[#1e293b] rounded-xl p-4 text-xs font-mono text-gray-300 focus:outline-none focus:border-blue-500 transition-colors"
+                        />
+                      </div>
+                      <div className="lg:col-span-4 bg-[#0d1325]/40 border border-[#1e293b] p-4 rounded-xl space-y-4">
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400">Spec Schema Guide</h4>
+                        <div className="space-y-3 text-xs">
+                          <div>
+                            <span className="font-mono font-semibold text-blue-400">version</span>
+                            <p className="text-gray-400 text-[11px] mt-0.5">Schema version. Set to <code className="font-mono text-gray-200">1</code>.</p>
+                          </div>
+                          <div>
+                            <span className="font-mono font-semibold text-blue-400">deployment</span>
+                            <p className="text-gray-400 text-[11px] mt-0.5">Contains stack metadata (<code className="font-mono text-gray-200">name</code> and <code className="font-mono text-gray-200">description</code>).</p>
+                          </div>
+                          <div>
+                            <span className="font-mono font-semibold text-blue-400">services</span>
+                            <p className="text-gray-400 text-[11px] mt-0.5">Defines the containers to run. Each service must specify:</p>
+                            <ul className="list-disc pl-4 text-gray-500 text-[10px] mt-1 space-y-1">
+                              <li><code className="font-mono text-gray-300">artifact</code>: Package reference (e.g. <code className="font-mono text-gray-400">service@latest</code>).</li>
+                              <li><code className="font-mono text-gray-300">type</code>: Run mode (<code className="font-mono text-gray-400">binary</code>, <code className="font-mono text-gray-400">jar</code>, <code className="font-mono text-gray-400">python-app</code>, <code className="font-mono text-gray-400">docker</code>).</li>
+                              <li><code className="font-mono text-gray-300">ports</code>: Host ports mappings list.</li>
+                              <li><code className="font-mono text-gray-300">healthCheck</code>: Probing intervals and commands.</li>
+                            </ul>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 )}
 

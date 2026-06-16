@@ -108,4 +108,19 @@ public class DeploymentController {
             return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
         }
     }
+
+    @GetMapping("/{id}/logs/{serviceName}")
+    public ResponseEntity<Map<String, String>> getContainerLogs(
+            @PathVariable("id") UUID id,
+            @PathVariable("serviceName") String serviceName) {
+        String logs = deploymentService.getContainerLogs(id, serviceName);
+        return ResponseEntity.ok(Map.of("logs", logs));
+    }
+
+    @GetMapping("/{id}/stats/{serviceName}")
+    public ResponseEntity<Map<String, Object>> getContainerStats(
+            @PathVariable("id") UUID id,
+            @PathVariable("serviceName") String serviceName) {
+        return ResponseEntity.ok(deploymentService.getContainerStats(id, serviceName));
+    }
 }

@@ -562,4 +562,48 @@ public class DeploymentServiceImpl implements DeploymentService {
             log.error("Failed recording deployment event", e);
         }
     }
+
+    @Override
+    public String getContainerLogs(UUID id, String serviceName) {
+        Deployment deployment = deploymentRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Deployment not found: " + id));
+        String containerName = deployment.getName() + "-" + serviceName;
+        List<String> command = List.of("docker", "logs", "--tail", "100", containerName);
+        try {
+            return executeCommand(command);
+        } catch (Exception e) {
+            log.warn("Failed fetching logs for container: {}", containerName, e.getMessage());
+            return "[Container " + containerName + " is not running or not found]\n";
+        }
+    }
+
+    @Override
+    public Map<String, Object> getContainerStats(UUID id, String serviceName) {
+        Deployment deployment = deploymentRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Deployment not found: " + id));
+        String containerName = deployment.getName() + "-" + serviceName;
+        List<String> command = List.of("docker", "stats", "--no-stream", "--format", "{{.CPUPerc}},{{.MemUsage}},{{.MemPerc}},{{.NetIO}}", containerName);
+        try {
+            String output = executeCommand(command).trim();
+            String[] parts = output.split(",");
+            if (parts.length >= 4) {
+                return Map.of(
+                    "cpu", parts[0].trim(),
+                    "memoryUsage", parts[1].trim(),
+                    "memoryPercent", parts[2].trim(),
+                    "network", parts[3].trim(),
+                    "online", true
+                );
+            }
+        } catch (Exception e) {
+            log.warn("Failed fetching stats for container: {} - {}", containerName, e.getMessage());
+        }
+        return Map.of(
+            "cpu", "0.0%",
+            "memoryUsage", "0B / 0B",
+            "memoryPercent", "0.0%",
+            "network", "0B / 0B",
+            "online", false
+        );
+    }
 }
