@@ -177,6 +177,52 @@ export interface DashboardStats {
   cancelledCount: number;
 }
 
+export interface Deployment {
+  id: string;
+  name: string;
+  description?: string;
+  status: 'pending' | 'deploying' | 'healthy' | 'unhealthy' | 'failed' | 'rolled_back';
+  deploymentSpec: string;
+  deployedAt?: string;
+  completedAt?: string;
+  deployedBy?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DeploymentVersion {
+  id: string;
+  deploymentId: string;
+  versionNumber: number;
+  composeConfig: string;
+  artifactVersions: string; // JSON string
+  deployedAt: string;
+  undeployedAt?: string;
+  status: 'active' | 'previous' | 'failed' | 'rolled_back';
+  dockerComposeOutput?: string;
+}
+
+export interface DeploymentEvent {
+  id: string;
+  deploymentId: string;
+  eventType: 'planned' | 'started' | 'progressed' | 'succeeded' | 'failed' | 'rolled_back';
+  message?: string;
+  metadata?: string; // JSON string
+  createdAt: string;
+}
+
+export interface ServiceHealthCheck {
+  id: string;
+  deploymentId: string;
+  serviceName: string;
+  status: 'healthy' | 'unhealthy' | 'unknown';
+  lastCheckedAt: string;
+  responseTimeMs?: number;
+  errorMessage?: string;
+  checkCount: number;
+  consecutiveFailures: number;
+}
+
 export const apiClient = {
   // Dashboard API
   getDashboardStats: () => request<DashboardStats>('/dashboard/stats'),
@@ -220,4 +266,25 @@ export const apiClient = {
     }),
   cancelCascade: (id: string) => request<any>(`/cascade/chains/${id}/cancel`, { method: 'POST' }),
   getCascadeImpact: (name: string, version: string) => request<any>(`/cascade/impact/${name}/${version}`),
+
+  // Deployments API
+  getDeployments: () => request<Deployment[]>('/deployments'),
+  getDeployment: (id: string) => request<Deployment>(`/deployments/${id}`),
+  createOrUpdateDeployment: (name: string, specYaml: string, username?: string) => 
+    request<Deployment>('/deployments', { 
+      method: 'POST', 
+      body: JSON.stringify({ name, specYaml, username }) 
+    }),
+  planDeployment: (specYaml: string) => 
+    request<any>('/deployments/plan', { 
+      method: 'POST', 
+      body: JSON.stringify({ specYaml }) 
+    }),
+  deploy: (id: string) => request<Deployment>(`/deployments/${id}/deploy`, { method: 'POST' }),
+  rollback: (id: string, version: number) => 
+    request<any>(`/deployments/${id}/rollback/${version}`, { method: 'POST' }),
+  getDeploymentVersions: (id: string) => request<DeploymentVersion[]>(`/deployments/${id}/versions`),
+  getDeploymentEvents: (id: string) => request<DeploymentEvent[]>(`/deployments/${id}/events`),
+  getServiceHealthChecks: (id: string) => request<ServiceHealthCheck[]>(`/deployments/${id}/health`),
+  triggerHealthCheck: (id: string) => request<any>(`/deployments/${id}/health/check`, { method: 'POST' }),
 };

@@ -12,7 +12,8 @@ import {
   Settings,
   Activity,
   Terminal,
-  BookOpen
+  BookOpen,
+  Rocket
 } from 'lucide-react';
 
 interface LayoutWrapperProps {
@@ -28,6 +29,7 @@ export default function LayoutWrapper({ children }: LayoutWrapperProps) {
     { name: 'Artifact Registry', href: '/artifacts', icon: Package },
     { name: 'Dependencies', href: '/dependencies', icon: GitFork },
     { name: 'Cascade Rebuilds', href: '/cascade', icon: RefreshCw },
+    { name: 'Deployments', href: '/deployments', icon: Rocket },
     { name: 'Documentation', href: '/docs', icon: BookOpen },
   ];
 
