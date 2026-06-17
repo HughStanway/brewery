@@ -34,7 +34,6 @@ export default function DeploymentsPage() {
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = React.useState('');
   const [isCreating, setIsCreating] = React.useState(false);
-  const [newName, setNewName] = React.useState('');
   const [yamlContent, setYamlContent] = React.useState(BOILERPLATE_SPEC);
 
   const { data: deployments, isLoading } = useQuery({
@@ -87,7 +86,6 @@ export default function DeploymentsPage() {
         <button
           onClick={() => {
             setIsCreating(true);
-            setNewName('');
             setYamlContent(BOILERPLATE_SPEC);
           }}
           className="flex items-center gap-2 bg-blue-600 hover:bg-[var(--primary)] text-white rounded-full px-4 py-2.5 text-sm font-semibold transition-colors shadow-lg shadow-blue-500/20 md:self-end"
@@ -122,20 +120,6 @@ export default function DeploymentsPage() {
           </div>
 
           <div className="space-y-4">
-            <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
-                Stack Name
-              </label>
-              <input
-                type="text"
-                placeholder="e.g. production-http"
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                className="w-full bg-[var(--background)] border border-[var(--card-border)] rounded-2xl px-4 py-2.5 text-sm text-gray-800 focus:outline-none focus:border-blue-500 transition-colors font-mono"
-              />
-            </div>
-
-            <div>
               <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
                 Deployment Specification (YAML)
               </label>
@@ -146,7 +130,6 @@ export default function DeploymentsPage() {
                 className="w-full bg-[var(--background)] border border-[var(--card-border)] rounded-2xl p-4 text-xs font-mono text-gray-700 focus:outline-none focus:border-blue-500 transition-colors"
               />
             </div>
-          </div>
 
           <div className="flex justify-end gap-3 pt-2">
             <button
@@ -156,9 +139,17 @@ export default function DeploymentsPage() {
               Cancel
             </button>
             <button
-              onClick={() => createMutation.mutate({ name: newName, yaml: yamlContent })}
-              disabled={createMutation.isPending || !newName || !yamlContent}
-              className="bg-blue-600 hover:bg-[var(--primary)] text-white rounded-full px-4 py-2 text-sm font-semibold transition-colors"
+              onClick={() => {
+                const nameMatch = yamlContent.match(/name:\s*["']?([^"'\n\r]+)["']?/);
+                const name = nameMatch ? nameMatch[1].trim() : '';
+                if (!name) {
+                  alert('Deployment name not found in YAML. Please add a "name:" field.');
+                  return;
+                }
+                createMutation.mutate({ name, yaml: yamlContent });
+              }}
+              disabled={createMutation.isPending || !yamlContent}
+              className="bg-blue-600 hover:bg-[var(--primary)] text-white px-6 py-2 rounded-2xl text-sm font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
             >
               {createMutation.isPending ? 'Creating...' : 'Save & Configure'}
             </button>

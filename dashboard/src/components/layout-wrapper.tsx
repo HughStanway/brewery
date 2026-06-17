@@ -72,13 +72,6 @@ export default function LayoutWrapper({ children }: LayoutWrapperProps) {
 
         {/* Right Header Actions */}
         <div className="flex items-center gap-4">
-          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-100">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">Emulator Active</span>
-          </div>
-          <span className="text-xs px-2.5 py-1 rounded-full bg-blue-50 text-[var(--primary)] border border-blue-200 font-semibold shadow-sm">
-            dev mode
-          </span>
         </div>
       </header>
 

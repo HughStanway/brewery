@@ -12,14 +12,14 @@
 }
 
 :root {
-  --background: #f8f9fa;
-  --foreground: #202124;
+  --background: #f1f5f9;
+  --foreground: #0f172a;
   --primary: #1a73e8;
   --success: #1e8e3e;
   --error: #d93025;
   --warning: #f9ab00;
   --card: #ffffff;
-  --card-border: #e8eaed;
+  --card-border: #cbd5e1;
 }
 
 body {

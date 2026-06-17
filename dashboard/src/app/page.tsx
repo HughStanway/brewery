@@ -15,7 +15,8 @@ import {
   ArrowRight,
   ShieldAlert,
   Activity,
-  Terminal
+  Terminal,
+  Rocket
 } from 'lucide-react';
 import { 
   AreaChart,
@@ -59,7 +60,22 @@ export default function DashboardPage() {
     refetchInterval: 5000,
   });
 
-  const isLoading = isStatsLoading || isBuildsLoading;
+  // Fetch deployments
+  const { 
+    data: deployments, 
+    isLoading: isDeploymentsLoading 
+  } = useQuery({
+    queryKey: ['deployments'],
+    queryFn: apiClient.getDeployments,
+    refetchInterval: 5000,
+  });
+
+  const isLoading = isStatsLoading || isBuildsLoading || isDeploymentsLoading;
+
+  const activeDeploymentsCount = React.useMemo(() => {
+    if (!deployments) return 0;
+    return deployments.filter(d => ['healthy', 'deploying', 'paused', 'unhealthy'].includes(d.status)).length;
+  }, [deployments]);
 
   const sortedBuilds = React.useMemo(() => {
     if (!builds) return [];
@@ -132,7 +148,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
         {/* Total Builds */}
         <div className="p-6 bg-[var(--card)] border border-[var(--card-border)] rounded-2xl flex items-center justify-between shadow-xl transition-all duration-300 hover:border-blue-500/30 group">
           <div className="space-y-1">
@@ -182,6 +198,17 @@ export default function DashboardPage() {
           </div>
           <div className="w-12 h-12 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-400 group-hover:scale-110 transition-transform">
             <Clock className="w-6 h-6" />
+          </div>
+        </div>
+
+        {/* Active Deployments */}
+        <div className="p-6 bg-[var(--card)] border border-[var(--card-border)] rounded-2xl flex items-center justify-between shadow-xl transition-all duration-300 hover:border-indigo-500/30 group">
+          <div className="space-y-1">
+            <span className="text-xs font-semibold text-gray-500 tracking-wider uppercase">Active Deployments</span>
+            <div className="text-2xl font-bold text-gray-900 font-mono">{activeDeploymentsCount}</div>
+          </div>
+          <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 flex items-center justify-center text-indigo-500 group-hover:scale-110 transition-transform">
+            <Rocket className="w-6 h-6" />
           </div>
         </div>
       </div>

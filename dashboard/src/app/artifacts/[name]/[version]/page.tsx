@@ -233,12 +233,12 @@ export default function ArtifactDetailsPage() {
             <h2 className="text-xl font-bold text-gray-900 tracking-tight flex items-center gap-2">
               {metadata.name}
               {isLatest && (
-                <span className="px-2 py-0.5 bg-emerald-500/15 text-emerald-400 text-[10px] font-bold rounded-lg border border-emerald-500/25 uppercase tracking-wider">
+                <span className="px-2 py-0.5 bg-emerald-50 text-emerald-600 text-[10px] font-bold rounded-lg border border-emerald-200 uppercase tracking-wider">
                   Latest Version
                 </span>
               )}
               {isDeprecated && (
-                <span className="px-2 py-0.5 bg-amber-500/15 text-amber-400 text-[10px] font-bold rounded-lg border border-amber-500/25 uppercase tracking-wider">
+                <span className="px-2 py-0.5 bg-amber-50 text-amber-600 text-[10px] font-bold rounded-lg border border-amber-200 uppercase tracking-wider">
                   Deprecated Version
                 </span>
               )}
@@ -260,7 +260,7 @@ export default function ArtifactDetailsPage() {
           <button
             onClick={handleDeleteClick}
             disabled={deleteArtifactMutation.isPending}
-            className="flex items-center gap-2 px-4 py-2 bg-rose-950/40 hover:bg-rose-600/80 text-rose-300 hover:text-[var(--primary)] border border-rose-500/30 rounded-2xl text-xs font-semibold transition-all shadow-lg shadow-rose-950/20 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 px-4 py-2 bg-red-50 hover:bg-red-100 text-red-600 hover:text-red-700 border border-red-200 rounded-full text-xs font-semibold transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Trash2 className="w-4 h-4" />
             Delete Version
@@ -292,12 +292,12 @@ export default function ArtifactDetailsPage() {
                 <div className="flex items-center gap-2 mt-0.5">
                   <span className="font-mono text-gray-900 font-semibold">{metadata.version}</span>
                   {isLatest && (
-                    <span className="px-1.5 py-0.5 bg-emerald-500/15 text-emerald-400 text-[9px] font-bold rounded border border-emerald-500/25 uppercase tracking-wider">
+                    <span className="px-1.5 py-0.5 bg-emerald-50 text-emerald-600 text-[9px] font-bold rounded border border-emerald-200 uppercase tracking-wider">
                       Latest
                     </span>
                   )}
                   {isDeprecated && (
-                    <span className="px-1.5 py-0.5 bg-amber-500/15 text-amber-400 text-[9px] font-bold rounded border border-amber-500/25 uppercase tracking-wider">
+                    <span className="px-1.5 py-0.5 bg-amber-50 text-amber-600 text-[9px] font-bold rounded border border-amber-200 uppercase tracking-wider">
                       Deprecated
                     </span>
                   )}
@@ -349,12 +349,12 @@ export default function ArtifactDetailsPage() {
                     <div className="flex items-center gap-1.5 min-w-0 flex-1">
                       <span className="truncate">{ver.version}</span>
                       {verIsLatest && (
-                        <span className="px-1 py-0.2 bg-emerald-500/15 text-emerald-400 text-[8px] font-bold rounded border border-emerald-500/25 uppercase tracking-wider shrink-0">
+                        <span className="px-1 py-0.2 bg-emerald-50 text-emerald-600 text-[8px] font-bold rounded border border-emerald-200 uppercase tracking-wider shrink-0">
                           latest
                         </span>
                       )}
                       {verIsDeprecated && (
-                        <span className="px-1 py-0.2 bg-amber-500/15 text-amber-400 text-[8px] font-bold rounded border border-amber-500/25 uppercase tracking-wider shrink-0">
+                        <span className="px-1 py-0.2 bg-amber-50 text-amber-600 text-[8px] font-bold rounded border border-amber-200 uppercase tracking-wider shrink-0">
                           deprecated
                         </span>
                       )}

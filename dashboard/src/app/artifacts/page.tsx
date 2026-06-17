@@ -202,7 +202,7 @@ export default function ArtifactsPage() {
                       <span className="font-semibold text-gray-900 font-mono">
                         {group.latestVersion}
                       </span>
-                      <span className="px-1.5 py-0.5 bg-emerald-500/15 text-emerald-400 text-[9px] font-bold rounded border border-emerald-500/25 uppercase tracking-wider">
+                      <span className="px-1.5 py-0.5 bg-emerald-50 text-emerald-600 text-[9px] font-bold rounded border border-emerald-200 uppercase tracking-wider">
                         Latest
                       </span>
                     </div>

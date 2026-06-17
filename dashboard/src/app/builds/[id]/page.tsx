@@ -27,7 +27,8 @@ export default function BuildDetailsPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const buildId = params.id as string;
-
+  const [isAutoScrollLocked, setIsAutoScrollLocked] = React.useState(true);
+  const logsContainerRef = React.useRef<HTMLDivElement>(null);
   const { data: build, isLoading, error } = useQuery({
     queryKey: ['build', buildId],
     queryFn: () => apiClient.getBuild(buildId),
@@ -37,6 +38,23 @@ export default function BuildDetailsPage() {
       return data?.status === 'building' || data?.status === 'pending' ? 2000 : false;
     }
   });
+
+  React.useEffect(() => {
+    if (isAutoScrollLocked && logsContainerRef.current) {
+      logsContainerRef.current.scrollTop = logsContainerRef.current.scrollHeight;
+    }
+  }, [build?.logs, isAutoScrollLocked]);
+
+  const handleScroll = () => {
+    if (!logsContainerRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } = logsContainerRef.current;
+    const isAtBottom = scrollHeight - scrollTop - clientHeight < 10;
+    if (!isAtBottom && isAutoScrollLocked) {
+      setIsAutoScrollLocked(false);
+    } else if (isAtBottom && !isAutoScrollLocked) {
+      setIsAutoScrollLocked(true);
+    }
+  };
 
   const retryMutation = useMutation({
     mutationFn: (id: string) => apiClient.retryBuild(id),
@@ -320,6 +338,22 @@ export default function BuildDetailsPage() {
                 Streaming Logs...
               </span>
             )}
+            <button 
+              onClick={() => {
+                setIsAutoScrollLocked(true);
+                if (logsContainerRef.current) {
+                  logsContainerRef.current.scrollTop = logsContainerRef.current.scrollHeight;
+                }
+              }}
+              className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all ml-auto ${
+                isAutoScrollLocked
+                  ? 'bg-blue-50 border-blue-200 text-blue-600'
+                  : 'bg-gray-50 border-[var(--card-border)] text-gray-500 hover:text-gray-800'
+              }`}
+              title="Auto-scroll to newest logs"
+            >
+              {isAutoScrollLocked ? 'Following' : 'Follow Logs'}
+            </button>
           </div>
 
           {/* Outdated Dependencies Warning Box */}
@@ -347,7 +381,11 @@ export default function BuildDetailsPage() {
           )}
 
           {/* Logs scroll area */}
-          <div className="flex-1 bg-gray-50 border border-[var(--card-border)] rounded-2xl p-4 overflow-y-auto font-mono text-xs text-gray-700 leading-relaxed max-h-[500px]">
+          <div 
+            ref={logsContainerRef}
+            onScroll={handleScroll}
+            className="flex-1 bg-gray-50 border border-[var(--card-border)] rounded-2xl p-4 overflow-y-auto font-mono text-xs text-gray-700 leading-relaxed max-h-[500px]"
+          >
             {build.logs ? (
               <pre className="whitespace-pre-wrap select-text selection:bg-blue-500/30 selection:text-gray-900">
                 {build.logs}
