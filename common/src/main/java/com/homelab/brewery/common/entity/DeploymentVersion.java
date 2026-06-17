@@ -33,7 +33,7 @@ public class DeploymentVersion {
     @Column(name = "artifact_versions", nullable = false, columnDefinition = "jsonb")
     private String artifactVersions;
 
-    @Column(name = "deployed_at", insertable = false, updatable = false)
+    @Column(name = "deployed_at")
     private Instant deployedAt;
 
     @Column(name = "undeployed_at")
@@ -52,6 +52,9 @@ public class DeploymentVersion {
         }
         if (status == null) {
             status = "active";
+        }
+        if (deployedAt == null) {
+            deployedAt = Instant.now();
         }
     }
 }

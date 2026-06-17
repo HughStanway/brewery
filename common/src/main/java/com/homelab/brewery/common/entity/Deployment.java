@@ -41,10 +41,10 @@ public class Deployment {
     @Column(name = "deployed_by")
     private String deployedBy;
 
-    @Column(name = "created_at", insertable = false, updatable = false)
+    @Column(name = "created_at")
     private Instant createdAt;
 
-    @Column(name = "updated_at", insertable = false, updatable = false)
+    @Column(name = "updated_at")
     private Instant updatedAt;
 
     @PrePersist
@@ -54,6 +54,12 @@ public class Deployment {
         }
         if (status == null) {
             status = "pending";
+        }
+        if (createdAt == null) {
+            createdAt = Instant.now();
+        }
+        if (updatedAt == null) {
+            updatedAt = Instant.now();
         }
     }
 }
