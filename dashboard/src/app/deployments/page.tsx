@@ -259,55 +259,6 @@ function updateYamlEnvironment(yamlStr: string, serviceName: string, env: Record
   return lines.join('\n');
 }
 
-function RadialGauge({ value, size = 36, strokeWidth = 3, color = '#3b82f6' }: { value: number; size?: number; strokeWidth?: number; color?: string }) {
-  const radius = (size - strokeWidth) / 2;
-  const circumference = radius * 2 * Math.PI;
-  const strokeDashoffset = circumference - (Math.min(100, Math.max(0, value)) / 100) * circumference;
-  
-  const strokeColor = value > 80 ? '#ef4444' : color;
-  const isAlert = value > 80;
-  
-  return (
-    <div className="relative flex-shrink-0" style={{ width: size, height: size }}>
-      <svg className="transform -rotate-90" width={size} height={size}>
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          fill="transparent"
-          stroke="#131b2e"
-          strokeWidth={strokeWidth}
-        />
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          fill="transparent"
-          stroke={strokeColor}
-          strokeWidth={strokeWidth}
-          strokeDasharray={circumference}
-          strokeDashoffset={strokeDashoffset}
-          strokeLinecap="round"
-          className={`transition-all duration-500 ease-out ${isAlert ? 'animate-pulse' : ''}`}
-        />
-      </svg>
-      <div className="absolute inset-0 flex items-center justify-center text-[8px] font-mono font-bold text-gray-200">
-        {Math.round(value)}%
-      </div>
-    </div>
-  );
-}
-
-function getSparklinePath(data: number[], width: number, height: number, maxVal: number = 100): string {
-  if (data.length < 2) return '';
-  const points = data.map((val, idx) => {
-    const x = (idx / (data.length - 1)) * width;
-    const y = height - (Math.min(maxVal, val) / maxVal) * height;
-    return `${x},${y}`;
-  });
-  return `M ${points.join(' L ')}`;
-}
-
 function ServiceMetricsCard({ deploymentId, serviceName, serviceType, isSelected, onClick, healthInfo }: {
   deploymentId: string;
   serviceName: string;
@@ -321,23 +272,6 @@ function ServiceMetricsCard({ deploymentId, serviceName, serviceType, isSelected
     queryFn: () => apiClient.getContainerStats(deploymentId, serviceName),
     refetchInterval: 5000,
   });
-
-  const [history, setHistory] = React.useState<{ cpu: number[]; memory: number[] }>({
-    cpu: [],
-    memory: [],
-  });
-
-  React.useEffect(() => {
-    if (stats) {
-      const cpuVal = parseFloat(stats.cpu || '0');
-      const memVal = parseFloat(stats.memoryPercent || '0');
-      setHistory(prev => {
-        const nextCpu = [...prev.cpu, cpuVal].slice(-20);
-        const nextMem = [...prev.memory, memVal].slice(-20);
-        return { cpu: nextCpu, memory: nextMem };
-      });
-    }
-  }, [stats]);
 
   const isOnline = stats?.online || false;
 
@@ -371,62 +305,31 @@ function ServiceMetricsCard({ deploymentId, serviceName, serviceType, isSelected
         </div>
       </div>
 
-      <div className="space-y-3">
-        {/* CPU Panel: Radial Gauge + Textual percentage + Sparkline */}
-        <div className="flex items-center justify-between gap-3 bg-[#0c1220]/45 p-2 rounded-lg border border-[#1e293b]/40">
-          <div className="flex items-center gap-2">
-            <RadialGauge value={parseFloat(stats?.cpu || '0')} color="#3b82f6" />
-            <div className="flex flex-col">
-              <span className="text-[8px] font-bold text-gray-500 uppercase tracking-wider">CPU</span>
-              <span className="font-mono text-[10px] font-bold text-gray-200">{stats?.cpu || '0.0%'}</span>
-            </div>
+      <div className="space-y-2 text-xs">
+        <div className="space-y-1">
+          <div className="flex justify-between text-gray-400 text-[10px]">
+            <span>CPU USAGE</span>
+            <span className="font-mono font-bold text-gray-200">{stats?.cpu || '0.0%'}</span>
           </div>
-          {history.cpu.length >= 2 && (
-            <div className="flex-1 flex justify-end">
-              <svg className="w-16 h-6 overflow-visible" viewBox="0 0 60 18">
-                <path
-                  d={getSparklinePath(history.cpu, 60, 18, Math.max(10, ...history.cpu))}
-                  fill="none"
-                  stroke={parseFloat(stats?.cpu || '0') > 80 ? '#ef4444' : '#3b82f6'}
-                  strokeWidth={1.5}
-                  className="drop-shadow-[0_0_2px_rgba(59,130,246,0.4)]"
-                />
-              </svg>
-            </div>
-          )}
+          <div className="w-full bg-[#131b2e] rounded-full h-1.5 overflow-hidden">
+            <div 
+              className="bg-blue-500 h-1.5 rounded-full transition-all duration-500" 
+              style={{ width: isOnline ? Math.min(100, parseFloat(stats?.cpu || '0') * 2) + '%' : '0%' }}
+            />
+          </div>
         </div>
 
-        {/* Memory Panel: Progress bar + Textual percentage + Sparkline */}
-        <div className="flex items-center justify-between gap-3 bg-[#0c1220]/45 p-2 rounded-lg border border-[#1e293b]/40">
-          <div className="flex-1 min-w-0">
-            <div className="flex justify-between items-center text-[8px] font-bold text-gray-500 uppercase tracking-wider mb-1">
-              <span>Memory</span>
-              <span className="font-mono text-[10px] font-bold text-gray-200">{stats?.memoryPercent || '0.0%'}</span>
-            </div>
-            <div className="w-full bg-[#131b2e] rounded-full h-1 overflow-hidden">
-              <div 
-                className={`h-1 rounded-full transition-all duration-500 ${
-                  parseFloat(stats?.memoryPercent || '0') > 80 
-                    ? 'bg-rose-500 animate-pulse' 
-                    : 'bg-emerald-500'
-                }`} 
-                style={{ width: isOnline ? (stats?.memoryPercent || '0%') : '0%' }}
-              />
-            </div>
+        <div className="space-y-1">
+          <div className="flex justify-between text-gray-400 text-[10px]">
+            <span>MEMORY</span>
+            <span className="font-mono font-bold text-gray-200">{stats?.memoryPercent || '0.0%'}</span>
           </div>
-          {history.memory.length >= 2 && (
-            <div className="flex-shrink-0 flex items-center pt-2">
-              <svg className="w-16 h-6 overflow-visible" viewBox="0 0 60 18">
-                <path
-                  d={getSparklinePath(history.memory, 60, 18, Math.max(10, ...history.memory))}
-                  fill="none"
-                  stroke={parseFloat(stats?.memoryPercent || '0') > 80 ? '#ef4444' : '#10b981'}
-                  strokeWidth={1.5}
-                  className="drop-shadow-[0_0_2px_rgba(16,185,129,0.4)]"
-                />
-              </svg>
-            </div>
-          )}
+          <div className="w-full bg-[#131b2e] rounded-full h-1.5 overflow-hidden">
+            <div 
+              className="bg-emerald-500 h-1.5 rounded-full transition-all duration-500" 
+              style={{ width: isOnline ? (stats?.memoryPercent || '0%') : '0%' }}
+            />
+          </div>
         </div>
 
         <div className="flex justify-between text-gray-500 text-[9px] font-mono pt-1">
