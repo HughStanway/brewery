@@ -15,6 +15,7 @@ import com.homelab.brewery.common.repository.DependencyRepository;
 import com.homelab.brewery.common.repository.RebuildChainRepository;
 import com.homelab.brewery.common.repository.ReverseDependencyRepository;
 import com.homelab.brewery.registry.model.ArtifactMetadataJson;
+import com.homelab.brewery.registry.SemanticVersionResolver;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -47,6 +48,7 @@ public class CascadeRebuildServiceImpl implements CascadeRebuildService {
     private final DependencyRepository dependencyRepository;
     private final BuildQueueManager buildQueueManager;
     private final BuildRepository buildRepository;
+    private final SemanticVersionResolver versionResolver;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -480,59 +482,11 @@ public class CascadeRebuildServiceImpl implements CascadeRebuildService {
      */
     private boolean versionSatisfiesRange(String version, String range) {
         try {
-            int[] ver = parseVersion(version);
-            String clean = range.trim();
-            if (clean.startsWith("^")) {
-                int[] target = parseVersion(clean.substring(1));
-                return ver[0] == target[0] && compareVersion(ver, target) >= 0;
-            } else if (clean.startsWith("~")) {
-                int[] target = parseVersion(clean.substring(1));
-                return ver[0] == target[0] && ver[1] == target[1] && compareVersion(ver, target) >= 0;
-            } else if (clean.startsWith(">=")) {
-                int[] target = parseVersion(clean.substring(2));
-                return compareVersion(ver, target) >= 0;
-            } else if (clean.startsWith(">")) {
-                int[] target = parseVersion(clean.substring(1));
-                return compareVersion(ver, target) > 0;
-            } else if (clean.startsWith("<=")) {
-                int[] target = parseVersion(clean.substring(2));
-                return compareVersion(ver, target) <= 0;
-            } else if (clean.startsWith("<")) {
-                int[] target = parseVersion(clean.substring(1));
-                return compareVersion(ver, target) < 0;
-            } else {
-                // Exact match
-                int[] target = parseVersion(clean);
-                return compareVersion(ver, target) == 0;
-            }
+            return versionResolver.satisfies(version, range);
         } catch (Exception e) {
             log.warn("Could not parse version range '{}' for version '{}', defaulting to compatible", range, version);
             return true;
         }
-    }
-
-    private int[] parseVersion(String v) {
-        String clean = v.trim().replaceAll("[^0-9.]", "");
-        String[] parts = clean.split("\\.");
-        int major = parts.length > 0 ? safeParse(parts[0]) : 0;
-        int minor = parts.length > 1 ? safeParse(parts[1]) : 0;
-        int patch = parts.length > 2 ? safeParse(parts[2]) : 0;
-        return new int[]{major, minor, patch};
-    }
-
-    private int safeParse(String s) {
-        try {
-            return Integer.parseInt(s.replaceAll("[^0-9]", ""));
-        } catch (NumberFormatException e) {
-            return 0;
-        }
-    }
-
-    private int compareVersion(int[] a, int[] b) {
-        for (int i = 0; i < 3; i++) {
-            if (a[i] != b[i]) return Integer.compare(a[i], b[i]);
-        }
-        return 0;
     }
 
     private void updateBuildingTasks() {
