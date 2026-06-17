@@ -14,6 +14,7 @@ import {
   Play, 
   Pause,
   Trash2,
+  Sliders,
   RefreshCw, 
   CheckCircle2, 
   XCircle, 
@@ -92,6 +93,170 @@ function parseYamlServices(yamlStr: string): Record<string, { artifact: string; 
     }
   }
   return services;
+}
+
+function parseYamlEnvironment(yamlStr: string, serviceName: string): Record<string, string> {
+  const env: Record<string, string> = {};
+  const lines = yamlStr.split('\n');
+  let inServices = false;
+  let inTargetService = false;
+  let inEnvironment = false;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const indent = line.search(/\S/);
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+
+    if (trimmed.startsWith('services:')) {
+      inServices = true;
+      inTargetService = false;
+      inEnvironment = false;
+      continue;
+    }
+
+    if (inServices) {
+      if (indent === 0 && !trimmed.startsWith('services:')) {
+        inServices = false;
+        inTargetService = false;
+        inEnvironment = false;
+        continue;
+      }
+
+      if (indent === 2 && trimmed.endsWith(':')) {
+        const currentService = trimmed.substring(0, trimmed.length - 1).trim();
+        if (currentService === serviceName) {
+          inTargetService = true;
+          inEnvironment = false;
+        } else {
+          inTargetService = false;
+          inEnvironment = false;
+        }
+        continue;
+      }
+
+      if (inTargetService) {
+        if (indent <= 2) {
+          inTargetService = false;
+          inEnvironment = false;
+          continue;
+        }
+
+        if (trimmed.startsWith('environment:')) {
+          inEnvironment = true;
+          continue;
+        }
+
+        if (inEnvironment) {
+          if (indent <= 4) {
+            inEnvironment = false;
+            continue;
+          }
+
+          if (trimmed.startsWith('-')) {
+            const eqIdx = trimmed.indexOf('=');
+            if (eqIdx !== -1) {
+              const k = trimmed.substring(1, eqIdx).trim().replace(/['"]/g, '');
+              const v = trimmed.substring(eqIdx + 1).trim().replace(/['"]/g, '');
+              env[k] = v;
+            }
+          } else {
+            const colonIdx = trimmed.indexOf(':');
+            if (colonIdx !== -1) {
+              const k = trimmed.substring(0, colonIdx).trim().replace(/['"]/g, '');
+              const v = trimmed.substring(colonIdx + 1).trim().replace(/['"]/g, '');
+              env[k] = v;
+            }
+          }
+        }
+      }
+    }
+  }
+  return env;
+}
+
+function updateYamlEnvironment(yamlStr: string, serviceName: string, env: Record<string, string>): string {
+  const lines = yamlStr.split('\n');
+  let inServices = false;
+  let inTargetService = false;
+  let targetServiceLineIdx = -1;
+  let envStartIdx = -1;
+  let envEndIdx = -1;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const indent = line.search(/\S/);
+    const trimmed = line.trim();
+
+    if (trimmed.startsWith('services:')) {
+      inServices = true;
+      continue;
+    }
+
+    if (inServices) {
+      if (indent === 0 && !trimmed.startsWith('services:')) {
+        inServices = false;
+        inTargetService = false;
+        continue;
+      }
+
+      if (indent === 2 && trimmed.endsWith(':')) {
+        const name = trimmed.substring(0, trimmed.length - 1).trim();
+        if (name === serviceName) {
+          inTargetService = true;
+          targetServiceLineIdx = i;
+        } else {
+          inTargetService = false;
+        }
+        continue;
+      }
+
+      if (inTargetService) {
+        if (indent <= 2 && trimmed) {
+          inTargetService = false;
+          continue;
+        }
+
+        if (trimmed.startsWith('environment:')) {
+          envStartIdx = i;
+          let j = i + 1;
+          while (j < lines.length) {
+            const nextLine = lines[j];
+            const nextIndent = nextLine.search(/\S/);
+            const nextTrimmed = nextLine.trim();
+            if (!nextTrimmed) {
+              j++;
+              continue;
+            }
+            if (nextIndent <= 4) {
+              break;
+            }
+            j++;
+          }
+          envEndIdx = j - 1;
+          break;
+        }
+      }
+    }
+  }
+
+  const envLines: string[] = [];
+  const envKeys = Object.keys(env);
+  if (envKeys.length > 0) {
+    envLines.push('    environment:');
+    for (const key of envKeys) {
+      const val = env[key];
+      envLines.push(`      ${key}: "${val.replace(/"/g, '\\"')}"`);
+    }
+  }
+
+  if (envStartIdx !== -1) {
+    lines.splice(envStartIdx, envEndIdx - envStartIdx + 1, ...envLines);
+  } else if (targetServiceLineIdx !== -1) {
+    lines.splice(targetServiceLineIdx + 1, 0, ...envLines);
+  }
+
+  return lines.join('\n');
 }
 
 function ServiceMetricsCard({ deploymentId, serviceName, serviceType, isSelected, onClick, healthInfo }: {
@@ -412,12 +577,15 @@ function RolloutStepper({ deploymentStatus, events }: { deploymentStatus: string
 export default function DeploymentsPage() {
   const queryClient = useQueryClient();
   const [selectedId, setSelectedId] = React.useState<string | null>(null);
-  const [activeTab, setActiveTab] = React.useState<'dashboard' | 'config' | 'history' | 'logs'>('dashboard');
+  const [activeTab, setActiveTab] = React.useState<'dashboard' | 'config' | 'history' | 'logs' | 'environment'>('dashboard');
   const [isCreating, setIsCreating] = React.useState(false);
   const [newName, setNewName] = React.useState('');
   const [yamlContent, setYamlContent] = React.useState(BOILERPLATE_SPEC);
   const [searchQuery, setSearchQuery] = React.useState('');
   const [selectedService, setSelectedService] = React.useState<string | null>(null);
+  const [editingEnv, setEditingEnv] = React.useState<Record<string, string>>({});
+  const [newEnvKey, setNewEnvKey] = React.useState('');
+  const [newEnvVal, setNewEnvVal] = React.useState('');
 
   // Queries
   const { data: deployments, isLoading } = useQuery({
@@ -487,6 +655,66 @@ export default function DeploymentsPage() {
       setYamlContent(selectedDeployment.deploymentSpec);
     }
   }, [selectedId, selectedDeployment]);
+
+  // Load environment variables for the active service
+  React.useEffect(() => {
+    if (selectedDeployment && selectedService) {
+      try {
+        const parsedEnv = parseYamlEnvironment(yamlContent, selectedService);
+        setEditingEnv(parsedEnv);
+      } catch (e) {
+        setEditingEnv({});
+      }
+      setNewEnvKey('');
+      setNewEnvVal('');
+    }
+  }, [selectedService, yamlContent, activeTab, selectedDeployment]);
+
+  const handleEnvValueChange = (key: string, value: string) => {
+    setEditingEnv(prev => ({
+      ...prev,
+      [key]: value
+    }));
+  };
+
+  const handleEnvDelete = (key: string) => {
+    setEditingEnv(prev => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  };
+
+  const handleEnvAdd = () => {
+    if (!newEnvKey.trim()) return;
+    setEditingEnv(prev => ({
+      ...prev,
+      [newEnvKey.trim()]: newEnvVal
+    }));
+    setNewEnvKey('');
+    setNewEnvVal('');
+  };
+
+  const handleEnvSave = () => {
+    if (!selectedDeployment || !selectedService) return;
+    
+    try {
+      const updatedYaml = updateYamlEnvironment(yamlContent, selectedService, editingEnv);
+      setYamlContent(updatedYaml);
+      
+      saveMutation.mutate({
+        id: selectedDeployment.id,
+        name: selectedDeployment.name,
+        yaml: updatedYaml
+      }, {
+        onSuccess: () => {
+          deployMutation.mutate(selectedDeployment.id);
+        }
+      });
+    } catch (err: any) {
+      alert('Failed to update environment spec: ' + err.message);
+    }
+  };
 
   // Mutations
   const createMutation = useMutation({
@@ -868,6 +1096,7 @@ export default function DeploymentsPage() {
                 {[
                   { id: 'dashboard', label: 'Dashboard', icon: Activity },
                   { id: 'config', label: 'Specification', icon: Save },
+                  { id: 'environment', label: 'Environment', icon: Sliders },
                   { id: 'history', label: 'Releases', icon: History },
                   { id: 'logs', label: 'Audit Log', icon: Terminal }
                 ].map((t) => {
@@ -1011,6 +1240,127 @@ export default function DeploymentsPage() {
                         serviceName={selectedService} 
                       />
                     )}
+                  </div>
+                )}
+
+                {/* 5. Environment variables Tab */}
+                {activeTab === 'environment' && (
+                  <div className="space-y-6">
+                    <div className="flex items-center justify-between border-b border-[#1e293b] pb-4">
+                      <div>
+                        <h4 className="text-sm font-bold text-white uppercase tracking-wider">Environment Configuration</h4>
+                        <p className="text-xs text-gray-400">Manage environment variables for containers in this deployment stack.</p>
+                      </div>
+                      <button
+                        onClick={handleEnvSave}
+                        disabled={saveMutation.isPending || deployMutation.isPending}
+                        className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center gap-2 transition-colors shadow-lg shadow-blue-500/20"
+                      >
+                        <Save className="w-4 h-4" />
+                        {saveMutation.isPending || deployMutation.isPending ? 'Applying...' : 'Apply & Redeploy'}
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+                      {/* Service Selector List */}
+                      <div className="md:col-span-4 bg-[#0d1325]/40 border border-[#1e293b] rounded-xl overflow-hidden">
+                        <div className="p-3 bg-[#0d1325]/80 border-b border-[#1e293b]">
+                          <span className="text-[10px] uppercase font-bold text-gray-400 font-mono">Select Service</span>
+                        </div>
+                        <div className="divide-y divide-[#1e293b]/60">
+                          {serviceNames.map((name) => {
+                            const isSelected = name === selectedService;
+                            return (
+                              <button
+                                key={name}
+                                onClick={() => setSelectedService(name)}
+                                className={`w-full text-left px-4 py-3 text-xs font-semibold transition-all ${
+                                  isSelected 
+                                    ? 'bg-blue-600/10 text-blue-400 border-l-2 border-blue-500' 
+                                    : 'text-gray-400 hover:text-gray-200 hover:bg-[#131b2e]/30'
+                                }`}
+                              >
+                                {name}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Variables Editor */}
+                      <div className="md:col-span-8 space-y-4">
+                        <div className="bg-[#0b0f19]/30 border border-[#1e293b] rounded-xl p-4 space-y-4">
+                          <h5 className="text-xs font-bold text-gray-300 font-mono">Service: <span className="text-blue-400">{selectedService || '--'}</span></h5>
+                          
+                          {/* Variables List */}
+                          <div className="space-y-3">
+                            {selectedService && Object.keys(editingEnv).length > 0 ? (
+                              Object.entries(editingEnv).map(([key, val]) => (
+                                <div key={key} className="flex items-center gap-3 bg-[#0b0f19]/50 border border-[#1e293b]/40 p-2.5 rounded-lg">
+                                  <span className="font-mono text-xs text-gray-400 font-semibold min-w-[150px] truncate" title={key}>
+                                    {key}
+                                  </span>
+                                  <input
+                                    type="text"
+                                    value={val}
+                                    onChange={(e) => handleEnvValueChange(key, e.target.value)}
+                                    className="flex-1 bg-[#131b2e] border border-[#1e293b] rounded-lg px-3 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-blue-500 transition-colors font-mono"
+                                  />
+                                  <button
+                                    onClick={() => handleEnvDelete(key)}
+                                    className="p-1.5 text-gray-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
+                                    title="Delete Variable"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              ))
+                            ) : (
+                              <div className="p-8 text-center text-gray-500 text-xs font-mono border border-dashed border-[#1e293b] rounded-xl">
+                                {selectedService 
+                                  ? 'No environment variables configured for this service.'
+                                  : 'Select a service from the list to view environment variables.'
+                                }
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Add Variable Form */}
+                          {selectedService && (
+                            <div className="border-t border-[#1e293b]/60 pt-4 space-y-3">
+                              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Add Environment Variable</span>
+                              <div className="flex flex-col sm:flex-row gap-3">
+                                <input
+                                  type="text"
+                                  placeholder="VARIABLE_KEY"
+                                  value={newEnvKey}
+                                  onChange={(e) => setNewEnvKey(e.target.value)}
+                                  className="flex-1 bg-[#131b2e] border border-[#1e293b] rounded-lg px-3 py-2 text-xs text-gray-200 focus:outline-none focus:border-blue-500 transition-colors font-mono uppercase"
+                                />
+                                <input
+                                  type="text"
+                                  placeholder="variable_value"
+                                  value={newEnvVal}
+                                  onChange={(e) => setNewEnvVal(e.target.value)}
+                                  className="flex-1 bg-[#131b2e] border border-[#1e293b] rounded-lg px-3 py-2 text-xs text-gray-200 focus:outline-none focus:border-blue-500 transition-colors font-mono"
+                                />
+                                <button
+                                  onClick={handleEnvAdd}
+                                  className="bg-[#1e293b] hover:bg-blue-600 text-gray-300 hover:text-white px-4 py-2 rounded-lg text-xs font-bold uppercase transition-colors"
+                                >
+                                  Add
+                                </button>
+                              </div>
+                            </div>
+                          )}
+
+                        </div>
+                        <p className="text-[10px] text-gray-500 flex items-center gap-1.5 font-mono">
+                          <Info className="w-3.5 h-3.5 text-blue-400" />
+                          Applying changes updates the YAML spec on the backend and triggers a rolling rollout.
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 )}
 
