@@ -20,10 +20,10 @@ public class DatabaseUserInitializer implements CommandLineRunner {
             log.info("No users found in database. Initializing default admin user...");
             User admin = new User();
             admin.setUsername("admin");
-            admin.setPasswordHash(passwordEncoder.encode("admin"));
+            admin.setPasswordHash(passwordEncoder.encode("password"));
             admin.setRole("ADMIN");
             userRepository.save(admin);
-            log.info("Default admin user initialized successfully with username: 'admin' and password: 'admin'");
+            log.info("Default admin user initialized successfully with username: 'admin' and password: 'password'");
         }
     }
 }

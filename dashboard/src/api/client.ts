@@ -310,4 +310,24 @@ export const apiClient = {
     }),
   logout: () => request<void>('/auth/logout', { method: 'POST' }),
   getCurrentUser: () => request<{ username: string; role: string }>('/auth/me'),
+
+  // User Management API
+  getUsers: () => request<any[]>('/users'),
+  createUser: (userData: any) => 
+    request<any>('/users', {
+      method: 'POST',
+      body: JSON.stringify(userData)
+    }),
+  updateUserRole: (id: string, role: string) => 
+    request<any>(`/users/${id}/role`, {
+      method: 'PUT',
+      body: JSON.stringify({ role })
+    }),
+  resetUserPassword: (id: string, password: string) => 
+    request<void>(`/users/${id}/password`, {
+      method: 'PUT',
+      body: JSON.stringify({ password })
+    }),
+  deleteUser: (id: string) => 
+    request<void>(`/users/${id}`, { method: 'DELETE' }),
 };

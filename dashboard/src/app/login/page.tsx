@@ -114,12 +114,7 @@ export default function LoginPage() {
           </button>
         </form>
 
-        {/* Footer info */}
-        <div className="text-center">
-          <p className="text-[10px] text-gray-400 font-mono">
-            Default credentials: <span className="font-bold text-gray-500">admin / admin</span>
-          </p>
-        </div>
+
       </div>
     </div>
   );
