@@ -3,6 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useAuth } from '@/components/auth-context';
 import { 
   LayoutGrid, 
   Hammer, 
@@ -22,6 +23,11 @@ interface LayoutWrapperProps {
 
 export default function LayoutWrapper({ children }: LayoutWrapperProps) {
   const pathname = usePathname();
+  const { user, logout } = useAuth();
+
+  if (pathname === '/login') {
+    return <>{children}</>;
+  }
 
   const navigation = [
     { name: 'Dashboard', href: '/', icon: LayoutGrid },
@@ -72,6 +78,20 @@ export default function LayoutWrapper({ children }: LayoutWrapperProps) {
 
         {/* Right Header Actions */}
         <div className="flex items-center gap-4">
+          {user && (
+            <div className="flex items-center gap-3">
+              <span className="text-[11px] font-bold text-gray-700 bg-gray-100 border border-gray-200 px-3 py-1.5 rounded-full flex items-center gap-1.5 shadow-sm">
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>
+                {user.username} ({user.role})
+              </span>
+              <button
+                onClick={logout}
+                className="text-[11px] font-bold text-red-700 bg-red-50 border border-red-200 hover:bg-red-100 hover:border-red-300 px-3 py-1.5 rounded-full transition-all duration-200 shadow-sm active:scale-95"
+              >
+                Logout
+              </button>
+            </div>
+          )}
         </div>
       </header>
 

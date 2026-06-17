@@ -301,4 +301,13 @@ export const apiClient = {
   resume: (id: string) => request<Deployment>(`/deployments/${id}/resume`, { method: 'POST' }),
   restart: (id: string) => request<Deployment>(`/deployments/${id}/restart`, { method: 'POST' }),
   deleteDeployment: (id: string) => request<void>(`/deployments/${id}`, { method: 'DELETE' }),
+
+  // Auth API
+  login: (username: string, password: string) => 
+    request<{ username: string; role: string }>('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ username, password })
+    }),
+  logout: () => request<void>('/auth/logout', { method: 'POST' }),
+  getCurrentUser: () => request<{ username: string; role: string }>('/auth/me'),
 };
