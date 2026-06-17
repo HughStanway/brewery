@@ -84,7 +84,7 @@ export default function ArtifactDetailsPage() {
     
     if (!builds) {
       return (
-        <span className="text-gray-400 font-mono" title={buildId}>
+        <span className="text-gray-500 font-mono" title={buildId}>
           {displayId}
         </span>
       );
@@ -95,7 +95,7 @@ export default function ArtifactDetailsPage() {
       return (
         <Link 
           href={`/builds/${buildId}`}
-          className="text-blue-500 hover:text-blue-400 hover:underline font-mono font-semibold"
+          className="text-[var(--primary)] hover:text-[var(--primary)] hover:underline font-mono font-semibold"
           title={buildId}
           onClick={(e) => e.stopPropagation()}
         >
@@ -185,7 +185,7 @@ export default function ArtifactDetailsPage() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[50vh] gap-4">
         <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-        <p className="text-gray-400 font-mono text-sm animate-pulse">Retrieving artifact metadata...</p>
+        <p className="text-gray-500 font-mono text-sm animate-pulse">Retrieving artifact metadata...</p>
       </div>
     );
   }
@@ -193,11 +193,11 @@ export default function ArtifactDetailsPage() {
   if (metaError || !metadata) {
     return (
       <div className="p-6 bg-red-950/20 border border-red-500/20 rounded-2xl max-w-2xl mx-auto mt-12 flex flex-col gap-4">
-        <h2 className="text-lg font-bold text-red-400">Failed to load artifact</h2>
-        <p className="text-sm text-red-300/80">The requested artifact `{name}@{version}` was not found in the registry.</p>
+        <h2 className="text-lg font-bold text-red-600">Failed to load artifact</h2>
+        <p className="text-sm text-red-600/80">The requested artifact `{name}@{version}` was not found in the registry.</p>
         <Link 
           href="/artifacts" 
-          className="inline-flex items-center gap-2 text-xs font-semibold text-blue-400 hover:underline"
+          className="inline-flex items-center gap-2 text-xs font-semibold text-[var(--primary)] hover:underline"
         >
           <ArrowLeft className="w-4 h-4" /> Back to Artifacts Registry
         </Link>
@@ -224,13 +224,13 @@ export default function ArtifactDetailsPage() {
   return (
     <div className="space-y-6">
       {/* Page Title Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#1e293b] pb-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[var(--card-border)] pb-4">
         <div className="flex items-center gap-3">
-          <div className="p-3 bg-blue-500/10 text-blue-400 rounded-xl">
+          <div className="p-3 bg-blue-500/10 text-[var(--primary)] rounded-2xl">
             <Package className="w-6 h-6" />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
+            <h2 className="text-xl font-bold text-gray-900 tracking-tight flex items-center gap-2">
               {metadata.name}
               {isLatest && (
                 <span className="px-2 py-0.5 bg-emerald-500/15 text-emerald-400 text-[10px] font-bold rounded-lg border border-emerald-500/25 uppercase tracking-wider">
@@ -243,7 +243,7 @@ export default function ArtifactDetailsPage() {
                 </span>
               )}
             </h2>
-            <p className="text-xs text-gray-400 mt-1">Inspecting release package metadata and dependencies.</p>
+            <p className="text-xs text-gray-500 mt-1">Inspecting release package metadata and dependencies.</p>
           </div>
         </div>
         
@@ -252,7 +252,7 @@ export default function ArtifactDetailsPage() {
           <a 
             href={downloadUrl}
             download
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold transition-all shadow-lg shadow-blue-500/20"
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-[var(--primary)] text-white rounded-full rounded-2xl text-xs font-semibold transition-all shadow-lg shadow-blue-500/20"
           >
             <Download className="w-4 h-4" />
             Download
@@ -260,7 +260,7 @@ export default function ArtifactDetailsPage() {
           <button
             onClick={handleDeleteClick}
             disabled={deleteArtifactMutation.isPending}
-            className="flex items-center gap-2 px-4 py-2 bg-rose-950/40 hover:bg-rose-600/80 text-rose-300 hover:text-white border border-rose-500/30 rounded-xl text-xs font-semibold transition-all shadow-lg shadow-rose-950/20 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 px-4 py-2 bg-rose-950/40 hover:bg-rose-600/80 text-rose-300 hover:text-[var(--primary)] border border-rose-500/30 rounded-2xl text-xs font-semibold transition-all shadow-lg shadow-rose-950/20 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Trash2 className="w-4 h-4" />
             Delete Version
@@ -275,22 +275,22 @@ export default function ArtifactDetailsPage() {
         <div className="space-y-6">
           
           {/* Metadata properties */}
-          <div className="p-6 bg-[#131b2e] border border-[#1e293b] rounded-2xl shadow-xl space-y-4">
-            <h3 className="text-sm font-bold text-white uppercase tracking-wider border-b border-[#1e293b] pb-3 flex items-center gap-2">
-              <Database className="w-4 h-4 text-blue-500" />
+          <div className="p-6 bg-[var(--card)] border border-[var(--card-border)] rounded-2xl shadow-xl space-y-4">
+            <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider border-b border-[var(--card-border)] pb-3 flex items-center gap-2">
+              <Database className="w-4 h-4 text-[var(--primary)]" />
               Properties
             </h3>
             
             <div className="space-y-3.5 text-xs">
               <div>
                 <span className="text-[10px] text-gray-500 font-semibold block uppercase">Package Name</span>
-                <span className="font-bold text-white block text-sm">{metadata.name}</span>
+                <span className="font-bold text-gray-900 block text-sm">{metadata.name}</span>
               </div>
 
               <div>
                 <span className="text-[10px] text-gray-500 font-semibold block uppercase">Active Version</span>
                 <div className="flex items-center gap-2 mt-0.5">
-                  <span className="font-mono text-white font-semibold">{metadata.version}</span>
+                  <span className="font-mono text-gray-900 font-semibold">{metadata.version}</span>
                   {isLatest && (
                     <span className="px-1.5 py-0.5 bg-emerald-500/15 text-emerald-400 text-[9px] font-bold rounded border border-emerald-500/25 uppercase tracking-wider">
                       Latest
@@ -306,13 +306,13 @@ export default function ArtifactDetailsPage() {
 
               <div>
                 <span className="text-[10px] text-gray-500 font-semibold block uppercase">File Size</span>
-                <span className="font-medium text-white block">{metadata.file_size_bytes ? formatBytes(metadata.file_size_bytes) : 'N/A'}</span>
+                <span className="font-medium text-gray-900 block">{metadata.file_size_bytes ? formatBytes(metadata.file_size_bytes) : 'N/A'}</span>
               </div>
 
               {metadata.checksums?.sha256 && (
                 <div>
                   <span className="text-[10px] text-gray-500 font-semibold block uppercase">SHA-256 Checksum</span>
-                  <span className="font-mono text-gray-400 block break-all text-[11px] bg-black/35 p-2 rounded-lg border border-[#1e293b] mt-1 select-all">
+                  <span className="font-mono text-gray-500 block break-all text-[11px] bg-gray-50 p-2 rounded-lg border border-[var(--card-border)] mt-1 select-all">
                     {metadata.checksums.sha256}
                   </span>
                 </div>
@@ -320,14 +320,14 @@ export default function ArtifactDetailsPage() {
 
               <div>
                 <span className="text-[10px] text-gray-500 font-semibold block uppercase">Registered At</span>
-                <span className="font-medium text-white block">{metadata.built_at ? new Date(metadata.built_at).toLocaleString() : 'N/A'}</span>
+                <span className="font-medium text-gray-900 block">{metadata.built_at ? new Date(metadata.built_at).toLocaleString() : 'N/A'}</span>
               </div>
             </div>
           </div>
 
           {/* Versions Swapper list */}
-          <div className="p-6 bg-[#131b2e] border border-[#1e293b] rounded-2xl shadow-xl space-y-4">
-            <h3 className="text-sm font-bold text-white uppercase tracking-wider border-b border-[#1e293b] pb-3">
+          <div className="p-6 bg-[var(--card)] border border-[var(--card-border)] rounded-2xl shadow-xl space-y-4">
+            <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider border-b border-[var(--card-border)] pb-3">
               Version History ({versionsList.length})
             </h3>
             
@@ -340,10 +340,10 @@ export default function ArtifactDetailsPage() {
                   <div
                     key={ver.version}
                     onClick={() => router.push(`/artifacts/${name}/${ver.version}`)}
-                    className={`flex items-center justify-between p-2.5 rounded-xl text-xs font-mono transition-all border cursor-pointer ${
+                    className={`flex items-center justify-between p-2.5 rounded-2xl text-xs font-mono transition-all border cursor-pointer ${
                       isCurrent 
-                        ? 'bg-blue-600/10 border-blue-500/20 text-blue-400 font-bold' 
-                        : 'border-transparent text-gray-400 hover:bg-[#151d30] hover:text-gray-200'
+                        ? 'bg-blue-600/10 border-blue-500/20 text-[var(--primary)] font-bold' 
+                        : 'border-transparent text-gray-500 hover:bg-gray-100 hover:text-gray-800'
                     }`}
                   >
                     <div className="flex items-center gap-1.5 min-w-0 flex-1">
@@ -365,7 +365,7 @@ export default function ArtifactDetailsPage() {
                           {renderBuildLink(ver.build_id || ver.buildId, false)}
                         </span>
                       )}
-                      <ChevronRight className={`w-4 h-4 ${isCurrent ? 'text-blue-400' : 'text-gray-600'}`} />
+                      <ChevronRight className={`w-4 h-4 ${isCurrent ? 'text-[var(--primary)]' : 'text-gray-600'}`} />
                     </div>
                   </div>
                 );
@@ -379,8 +379,8 @@ export default function ArtifactDetailsPage() {
         <div className="lg:col-span-2 space-y-6">
           
           {/* Build Origin (Git details) */}
-          <div className="p-6 bg-[#131b2e] border border-[#1e293b] rounded-2xl shadow-xl space-y-4">
-            <h3 className="text-sm font-bold text-white uppercase tracking-wider border-b border-[#1e293b] pb-3 flex items-center gap-2">
+          <div className="p-6 bg-[var(--card)] border border-[var(--card-border)] rounded-2xl shadow-xl space-y-4">
+            <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider border-b border-[var(--card-border)] pb-3 flex items-center gap-2">
               <ShieldCheck className="w-4 h-4 text-emerald-500" />
               Build Source Integrity
             </h3>
@@ -388,18 +388,18 @@ export default function ArtifactDetailsPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
               <div className="space-y-1">
                 <span className="text-[10px] text-gray-500 font-semibold block uppercase">Git Repository</span>
-                <span className="font-mono text-gray-300 block break-all">{metadata.repository || 'N/A'}</span>
+                <span className="font-mono text-gray-700 block break-all">{metadata.repository || 'N/A'}</span>
               </div>
               <div className="space-y-1">
                 <span className="text-[10px] text-gray-500 font-semibold block uppercase">Git Branch</span>
-                <span className="font-mono text-gray-300 block flex items-center gap-1">
+                <span className="font-mono text-gray-700 block flex items-center gap-1">
                   <GitBranch className="w-3.5 h-3.5 text-gray-500" />
                   {metadata.branch || 'main'}
                 </span>
               </div>
               <div className="space-y-1 md:col-span-2">
                 <span className="text-[10px] text-gray-500 font-semibold block uppercase">Commit SHA</span>
-                <span className="font-mono text-gray-300 block break-all select-all">{metadata.commit || 'N/A'}</span>
+                <span className="font-mono text-gray-700 block break-all select-all">{metadata.commit || 'N/A'}</span>
               </div>
               <div className="space-y-1 md:col-span-2">
                 <span className="text-[10px] text-gray-500 font-semibold block uppercase">Build Pipeline Link</span>
@@ -411,8 +411,8 @@ export default function ArtifactDetailsPage() {
           </div>
 
           {/* Tags Manager */}
-          <div className="p-6 bg-[#131b2e] border border-[#1e293b] rounded-2xl shadow-xl space-y-4">
-            <h3 className="text-sm font-bold text-white uppercase tracking-wider border-b border-[#1e293b] pb-3 flex items-center gap-2">
+          <div className="p-6 bg-[var(--card)] border border-[var(--card-border)] rounded-2xl shadow-xl space-y-4">
+            <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider border-b border-[var(--card-border)] pb-3 flex items-center gap-2">
               <Tag className="w-4 h-4 text-violet-500" />
               Tags Management
             </h3>
@@ -424,13 +424,13 @@ export default function ArtifactDetailsPage() {
                   metadata.tags.map((tag: string) => (
                     <span 
                       key={tag}
-                      className="inline-flex items-center gap-1.5 px-3 py-1 bg-violet-500/10 border border-violet-500/20 text-violet-400 font-bold rounded-xl text-xs uppercase"
+                      className="inline-flex items-center gap-1.5 px-3 py-1 bg-violet-500/10 border border-violet-500/20 text-violet-400 font-bold rounded-2xl text-xs uppercase"
                     >
                       {tag}
                       <button
                         onClick={() => removeTagMutation.mutate(tag)}
                         disabled={removeTagMutation.isPending}
-                        className="text-violet-500 hover:text-red-400 transition-colors"
+                        className="text-violet-500 hover:text-red-600 transition-colors"
                         title="Delete Tag"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -449,12 +449,12 @@ export default function ArtifactDetailsPage() {
                   placeholder="Enter new tag name..."
                   value={newTag}
                   onChange={(e) => setNewTag(e.target.value)}
-                  className="flex-1 bg-[#0b0f19] border border-[#1e293b] rounded-xl px-3 py-1.5 text-xs text-gray-200 placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                  className="flex-1 bg-[var(--background)] border border-[var(--card-border)] rounded-2xl px-3 py-1.5 text-xs text-gray-800 placeholder-gray-500 focus:outline-none focus:border-blue-500"
                 />
                 <button
                   type="submit"
                   disabled={addTagMutation.isPending || !newTag.trim()}
-                  className="p-2 bg-blue-600 hover:bg-blue-500 disabled:bg-blue-600/50 disabled:cursor-not-allowed text-white rounded-xl text-xs font-semibold flex items-center gap-1 transition-colors"
+                  className="p-2 bg-blue-600 hover:bg-blue-500 disabled:bg-blue-600/50 disabled:cursor-not-allowed text-gray-900 rounded-2xl text-xs font-semibold flex items-center gap-1 transition-colors"
                 >
                   <Plus className="w-4 h-4" /> Add
                 </button>
@@ -463,8 +463,8 @@ export default function ArtifactDetailsPage() {
           </div>
 
           {/* Dependencies List */}
-          <div className="p-6 bg-[#131b2e] border border-[#1e293b] rounded-2xl shadow-xl space-y-4">
-            <h3 className="text-sm font-bold text-white uppercase tracking-wider border-b border-[#1e293b] pb-3">
+          <div className="p-6 bg-[var(--card)] border border-[var(--card-border)] rounded-2xl shadow-xl space-y-4">
+            <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider border-b border-[var(--card-border)] pb-3">
               Dependencies ({metadata.dependencies?.length || 0})
             </h3>
 
@@ -472,7 +472,7 @@ export default function ArtifactDetailsPage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
-                    <tr className="border-b border-[#1e293b] text-gray-400 font-medium">
+                    <tr className="border-b border-[var(--card-border)] text-gray-500 font-medium">
                       <th className="py-2.5 px-3">Dependency Name</th>
                       <th className="py-2.5 px-3 font-mono">Range Constraint</th>
                       <th className="py-2.5 px-3 font-mono">Resolved Version</th>
@@ -485,15 +485,15 @@ export default function ArtifactDetailsPage() {
                       return (
                         <tr 
                           key={index} 
-                          className="border-b border-[#1e293b]/60 hover:bg-[#151d30]/20 transition-colors"
+                          className="border-b border-[var(--card-border)] hover:bg-gray-100 transition-colors"
                         >
-                          <td className="py-3 px-3 font-semibold text-white">
+                          <td className="py-3 px-3 font-semibold text-gray-900">
                             {dep.name}
                           </td>
-                          <td className="py-3 px-3 font-mono text-gray-300">
+                          <td className="py-3 px-3 font-mono text-gray-700">
                             {dep.version_range}
                           </td>
-                          <td className="py-3 px-3 font-mono font-semibold text-blue-400">
+                          <td className="py-3 px-3 font-mono font-semibold text-[var(--primary)]">
                             {resolvedVer ? resolvedVer : (dep.resolved_version || 'pending resolution...')}
                           </td>
                           <td className="py-3 px-3">
@@ -512,24 +512,24 @@ export default function ArtifactDetailsPage() {
                 </table>
               </div>
             ) : (
-              <div className="p-4 bg-zinc-950/20 border border-zinc-800/40 rounded-xl text-center text-xs text-gray-500 font-mono">
+              <div className="p-4 bg-gray-50 border border-gray-200 rounded-2xl text-center text-xs text-gray-500 font-mono">
                 No external dependencies defined for this artifact.
               </div>
             )}
           </div>
 
           {/* Expandable Raw JSON Viewer */}
-          <div className="p-6 bg-[#131b2e] border border-[#1e293b] rounded-2xl shadow-xl space-y-4">
+          <div className="p-6 bg-[var(--card)] border border-[var(--card-border)] rounded-2xl shadow-xl space-y-4">
             <button
               onClick={() => setShowRawJson(!showRawJson)}
-              className="flex items-center justify-between w-full text-sm font-bold text-white uppercase tracking-wider border-b border-[#1e293b] pb-3"
+              className="flex items-center justify-between w-full text-sm font-bold text-gray-900 uppercase tracking-wider border-b border-[var(--card-border)] pb-3"
             >
               <span>Raw Metadata JSON Explorer</span>
-              {showRawJson ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
+              {showRawJson ? <ChevronUp className="w-4 h-4 text-gray-500" /> : <ChevronDown className="w-4 h-4 text-gray-500" />}
             </button>
 
             {showRawJson && (
-              <div className="p-4 bg-black/60 border border-[#1e293b] rounded-xl overflow-x-auto font-mono text-[11px] text-blue-400 leading-relaxed select-all">
+              <div className="p-4 bg-gray-50 border border-[var(--card-border)] rounded-2xl overflow-x-auto font-mono text-[11px] text-[var(--primary)] leading-relaxed select-all">
                 <pre>{JSON.stringify(metadata, null, 2)}</pre>
               </div>
             )}

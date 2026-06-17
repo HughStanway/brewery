@@ -12,14 +12,14 @@
 }
 
 :root {
-  --background: #0b0f19;
-  --foreground: #f3f4f6;
-  --primary: #3b82f6;
-  --success: #10b981;
-  --error: #ef4444;
-  --warning: #f59e0b;
-  --card: #131b2e;
-  --card-border: #1e293b;
+  --background: #f8f9fa;
+  --foreground: #202124;
+  --primary: #1a73e8;
+  --success: #1e8e3e;
+  --error: #d93025;
+  --warning: #f9ab00;
+  --card: #ffffff;
+  --card-border: #e8eaed;
 }
 
 body {
@@ -32,10 +32,10 @@ body {
 
 /* Glassmorphism utility */
 .glass {
-  background: rgba(19, 27, 46, 0.75);
+  background: rgba(255, 255, 255, 0.85);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(0, 0, 0, 0.05);
 }
 
 /* Custom Scrollbar */
@@ -44,14 +44,14 @@ body {
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #0b0f19;
+  background: var(--background);
 }
 ::-webkit-scrollbar-thumb {
-  background: #1e293b;
+  background: var(--card-border);
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #334155;
+  background: #cbd5e1;
 }
 
 /* Pulsing dot for live status */
@@ -60,22 +60,22 @@ body {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background-color: #10b981;
-  box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+  background-color: var(--success);
+  box-shadow: 0 0 0 0 rgba(30, 142, 62, 0.7);
   animation: pulse 2s infinite;
 }
 
 @keyframes pulse {
   0% {
     transform: scale(0.95);
-    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+    box-shadow: 0 0 0 0 rgba(30, 142, 62, 0.7);
   }
   70% {
     transform: scale(1);
-    box-shadow: 0 0 0 8px rgba(16, 185, 129, 0);
+    box-shadow: 0 0 0 8px rgba(30, 142, 62, 0);
   }
   100% {
     transform: scale(0.95);
-    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+    box-shadow: 0 0 0 0 rgba(30, 142, 62, 0);
   }
 }

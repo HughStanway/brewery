@@ -130,7 +130,7 @@ export default function BuildDetailsPage() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[50vh] gap-4">
         <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-        <p className="text-gray-400 font-mono text-sm animate-pulse">Loading build metadata...</p>
+        <p className="text-gray-500 font-mono text-sm animate-pulse">Loading build metadata...</p>
       </div>
     );
   }
@@ -138,11 +138,11 @@ export default function BuildDetailsPage() {
   if (error || !build) {
     return (
       <div className="p-6 bg-red-950/20 border border-red-500/20 rounded-2xl max-w-2xl mx-auto mt-12 flex flex-col gap-4">
-        <h2 className="text-lg font-bold text-red-400">Failed to load build details</h2>
-        <p className="text-sm text-red-300/80">The requested build was not found or is currently unreachable.</p>
+        <h2 className="text-lg font-bold text-red-600">Failed to load build details</h2>
+        <p className="text-sm text-red-600/80">The requested build was not found or is currently unreachable.</p>
         <Link 
           href="/builds" 
-          className="inline-flex items-center gap-2 text-xs font-semibold text-blue-400 hover:underline"
+          className="inline-flex items-center gap-2 text-xs font-semibold text-[var(--primary)] hover:underline"
         >
           <ArrowLeft className="w-4 h-4" /> Back to Builds List
         </Link>
@@ -150,18 +150,18 @@ export default function BuildDetailsPage() {
     );
   }
 
-  let statusBg = 'bg-zinc-800 text-zinc-400 border-zinc-700/50';
+  let statusBg = 'bg-gray-100 text-gray-600 border-gray-200';
   let statusIcon = Clock;
   if (build.status === 'success') {
     statusBg = 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
     statusIcon = CheckCircle2;
   }
   if (build.status === 'failed') {
-    statusBg = 'bg-red-500/10 text-red-400 border-red-500/20';
+    statusBg = 'bg-red-500/10 text-red-600 border-red-500/20';
     statusIcon = XCircle;
   }
   if (build.status === 'building') {
-    statusBg = 'bg-blue-500/10 text-blue-400 border-blue-500/20 animate-pulse';
+    statusBg = 'bg-blue-500/10 text-[var(--primary)] border-blue-500/20 animate-pulse';
     statusIcon = Play;
   }
   if (build.status === 'pending') {
@@ -169,7 +169,7 @@ export default function BuildDetailsPage() {
     statusIcon = Clock;
   }
   if (build.status === 'cancelled') {
-    statusBg = 'bg-zinc-700/20 text-zinc-500 border-zinc-700/30';
+    statusBg = 'bg-gray-50 text-gray-600 border-gray-200';
     statusIcon = XOctagon;
   }
 
@@ -181,7 +181,7 @@ export default function BuildDetailsPage() {
       <div className="flex items-center justify-between">
         <Link 
           href="/builds"
-          className="flex items-center gap-2 text-sm text-gray-400 hover:text-gray-200 transition-colors font-medium"
+          className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-800 transition-colors font-medium"
         >
           <ArrowLeft className="w-4 h-4" />
           Back to Builds
@@ -193,7 +193,7 @@ export default function BuildDetailsPage() {
             <button
               onClick={() => cancelMutation.mutate(build.id)}
               disabled={cancelMutation.isPending}
-              className="flex items-center gap-2 px-4 py-2 bg-red-950/20 hover:bg-red-600 border border-red-500/20 hover:border-transparent text-red-400 hover:text-white rounded-xl text-xs font-semibold transition-all shadow"
+              className="flex items-center gap-2 px-4 py-2 bg-red-950/20 hover:bg-red-600 border border-red-500/20 hover:border-transparent text-red-600 hover:text-[var(--primary)] rounded-2xl text-xs font-semibold transition-all shadow"
             >
               <XOctagon className="w-4 h-4" />
               Cancel Execution
@@ -204,7 +204,7 @@ export default function BuildDetailsPage() {
             <button
               onClick={() => retryMutation.mutate(build.id)}
               disabled={retryMutation.isPending}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold transition-all shadow-lg shadow-blue-500/20"
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-[var(--primary)] text-white rounded-full rounded-2xl text-xs font-semibold transition-all shadow-lg shadow-blue-500/20"
             >
               <RotateCw className="w-4 h-4" />
               Re-run Pipeline
@@ -217,10 +217,10 @@ export default function BuildDetailsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* Build Metadata Card */}
-        <div className="p-6 bg-[#131b2e] border border-[#1e293b] rounded-2xl shadow-xl space-y-6 self-start">
-          <div className="space-y-2 border-b border-[#1e293b] pb-4">
+        <div className="p-6 bg-[var(--card)] border border-[var(--card-border)] rounded-2xl shadow-xl space-y-6 self-start">
+          <div className="space-y-2 border-b border-[var(--card-border)] pb-4">
             <span className="text-[10px] text-gray-500 font-mono block">PIPELINE RUN</span>
-            <h3 className="text-base font-bold text-white font-mono">{build.id}</h3>
+            <h3 className="text-base font-bold text-gray-900 font-mono">{build.id}</h3>
             <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${statusBg} mt-2`}>
               <StatusIcon className="w-3.5 h-3.5" />
               {build.status}
@@ -233,7 +233,7 @@ export default function BuildDetailsPage() {
               <Code className="w-5 h-5 text-gray-500 mt-0.5 shrink-0" />
               <div>
                 <span className="text-[11px] text-gray-500 font-semibold block uppercase">Repository</span>
-                <span className="font-medium text-white block break-all">{build.repository}</span>
+                <span className="font-medium text-gray-900 block break-all">{build.repository}</span>
               </div>
             </div>
 
@@ -242,7 +242,7 @@ export default function BuildDetailsPage() {
               <GitBranch className="w-5 h-5 text-gray-500 mt-0.5 shrink-0" />
               <div>
                 <span className="text-[11px] text-gray-500 font-semibold block uppercase">Branch</span>
-                <span className="font-medium text-white block">{build.branch}</span>
+                <span className="font-medium text-gray-900 block">{build.branch}</span>
               </div>
             </div>
 
@@ -251,7 +251,7 @@ export default function BuildDetailsPage() {
               <FileCode className="w-5 h-5 text-gray-500 mt-0.5 shrink-0" />
               <div>
                 <span className="text-[11px] text-gray-500 font-semibold block uppercase">Commit Hash</span>
-                <span className="font-mono text-xs text-gray-300 block break-all">{build.commit}</span>
+                <span className="font-mono text-xs text-gray-700 block break-all">{build.commit}</span>
               </div>
             </div>
 
@@ -260,7 +260,7 @@ export default function BuildDetailsPage() {
               <Clock className="w-5 h-5 text-gray-500 mt-0.5 shrink-0" />
               <div>
                 <span className="text-[11px] text-gray-500 font-semibold block uppercase">Duration</span>
-                <span className="font-medium text-white block">{build.durationSeconds ? `${build.durationSeconds} seconds` : 'Running...'}</span>
+                <span className="font-medium text-gray-900 block">{build.durationSeconds ? `${build.durationSeconds} seconds` : 'Running...'}</span>
               </div>
             </div>
 
@@ -269,19 +269,19 @@ export default function BuildDetailsPage() {
               <Calendar className="w-5 h-5 text-gray-500 mt-0.5 shrink-0" />
               <div>
                 <span className="text-[11px] text-gray-500 font-semibold block uppercase">Created At</span>
-                <span className="font-medium text-white block">{new Date(build.createdAt).toLocaleString()}</span>
+                <span className="font-medium text-gray-900 block">{new Date(build.createdAt).toLocaleString()}</span>
               </div>
             </div>
 
             {/* Produced Artifact */}
             {buildArtifact && (
               <div className="flex items-start gap-3">
-                <Package className="w-5 h-5 text-blue-500 mt-0.5 shrink-0" />
+                <Package className="w-5 h-5 text-[var(--primary)] mt-0.5 shrink-0" />
                 <div>
                   <span className="text-[11px] text-gray-500 font-semibold block uppercase">Produced Artifact</span>
                   <Link 
                     href={`/artifacts/${buildArtifact.name}/${buildArtifact.version}`}
-                    className="text-blue-500 hover:text-blue-400 hover:underline font-semibold block text-xs"
+                    className="text-[var(--primary)] hover:text-[var(--primary)] hover:underline font-semibold block text-xs"
                   >
                     {buildArtifact.name}@{buildArtifact.version}
                   </Link>
@@ -308,14 +308,14 @@ export default function BuildDetailsPage() {
         </div>
 
         {/* Terminal Logs Output */}
-        <div className="lg:col-span-2 flex flex-col p-6 bg-[#080d1a] border border-[#1e293b] rounded-2xl shadow-xl min-h-[60vh]">
-          <div className="flex items-center justify-between border-b border-[#1e293b] pb-4 mb-4">
-            <h3 className="text-sm font-bold text-white flex items-center gap-2">
-              <Terminal className="w-5 h-5 text-blue-500" />
+        <div className="lg:col-span-2 flex flex-col p-6 bg-[var(--background)] border border-[var(--card-border)] rounded-2xl shadow-xl min-h-[60vh]">
+          <div className="flex items-center justify-between border-b border-[var(--card-border)] pb-4 mb-4">
+            <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
+              <Terminal className="w-5 h-5 text-[var(--primary)]" />
               Pipeline Terminal Logs
             </h3>
             {build.status === 'building' && (
-              <span className="flex items-center gap-2 text-xs text-blue-400 font-mono">
+              <span className="flex items-center gap-2 text-xs text-[var(--primary)] font-mono">
                 <span className="w-2 h-2 bg-blue-500 rounded-full animate-ping"></span>
                 Streaming Logs...
               </span>
@@ -324,18 +324,18 @@ export default function BuildDetailsPage() {
 
           {/* Outdated Dependencies Warning Box */}
           {outdatedDependencies.length > 0 && (
-            <div className="mb-4 p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-400 space-y-2">
+            <div className="mb-4 p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl text-amber-400 space-y-2">
               <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider">
                 <span className="w-2.5 h-2.5 bg-amber-500 rounded-full animate-pulse"></span>
                 Outdated Dependencies Warning
               </div>
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-gray-500">
                 This build resolved dependencies that are no longer the latest version in the registry:
               </p>
               <div className="space-y-1 text-xs">
                 {outdatedDependencies.map((dep, idx) => (
                   <div key={idx} className="flex items-center gap-1.5 font-mono text-[11px]">
-                    <span className="text-white font-semibold">{dep.name}</span>
+                    <span className="text-gray-900 font-semibold">{dep.name}</span>
                     <span className="text-gray-500">resolved:</span>
                     <span className="text-amber-500">{dep.currentVersion}</span>
                     <span className="text-gray-500">→ latest:</span>
@@ -347,9 +347,9 @@ export default function BuildDetailsPage() {
           )}
 
           {/* Logs scroll area */}
-          <div className="flex-1 bg-black/50 border border-[#1e293b] rounded-xl p-4 overflow-y-auto font-mono text-xs text-gray-300 leading-relaxed max-h-[500px]">
+          <div className="flex-1 bg-gray-50 border border-[var(--card-border)] rounded-2xl p-4 overflow-y-auto font-mono text-xs text-gray-700 leading-relaxed max-h-[500px]">
             {build.logs ? (
-              <pre className="whitespace-pre-wrap select-text selection:bg-blue-500/30 selection:text-white">
+              <pre className="whitespace-pre-wrap select-text selection:bg-blue-500/30 selection:text-gray-900">
                 {build.logs}
               </pre>
             ) : build.status === 'pending' ? (
@@ -364,7 +364,7 @@ export default function BuildDetailsPage() {
             
             {/* Error Message Block */}
             {build.errorMessage && (
-              <div className="mt-4 p-3 bg-red-950/20 border border-red-500/20 rounded-lg text-red-400 font-mono text-xs">
+              <div className="mt-4 p-3 bg-red-950/20 border border-red-500/20 rounded-lg text-red-600 font-mono text-xs">
                 <div className="font-bold uppercase tracking-wider mb-1 flex items-center gap-1.5">
                   <XOctagon className="w-4 h-4 text-red-500" />
                   Terminal Exception

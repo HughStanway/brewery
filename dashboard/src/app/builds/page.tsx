@@ -71,7 +71,7 @@ export default function BuildsPage() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[50vh] gap-4">
         <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-        <p className="text-gray-400 font-mono text-sm animate-pulse">Fetching pipelines...</p>
+        <p className="text-gray-500 font-mono text-sm animate-pulse">Fetching pipelines...</p>
       </div>
     );
   }
@@ -81,16 +81,16 @@ export default function BuildsPage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
-            <Hammer className="w-6 h-6 text-blue-500" />
+          <h2 className="text-xl font-bold text-gray-900 tracking-tight flex items-center gap-2">
+            <Hammer className="w-6 h-6 text-[var(--primary)]" />
             Build Executions
           </h2>
-          <p className="text-sm text-gray-400">Manage, run, and view progress of pipeline executions.</p>
+          <p className="text-sm text-gray-500">Manage, run, and view progress of pipeline executions.</p>
         </div>
       </div>
 
       {/* Filters & Search Bar */}
-      <div className="flex flex-col md:flex-row gap-4 items-center justify-between p-4 bg-[#131b2e] border border-[#1e293b] rounded-2xl">
+      <div className="flex flex-col md:flex-row gap-4 items-center justify-between p-4 bg-[var(--card)] border border-[var(--card-border)] rounded-2xl">
         <div className="relative w-full md:w-96">
           <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-500" />
           <input
@@ -98,7 +98,7 @@ export default function BuildsPage() {
             placeholder="Search by repo, commit, or build ID..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-[#0b0f19] border border-[#1e293b] rounded-xl pl-10 pr-4 py-2 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors"
+            className="w-full bg-[var(--background)] border border-[var(--card-border)] rounded-2xl pl-10 pr-4 py-2 text-sm text-gray-800 placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors"
           />
         </div>
 
@@ -107,10 +107,10 @@ export default function BuildsPage() {
             <button
               key={status}
               onClick={() => setStatusFilter(status)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all ${
+              className={`px-3 py-1.5 rounded-2xl text-xs font-semibold uppercase tracking-wider transition-all ${
                 statusFilter === status 
-                  ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20' 
-                  : 'bg-[#0b0f19] border border-[#1e293b] text-gray-400 hover:text-gray-200'
+                  ? 'bg-[var(--primary)] text-white rounded-full shadow-md shadow-blue-500/20' 
+                  : 'bg-[var(--background)] border border-[var(--card-border)] text-gray-500 hover:text-gray-800'
               }`}
             >
               {status}
@@ -120,11 +120,11 @@ export default function BuildsPage() {
       </div>
 
       {/* Builds Table */}
-      <div className="p-6 bg-[#131b2e] border border-[#1e293b] rounded-2xl shadow-xl">
+      <div className="p-6 bg-[var(--card)] border border-[var(--card-border)] rounded-2xl shadow-xl">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm border-collapse">
             <thead>
-              <tr className="border-b border-[#1e293b] text-gray-400 font-medium">
+              <tr className="border-b border-[var(--card-border)] text-gray-500 font-medium">
                 <th className="py-3 px-4 text-xs tracking-wider uppercase">Build ID</th>
                 <th className="py-3 px-4 text-xs tracking-wider uppercase">Repository</th>
                 <th className="py-3 px-4 text-xs tracking-wider uppercase">Branch / Commit</th>
@@ -137,18 +137,18 @@ export default function BuildsPage() {
             <tbody>
               {filteredBuilds.length > 0 ? (
                 filteredBuilds.map((build) => {
-                  let statusBg = 'bg-zinc-800 text-zinc-400 border-zinc-700/50';
+                  let statusBg = 'bg-gray-100 text-gray-600 border-gray-200';
                   let statusIcon = Clock;
                   if (build.status === 'success') {
                     statusBg = 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
                     statusIcon = CheckCircle2;
                   }
                   if (build.status === 'failed') {
-                    statusBg = 'bg-red-500/10 text-red-400 border-red-500/20';
+                    statusBg = 'bg-red-500/10 text-red-600 border-red-500/20';
                     statusIcon = XCircle;
                   }
                   if (build.status === 'building') {
-                    statusBg = 'bg-blue-500/10 text-blue-400 border-blue-500/20 animate-pulse';
+                    statusBg = 'bg-blue-500/10 text-[var(--primary)] border-blue-500/20 animate-pulse';
                     statusIcon = Play;
                   }
                   if (build.status === 'pending') {
@@ -156,7 +156,7 @@ export default function BuildsPage() {
                     statusIcon = Clock;
                   }
                   if (build.status === 'cancelled') {
-                    statusBg = 'bg-zinc-700/20 text-zinc-500 border-zinc-700/30';
+                    statusBg = 'bg-gray-50 text-gray-600 border-gray-200';
                     statusIcon = XOctagon;
                   }
 
@@ -165,16 +165,16 @@ export default function BuildsPage() {
                   return (
                     <tr 
                       key={build.id} 
-                      className="border-b border-[#1e293b]/60 hover:bg-[#151d30]/30 transition-colors"
+                      className="border-b border-[var(--card-border)] hover:bg-gray-100 transition-colors"
                     >
-                      <td className="py-4 px-4 font-mono text-xs font-semibold text-gray-300">
+                      <td className="py-4 px-4 font-mono text-xs font-semibold text-gray-700">
                         {build.id.substring(0, 8)}...
                       </td>
-                      <td className="py-4 px-4 font-semibold text-white">
+                      <td className="py-4 px-4 font-semibold text-gray-900">
                         {build.repository}
                       </td>
                       <td className="py-4 px-4">
-                        <div className="text-xs text-gray-300">{build.branch}</div>
+                        <div className="text-xs text-gray-700">{build.branch}</div>
                         <div className="text-[11px] font-mono text-gray-500">{build.commit.substring(0, 12)}</div>
                       </td>
                       <td className="py-4 px-4">
@@ -183,10 +183,10 @@ export default function BuildsPage() {
                           {build.status}
                         </span>
                       </td>
-                      <td className="py-4 px-4 text-xs text-gray-400">
+                      <td className="py-4 px-4 text-xs text-gray-500">
                         {build.startedAt ? new Date(build.startedAt).toLocaleString() : '--'}
                       </td>
-                      <td className="py-4 px-4 text-xs font-mono text-gray-400">
+                      <td className="py-4 px-4 text-xs font-mono text-gray-500">
                         {build.durationSeconds ? `${build.durationSeconds}s` : '--'}
                       </td>
                       <td className="py-4 px-4 text-right flex items-center justify-end gap-2">
@@ -195,7 +195,7 @@ export default function BuildsPage() {
                           <button
                             onClick={() => cancelMutation.mutate(build.id)}
                             disabled={cancelMutation.isPending}
-                            className="p-2 bg-red-950/20 border border-red-500/20 text-red-400 hover:bg-red-500 hover:text-white rounded-lg transition-colors inline-flex items-center justify-center"
+                            className="p-2 bg-red-950/20 border border-red-500/20 text-red-600 hover:bg-red-500 hover:text-[var(--primary)] rounded-lg transition-colors inline-flex items-center justify-center"
                             title="Cancel Build"
                           >
                             <XOctagon className="w-4 h-4" />
@@ -206,7 +206,7 @@ export default function BuildsPage() {
                           <button
                             onClick={() => retryMutation.mutate(build.id)}
                             disabled={retryMutation.isPending}
-                            className="p-2 bg-[#151d30] hover:bg-blue-600 border border-[#1e293b] text-blue-400 hover:text-white rounded-lg transition-colors inline-flex items-center justify-center"
+                            className="p-2 bg-gray-100 hover:bg-blue-600 border border-[var(--card-border)] text-[var(--primary)] hover:text-[var(--primary)] rounded-lg transition-colors inline-flex items-center justify-center"
                             title="Retry Build"
                           >
                             <RotateCw className="w-4 h-4" />
@@ -215,7 +215,7 @@ export default function BuildsPage() {
                         {/* View Logs */}
                         <Link 
                           href={`/builds/${build.id}`}
-                          className="p-2 bg-[#1e293b] hover:bg-blue-600 text-gray-400 hover:text-white rounded-lg transition-all inline-flex items-center justify-center"
+                          className="p-2 bg-white hover:bg-blue-600 text-gray-500 hover:text-[var(--primary)] rounded-lg transition-all inline-flex items-center justify-center"
                           title="View Logs"
                         >
                           <Terminal className="w-4 h-4" />

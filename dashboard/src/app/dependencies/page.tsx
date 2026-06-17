@@ -203,15 +203,15 @@ export default function DependenciesPage() {
     return (
       <div key={`${node.id}-${level}`} className="space-y-1">
         <div 
-          className="flex items-center gap-2 py-1.5 px-3 rounded-lg text-xs hover:bg-[#1e293b]/40 border border-transparent hover:border-[#334155]/30 max-w-xl transition-all"
+          className="flex items-center gap-2 py-1.5 px-3 rounded-lg text-xs hover:bg-white border border-transparent hover:border-[#334155]/30 max-w-xl transition-all"
           style={{ paddingLeft: `${Math.max(12, level * 24)}px` }}
         >
           {level > 0 && (
             <span className="text-gray-600 font-mono select-none">└──</span>
           )}
-          <Layers className="w-3.5 h-3.5 text-blue-400 shrink-0" />
-          <span className="font-semibold text-white font-mono">{name}</span>
-          <span className="text-gray-400 font-mono">@{ver}</span>
+          <Layers className="w-3.5 h-3.5 text-[var(--primary)] shrink-0" />
+          <span className="font-semibold text-gray-900 font-mono">{name}</span>
+          <span className="text-gray-500 font-mono">@{ver}</span>
           {range && <span className="text-amber-500 font-mono text-[10px] ml-1">{range}</span>}
         </div>
         
@@ -226,7 +226,7 @@ export default function DependenciesPage() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[50vh] gap-4">
         <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-        <p className="text-gray-400 font-mono text-sm animate-pulse">Initializing dependency explorer...</p>
+        <p className="text-gray-500 font-mono text-sm animate-pulse">Initializing dependency explorer...</p>
       </div>
     );
   }
@@ -235,21 +235,21 @@ export default function DependenciesPage() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h2 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
-          <GitFork className="w-6 h-6 text-blue-500" />
+        <h2 className="text-xl font-bold text-gray-900 tracking-tight flex items-center gap-2">
+          <GitFork className="w-6 h-6 text-[var(--primary)]" />
           Dependency Intelligence
         </h2>
-        <p className="text-sm text-gray-400">Traverse deep package dependencies, check reverse impact trees, and monitor version compatibility.</p>
+        <p className="text-sm text-gray-500">Traverse deep package dependencies, check reverse impact trees, and monitor version compatibility.</p>
       </div>
 
       {/* Tabs Switcher */}
-      <div className="flex border-b border-[#1e293b] gap-2">
+      <div className="flex border-b border-[var(--card-border)] gap-2">
         <button
           onClick={() => setActiveTab('graph')}
           className={`px-4 py-2 text-sm font-semibold border-b-2 transition-all ${
             activeTab === 'graph' 
-              ? 'border-blue-500 text-blue-400 font-bold' 
-              : 'border-transparent text-gray-400 hover:text-gray-200'
+              ? 'border-blue-500 text-[var(--primary)] font-bold' 
+              : 'border-transparent text-gray-500 hover:text-gray-800'
           }`}
         >
           Graph Traversal
@@ -258,8 +258,8 @@ export default function DependenciesPage() {
           onClick={() => setActiveTab('conflicts')}
           className={`px-4 py-2 text-sm font-semibold border-b-2 transition-all flex items-center gap-1.5 ${
             activeTab === 'conflicts' 
-              ? 'border-blue-500 text-blue-400 font-bold' 
-              : 'border-transparent text-gray-400 hover:text-gray-200'
+              ? 'border-blue-500 text-[var(--primary)] font-bold' 
+              : 'border-transparent text-gray-500 hover:text-gray-800'
           }`}
         >
           Active Conflicts
@@ -270,9 +270,9 @@ export default function DependenciesPage() {
       {activeTab === 'graph' ? (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Query Form Sidebar */}
-          <div className="p-6 bg-[#131b2e] border border-[#1e293b] rounded-2xl shadow-xl space-y-5 self-start">
-            <h3 className="text-sm font-bold text-white uppercase tracking-wider border-b border-[#1e293b] pb-3 flex items-center gap-2">
-              <Compass className="w-4 h-4 text-blue-500" />
+          <div className="p-6 bg-[var(--card)] border border-[var(--card-border)] rounded-2xl shadow-xl space-y-5 self-start">
+            <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider border-b border-[var(--card-border)] pb-3 flex items-center gap-2">
+              <Compass className="w-4 h-4 text-[var(--primary)]" />
               Traversal Settings
             </h3>
 
@@ -280,13 +280,13 @@ export default function DependenciesPage() {
               <form onSubmit={handleSearchSubmit} className="space-y-4">
                 {/* Package Name */}
                 <div className="space-y-1">
-                  <label className="text-[10px] text-gray-400 font-bold uppercase block">Package Name</label>
+                  <label className="text-[10px] text-gray-500 font-bold uppercase block">Package Name</label>
                   <input
                     type="text"
                     list="dependency-package-names"
                     value={pkgName}
                     onChange={(e) => setPkgName(e.target.value)}
-                    className="w-full bg-[#0b0f19] border border-[#1e293b] rounded-xl px-3 py-2 text-xs text-gray-200 focus:outline-none focus:border-blue-500"
+                    className="w-full bg-[var(--background)] border border-[var(--card-border)] rounded-2xl px-3 py-2 text-xs text-gray-800 focus:outline-none focus:border-blue-500"
                     required
                   />
                   <datalist id="dependency-package-names">
@@ -298,12 +298,12 @@ export default function DependenciesPage() {
 
                 {/* Version */}
                 <div className="space-y-1">
-                  <label className="text-[10px] text-gray-400 font-bold uppercase block">Target Version</label>
+                  <label className="text-[10px] text-gray-500 font-bold uppercase block">Target Version</label>
                   {pkgVersions && pkgVersions.length > 0 ? (
                     <select
                       value={pkgVersion}
                       onChange={(e) => setPkgVersion(e.target.value)}
-                      className="w-full bg-[#0b0f19] border border-[#1e293b] rounded-xl px-3 py-2 text-xs text-gray-200 focus:outline-none focus:border-blue-500 cursor-pointer"
+                      className="w-full bg-[var(--background)] border border-[var(--card-border)] rounded-2xl px-3 py-2 text-xs text-gray-800 focus:outline-none focus:border-blue-500 cursor-pointer"
                       required
                     >
                       {pkgVersions.map((v: any) => (
@@ -317,7 +317,7 @@ export default function DependenciesPage() {
                       type="text"
                       value={pkgVersion}
                       onChange={(e) => setPkgVersion(e.target.value)}
-                      className="w-full bg-[#0b0f19] border border-[#1e293b] rounded-xl px-3 py-2 text-xs text-gray-200 focus:outline-none focus:border-blue-500"
+                      className="w-full bg-[var(--background)] border border-[var(--card-border)] rounded-2xl px-3 py-2 text-xs text-gray-800 focus:outline-none focus:border-blue-500"
                       placeholder="e.g. 1.0.0"
                       required
                     />
@@ -326,28 +326,28 @@ export default function DependenciesPage() {
 
                 {/* Depth */}
                 <div className="space-y-1">
-                  <label className="text-[10px] text-gray-400 font-bold uppercase block">Max Depth ({depth})</label>
+                  <label className="text-[10px] text-gray-500 font-bold uppercase block">Max Depth ({depth})</label>
                   <input
                     type="range"
                     min="1"
                     max="5"
                     value={depth}
                     onChange={(e) => setDepth(Number(e.target.value))}
-                    className="w-full h-1 bg-[#0b0f19] rounded-lg appearance-none cursor-pointer accent-blue-600"
+                    className="w-full h-1 bg-[var(--background)] rounded-lg appearance-none cursor-pointer accent-blue-600"
                   />
                 </div>
 
                 {/* Direction */}
                 <div className="space-y-1">
-                  <label className="text-[10px] text-gray-400 font-bold uppercase block">Directional Tree</label>
+                  <label className="text-[10px] text-gray-500 font-bold uppercase block">Directional Tree</label>
                   <div className="flex gap-2">
                     <button
                       type="button"
                       onClick={() => setDirection('forward')}
                       className={`flex-1 py-1.5 rounded-lg text-xs font-semibold border ${
                         direction === 'forward' 
-                          ? 'bg-blue-600/10 border-blue-500/30 text-blue-400' 
-                          : 'border-[#1e293b] text-gray-400 hover:text-gray-200'
+                          ? 'bg-blue-600/10 border-blue-500/30 text-[var(--primary)]' 
+                          : 'border-[var(--card-border)] text-gray-500 hover:text-gray-800'
                       }`}
                     >
                       Forward (Deps)
@@ -357,8 +357,8 @@ export default function DependenciesPage() {
                       onClick={() => setDirection('reverse')}
                       className={`flex-1 py-1.5 rounded-lg text-xs font-semibold border ${
                         direction === 'reverse' 
-                          ? 'bg-blue-600/10 border-blue-500/30 text-blue-400' 
-                          : 'border-[#1e293b] text-gray-400 hover:text-gray-200'
+                          ? 'bg-blue-600/10 border-blue-500/30 text-[var(--primary)]' 
+                          : 'border-[var(--card-border)] text-gray-500 hover:text-gray-800'
                       }`}
                     >
                       Reverse (Dependents)
@@ -369,7 +369,7 @@ export default function DependenciesPage() {
                 {/* Submit */}
                 <button
                   type="submit"
-                  className="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all shadow-lg shadow-blue-500/15"
+                  className="w-full py-2.5 bg-blue-600 hover:bg-[var(--primary)] text-white rounded-full rounded-2xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all shadow-lg shadow-blue-500/15"
                 >
                   <Search className="w-4 h-4" /> Traverse Tree
                 </button>
@@ -381,11 +381,11 @@ export default function DependenciesPage() {
             )}
 
             {searchParams.name && (
-              <div className="pt-4 border-t border-[#1e293b]">
+              <div className="pt-4 border-t border-[var(--card-border)]">
                 <button
                   onClick={() => resolveMutation.mutate({ name: searchParams.name, version: searchParams.version })}
                   disabled={resolveMutation.isPending}
-                  className="w-full py-2 bg-[#151d30] hover:bg-[#1e293b] border border-[#1e293b] text-blue-400 hover:text-blue-300 rounded-xl text-xs font-semibold transition-colors flex items-center justify-center gap-1"
+                  className="w-full py-2 bg-gray-100 hover:bg-white border border-[var(--card-border)] text-[var(--primary)] hover:text-blue-300 rounded-2xl text-xs font-semibold transition-colors flex items-center justify-center gap-1"
                   title="Force registry resolving scheduler action"
                 >
                   <Activity className="w-4.5 h-4.5 animate-pulse" />
@@ -396,10 +396,10 @@ export default function DependenciesPage() {
           </div>
 
           {/* Graph Visualization Tree */}
-          <div className="lg:col-span-2 p-6 bg-[#131b2e] border border-[#1e293b] rounded-2xl shadow-xl flex flex-col justify-between min-h-[50vh]">
+          <div className="lg:col-span-2 p-6 bg-[var(--card)] border border-[var(--card-border)] rounded-2xl shadow-xl flex flex-col justify-between min-h-[50vh]">
             <div className="space-y-4">
-              <div className="flex items-center justify-between border-b border-[#1e293b] pb-3">
-                <h3 className="text-sm font-bold text-white">
+              <div className="flex items-center justify-between border-b border-[var(--card-border)] pb-3">
+                <h3 className="text-sm font-bold text-gray-900">
                   Result Tree: {searchParams.name ? `${searchParams.name}@${searchParams.version}` : 'No search queried'} ({searchParams.direction})
                 </h3>
                 <span className="text-[10px] text-gray-500 font-mono uppercase">Depth: {searchParams.depth}</span>
@@ -411,11 +411,11 @@ export default function DependenciesPage() {
                   <span className="text-xs text-gray-500 font-mono">Drawing nodes...</span>
                 </div>
               ) : graphError ? (
-                <div className="p-4 bg-red-950/10 border border-red-500/20 text-red-400 text-xs rounded-xl font-mono">
+                <div className="p-4 bg-red-950/10 border border-red-500/20 text-red-600 text-xs rounded-2xl font-mono">
                   Failed to fetch dependency graph: {graphError.message}
                 </div>
               ) : rootNode ? (
-                <div className="p-4 bg-black/30 border border-[#1e293b]/60 rounded-xl space-y-1.5 overflow-x-auto min-h-60 max-h-[400px]">
+                <div className="p-4 bg-gray-50 border border-[var(--card-border)] rounded-2xl space-y-1.5 overflow-x-auto min-h-60 max-h-[400px]">
                   {renderGraphNodes(rootNode)}
                 </div>
               ) : (
@@ -430,9 +430,9 @@ export default function DependenciesPage() {
         </div>
       ) : (
         /* Conflicts Tab View */
-        <div className="p-6 bg-[#131b2e] border border-[#1e293b] rounded-2xl shadow-xl space-y-4">
-          <div className="flex items-center justify-between border-b border-[#1e293b] pb-3">
-            <h3 className="text-sm font-bold text-white flex items-center gap-2">
+        <div className="p-6 bg-[var(--card)] border border-[var(--card-border)] rounded-2xl shadow-xl space-y-4">
+          <div className="flex items-center justify-between border-b border-[var(--card-border)] pb-3">
+            <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
               <AlertTriangle className="w-5 h-5 text-red-500" />
               Conflict Records
             </h3>
@@ -450,7 +450,7 @@ export default function DependenciesPage() {
                   className="p-5 bg-red-950/10 border border-red-500/10 rounded-2xl space-y-4 text-xs"
                 >
                   <div className="flex items-center justify-between">
-                    <div className="font-bold text-red-400 text-sm">
+                    <div className="font-bold text-red-600 text-sm">
                       Package: {conflict.artifactName || 'unnamed'}@{conflict.artifactVersion || 'unknown'}
                     </div>
                     <span className="text-[10px] text-gray-500 font-mono">
@@ -458,19 +458,19 @@ export default function DependenciesPage() {
                     </span>
                   </div>
 
-                  <div className="space-y-2 text-gray-300">
+                  <div className="space-y-2 text-gray-700">
                     <p className="font-medium">Description:</p>
-                    <p className="bg-black/25 p-3 rounded-lg border border-[#1e293b] font-mono text-[11px] text-red-300 leading-relaxed">
+                    <p className="bg-gray-50 p-3 rounded-lg border border-[var(--card-border)] font-mono text-[11px] text-red-600 leading-relaxed">
                       {conflict.conflictDescription}
                     </p>
                   </div>
 
                   {conflict.involvedArtifacts && conflict.involvedArtifacts.length > 0 && (
                     <div className="space-y-2">
-                      <p className="font-medium text-gray-300">Involved Packages:</p>
+                      <p className="font-medium text-gray-700">Involved Packages:</p>
                       <div className="flex flex-wrap gap-2">
                         {conflict.involvedArtifacts.map((art: string, i: number) => (
-                          <span key={i} className="px-2 py-0.5 bg-zinc-800 text-zinc-300 border border-zinc-700/50 rounded-md font-mono">
+                          <span key={i} className="px-2 py-0.5 bg-gray-100 text-gray-600 border border-gray-200 rounded-md font-mono">
                             {art}
                           </span>
                         ))}
@@ -481,7 +481,7 @@ export default function DependenciesPage() {
                   {conflict.suggestedResolutions && conflict.suggestedResolutions.length > 0 && (
                     <div className="space-y-2">
                       <p className="font-medium text-emerald-400">Suggested Action Paths:</p>
-                      <ul className="list-disc pl-5 space-y-1 text-gray-400">
+                      <ul className="list-disc pl-5 space-y-1 text-gray-500">
                         {conflict.suggestedResolutions.map((res: string, i: number) => (
                           <li key={i}>{res}</li>
                         ))}
@@ -492,9 +492,9 @@ export default function DependenciesPage() {
               ))}
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center py-20 gap-2 border border-[#1e293b] rounded-xl bg-black/10">
+            <div className="flex flex-col items-center justify-center py-20 gap-2 border border-[var(--card-border)] rounded-2xl bg-gray-50">
               <CheckCircle className="w-10 h-10 text-emerald-500" />
-              <p className="text-gray-400 font-semibold mt-1">No Active Conflicts</p>
+              <p className="text-gray-500 font-semibold mt-1">No Active Conflicts</p>
               <p className="text-xs text-gray-500">The platform registry satisfies all version range bounds across all dependents.</p>
             </div>
           )}

@@ -62,7 +62,7 @@ export default function CascadeDetailsPage() {
     
     if (!builds) {
       return (
-        <span className="text-gray-400 font-mono text-xs" title={buildId}>
+        <span className="text-gray-500 font-mono text-xs" title={buildId}>
           {displayId}
         </span>
       );
@@ -73,7 +73,7 @@ export default function CascadeDetailsPage() {
       return (
         <Link 
           href={`/builds/${buildId}`}
-          className="text-blue-500 hover:text-blue-400 hover:underline font-mono font-semibold text-xs"
+          className="text-[var(--primary)] hover:text-[var(--primary)] hover:underline font-mono font-semibold text-xs"
           title={buildId}
         >
           {displayId}
@@ -126,7 +126,7 @@ export default function CascadeDetailsPage() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[50vh] gap-4">
         <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-        <p className="text-gray-400 font-mono text-sm animate-pulse">Loading rebuild timeline...</p>
+        <p className="text-gray-500 font-mono text-sm animate-pulse">Loading rebuild timeline...</p>
       </div>
     );
   }
@@ -134,11 +134,11 @@ export default function CascadeDetailsPage() {
   if (error || !chain) {
     return (
       <div className="p-6 bg-red-950/20 border border-red-500/20 rounded-2xl max-w-2xl mx-auto mt-12 flex flex-col gap-4">
-        <h2 className="text-lg font-bold text-red-400">Failed to load rebuild chain</h2>
-        <p className="text-sm text-red-300/80">The requested cascade rebuild run `{chainId}` does not exist.</p>
+        <h2 className="text-lg font-bold text-red-600">Failed to load rebuild chain</h2>
+        <p className="text-sm text-red-600/80">The requested cascade rebuild run `{chainId}` does not exist.</p>
         <Link 
           href="/cascade" 
-          className="inline-flex items-center gap-2 text-xs font-semibold text-blue-400 hover:underline"
+          className="inline-flex items-center gap-2 text-xs font-semibold text-[var(--primary)] hover:underline"
         >
           <ArrowLeft className="w-4 h-4" /> Back to Cascade Rebuilds
         </Link>
@@ -146,7 +146,7 @@ export default function CascadeDetailsPage() {
     );
   }
 
-  let statusBg = 'bg-zinc-800 text-zinc-400 border-zinc-700/50';
+  let statusBg = 'bg-gray-100 text-gray-600 border-gray-200';
   let statusIcon = Clock;
   if (chain.status === 'completed') {
     statusBg = 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
@@ -157,11 +157,11 @@ export default function CascadeDetailsPage() {
     statusIcon = AlertTriangle;
   }
   if (chain.status === 'running') {
-    statusBg = 'bg-blue-500/10 text-blue-400 border-blue-500/20 animate-pulse';
+    statusBg = 'bg-blue-500/10 text-[var(--primary)] border-blue-500/20 animate-pulse';
     statusIcon = Play;
   }
   if (chain.status === 'cancelled') {
-    statusBg = 'bg-zinc-700/20 text-zinc-500 border-zinc-700/30';
+    statusBg = 'bg-gray-50 text-gray-600 border-gray-200';
     statusIcon = XOctagon;
   }
 
@@ -174,7 +174,7 @@ export default function CascadeDetailsPage() {
       <div className="flex items-center justify-between">
         <Link 
           href="/cascade"
-          className="flex items-center gap-2 text-sm text-gray-400 hover:text-gray-200 transition-colors font-medium"
+          className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-800 transition-colors font-medium"
         >
           <ArrowLeft className="w-4 h-4" />
           Back to Cascade Rebuilds
@@ -184,7 +184,7 @@ export default function CascadeDetailsPage() {
           <button
             onClick={() => cancelMutation.mutate()}
             disabled={cancelMutation.isPending}
-            className="flex items-center gap-2 px-4 py-2 bg-red-950/20 hover:bg-red-600 border border-red-500/20 hover:border-transparent text-red-400 hover:text-white rounded-xl text-xs font-semibold transition-all shadow"
+            className="flex items-center gap-2 px-4 py-2 bg-red-950/20 hover:bg-red-600 border border-red-500/20 hover:border-transparent text-red-600 hover:text-[var(--primary)] rounded-2xl text-xs font-semibold transition-all shadow"
           >
             <XOctagon className="w-4 h-4" />
             Cancel Cascade Session
@@ -196,10 +196,10 @@ export default function CascadeDetailsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* Properties Sidebar */}
-        <div className="p-6 bg-[#131b2e] border border-[#1e293b] rounded-2xl shadow-xl space-y-6 self-start">
-          <div className="space-y-2 border-b border-[#1e293b] pb-4">
+        <div className="p-6 bg-[var(--card)] border border-[var(--card-border)] rounded-2xl shadow-xl space-y-6 self-start">
+          <div className="space-y-2 border-b border-[var(--card-border)] pb-4">
             <span className="text-[10px] text-gray-500 font-mono block">CASCADE SESSION</span>
-            <h3 className="text-base font-bold text-white font-mono">{chain.chainId || chain.id}</h3>
+            <h3 className="text-base font-bold text-gray-900 font-mono">{chain.chainId || chain.id}</h3>
             <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${statusBg} mt-2`}>
               <StatusIcon className="w-3.5 h-3.5" />
               {chain.status}
@@ -212,7 +212,7 @@ export default function CascadeDetailsPage() {
               {chain.trigger_type || chain.triggerType ? (
                 <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold border uppercase mt-1 ${
                   (chain.trigger_type || chain.triggerType) === 'New version publication'
-                    ? 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+                    ? 'bg-blue-500/10 text-[var(--primary)] border-blue-500/20'
                     : 'bg-violet-500/10 text-violet-400 border-violet-500/20'
                 }`}>
                   {chain.trigger_type || chain.triggerType}
@@ -228,7 +228,7 @@ export default function CascadeDetailsPage() {
               {chain.root_artifact_name || chain.rootArtifactName ? (
                 <Link 
                   href={`/artifacts/${chain.root_artifact_name || chain.rootArtifactName}/${chain.root_artifact_version || chain.rootArtifactVersion}`}
-                  className="font-semibold text-blue-500 hover:text-blue-400 hover:underline block mt-1 font-mono"
+                  className="font-semibold text-[var(--primary)] hover:text-[var(--primary)] hover:underline block mt-1 font-mono"
                 >
                   {chain.root_artifact_name || chain.rootArtifactName}@{chain.root_artifact_version || chain.rootArtifactVersion}
                 </Link>
@@ -246,13 +246,13 @@ export default function CascadeDetailsPage() {
                   return <span className="text-gray-500 italic block mt-1">Manual upload (no build pipeline available)</span>;
                 }
                 if (!builds) {
-                  return <span className="text-gray-400 font-mono block mt-1">{bId}</span>;
+                  return <span className="text-gray-500 font-mono block mt-1">{bId}</span>;
                 }
                 if (existingBuildIds.has(bId)) {
                   return (
                     <Link 
                       href={`/builds/${bId}`}
-                      className="text-blue-500 hover:text-blue-400 hover:underline font-mono font-semibold block mt-1 truncate"
+                      className="text-[var(--primary)] hover:text-[var(--primary)] hover:underline font-mono font-semibold block mt-1 truncate"
                       title={bId}
                     >
                       {bId}
@@ -266,26 +266,26 @@ export default function CascadeDetailsPage() {
 
             <div>
               <span className="text-[10px] text-gray-500 font-semibold block uppercase">Root Trigger Cause</span>
-              <p className="font-medium text-white block leading-relaxed bg-black/30 p-2.5 rounded-lg border border-[#1e293b] mt-1">
+              <p className="font-medium text-gray-900 block leading-relaxed bg-gray-50 p-2.5 rounded-lg border border-[var(--card-border)] mt-1">
                 {chain.root_cause || chain.rootCause}
               </p>
             </div>
 
             <div>
               <span className="text-[10px] text-gray-500 font-semibold block uppercase">Traversal Depth Limit</span>
-              <span className="font-medium text-white block">{chain.depth} levels deep</span>
+              <span className="font-medium text-gray-900 block">{chain.depth} levels deep</span>
             </div>
 
             <div>
               <span className="text-[10px] text-gray-500 font-semibold block uppercase">Tasks Scheduled</span>
-              <span className="font-semibold text-blue-400 font-mono text-sm block mt-0.5">
+              <span className="font-semibold text-[var(--primary)] font-mono text-sm block mt-0.5">
                 {chain.task_count || chain.taskCount || tasks.length} tasks
               </span>
             </div>
 
             <div>
               <span className="text-[10px] text-gray-500 font-semibold block uppercase">Started At</span>
-              <span className="font-medium text-white block">
+              <span className="font-medium text-gray-900 block">
                 {chain.started_at || chain.startedAt ? new Date(chain.started_at || chain.startedAt || '').toLocaleString() : '--'}
               </span>
             </div>
@@ -293,7 +293,7 @@ export default function CascadeDetailsPage() {
             {(chain.completed_at || chain.completedAt) && (
               <div>
                 <span className="text-[10px] text-gray-500 font-semibold block uppercase">Finished At</span>
-                <span className="font-medium text-white block">
+                <span className="font-medium text-gray-900 block">
                   {new Date(chain.completed_at || chain.completedAt || '').toLocaleString()}
                 </span>
               </div>
@@ -305,8 +305,8 @@ export default function CascadeDetailsPage() {
         <div className="lg:col-span-2 space-y-6">
           
           {/* Trigger Source Card */}
-          <div className="p-6 bg-[#131b2e] border border-[#1e293b] rounded-2xl shadow-xl space-y-4">
-            <h3 className="text-sm font-bold text-white uppercase tracking-wider border-b border-[#1e293b] pb-3 flex items-center gap-2">
+          <div className="p-6 bg-[var(--card)] border border-[var(--card-border)] rounded-2xl shadow-xl space-y-4">
+            <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider border-b border-[var(--card-border)] pb-3 flex items-center gap-2">
               <Play className="w-4 h-4 text-emerald-500 animate-pulse" />
               Trigger Source Event
             </h3>
@@ -316,12 +316,12 @@ export default function CascadeDetailsPage() {
                 {chain.root_artifact_name || chain.rootArtifactName ? (
                   <Link 
                     href={`/artifacts/${chain.root_artifact_name || chain.rootArtifactName}/${chain.root_artifact_version || chain.rootArtifactVersion}`}
-                    className="font-bold text-blue-500 hover:text-blue-400 hover:underline block text-sm font-mono mt-0.5"
+                    className="font-bold text-[var(--primary)] hover:text-[var(--primary)] hover:underline block text-sm font-mono mt-0.5"
                   >
                     {chain.root_artifact_name || chain.rootArtifactName}@{chain.root_artifact_version || chain.rootArtifactVersion}
                   </Link>
                 ) : (
-                  <span className="text-gray-400 block mt-0.5">—</span>
+                  <span className="text-gray-500 block mt-0.5">—</span>
                 )}
               </div>
 
@@ -334,13 +334,13 @@ export default function CascadeDetailsPage() {
                       return <span className="text-gray-500 italic block">Manual upload (no build pipeline available)</span>;
                     }
                     if (!builds) {
-                      return <span className="text-gray-400 font-mono block">{bId}</span>;
+                      return <span className="text-gray-500 font-mono block">{bId}</span>;
                     }
                     if (existingBuildIds.has(bId)) {
                       return (
                         <Link 
                           href={`/builds/${bId}`}
-                          className="text-blue-500 hover:text-blue-400 hover:underline font-mono font-semibold block truncate"
+                          className="text-[var(--primary)] hover:text-[var(--primary)] hover:underline font-mono font-semibold block truncate"
                           title={bId}
                         >
                           {bId}
@@ -355,7 +355,7 @@ export default function CascadeDetailsPage() {
 
               <div className="space-y-1">
                 <span className="text-[10px] text-gray-500 font-semibold block uppercase">Trigger Reason</span>
-                <span className="font-medium text-white block mt-0.5 truncate" title={chain.root_cause || chain.rootCause}>
+                <span className="font-medium text-gray-900 block mt-0.5 truncate" title={chain.root_cause || chain.rootCause}>
                   {chain.root_cause || chain.rootCause}
                 </span>
               </div>
@@ -363,16 +363,16 @@ export default function CascadeDetailsPage() {
           </div>
 
           {/* Tasks Timeline Table */}
-          <div className="p-6 bg-[#131b2e] border border-[#1e293b] rounded-2xl shadow-xl space-y-4">
-            <h3 className="text-sm font-bold text-white uppercase tracking-wider border-b border-[#1e293b] pb-3 flex items-center gap-2">
-              <Layers className="w-4 h-4 text-blue-500" />
+          <div className="p-6 bg-[var(--card)] border border-[var(--card-border)] rounded-2xl shadow-xl space-y-4">
+            <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider border-b border-[var(--card-border)] pb-3 flex items-center gap-2">
+              <Layers className="w-4 h-4 text-[var(--primary)]" />
               Task Resolution Execution Path
             </h3>
 
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
-                  <tr className="border-b border-[#1e293b] text-gray-400 font-medium">
+                  <tr className="border-b border-[var(--card-border)] text-gray-500 font-medium">
                     <th className="py-2.5 px-3">Build Artifact</th>
                     <th className="py-2.5 px-3 font-mono">Task ID</th>
                     <th className="py-2.5 px-3 font-mono">Build ID</th>
@@ -387,7 +387,7 @@ export default function CascadeDetailsPage() {
                 <tbody>
                   {tasks.length > 0 ? (
                     tasks.map((task: any, index: number) => {
-                      let tStatusBg = 'bg-zinc-800 text-zinc-400 border-zinc-700/50';
+                      let tStatusBg = 'bg-gray-100 text-gray-600 border-gray-200';
                       let tIcon = Clock;
                       
                       if (task.status === 'completed' || task.status === 'success') {
@@ -395,11 +395,11 @@ export default function CascadeDetailsPage() {
                         tIcon = CheckCircle2;
                       }
                       if (task.status === 'failed' || task.status === 'error') {
-                        tStatusBg = 'bg-red-500/10 text-red-400 border-red-500/20';
+                        tStatusBg = 'bg-red-500/10 text-red-600 border-red-500/20';
                         tIcon = XCircle;
                       }
                       if (task.status === 'building') {
-                        tStatusBg = 'bg-blue-500/10 text-blue-400 border-blue-500/20 animate-pulse';
+                        tStatusBg = 'bg-blue-500/10 text-[var(--primary)] border-blue-500/20 animate-pulse';
                         tIcon = Play;
                       }
                       if (task.status === 'pending') {
@@ -407,7 +407,7 @@ export default function CascadeDetailsPage() {
                         tIcon = Clock;
                       }
                       if (task.status === 'skipped') {
-                        tStatusBg = 'bg-zinc-700/20 text-zinc-500 border-zinc-700/30';
+                        tStatusBg = 'bg-gray-50 text-gray-600 border-gray-200';
                         tIcon = XOctagon;
                       }
 
@@ -417,12 +417,12 @@ export default function CascadeDetailsPage() {
 
                       return (
                         <React.Fragment key={task.task_id || task.taskId || index}>
-                          <tr className="border-b border-[#1e293b]/60 hover:bg-[#151d30]/20 transition-colors">
-                            <td className="py-3.5 px-3 font-semibold text-white">
+                          <tr className="border-b border-[var(--card-border)] hover:bg-gray-100 transition-colors">
+                            <td className="py-3.5 px-3 font-semibold text-gray-900">
                               {artName !== 'unknown' && artVer ? (
                                 <Link 
                                   href={`/artifacts/${artName}/${artVer}`}
-                                  className="text-blue-500 hover:text-blue-400 hover:underline"
+                                  className="text-[var(--primary)] hover:text-[var(--primary)] hover:underline"
                                 >
                                   {artName}@{artVer}
                                 </Link>
@@ -430,7 +430,7 @@ export default function CascadeDetailsPage() {
                                 <span>{artName} {artVer && `@${artVer}`}</span>
                               )}
                             </td>
-                            <td className="py-3.5 px-3 font-mono text-gray-400 text-xs" title={task.task_id || task.taskId}>
+                            <td className="py-3.5 px-3 font-mono text-gray-500 text-xs" title={task.task_id || task.taskId}>
                               {(task.task_id || task.taskId || '').substring(0, 8)}...
                             </td>
                             <td className="py-3.5 px-3">
@@ -442,13 +442,13 @@ export default function CascadeDetailsPage() {
                                 {task.status}
                               </span>
                             </td>
-                            <td className="py-3.5 px-3 text-gray-300 max-w-[150px] truncate" title={task.reason}>
+                            <td className="py-3.5 px-3 text-gray-700 max-w-[150px] truncate" title={task.reason}>
                               {task.reason}
                             </td>
-                            <td className="py-3.5 px-3 font-mono text-gray-400 font-semibold">
+                            <td className="py-3.5 px-3 font-mono text-gray-500 font-semibold">
                               P{task.priority}
                             </td>
-                            <td className="py-3.5 px-3 text-gray-400 font-mono text-[11px]">
+                            <td className="py-3.5 px-3 text-gray-500 font-mono text-[11px]">
                               {task.attempted_at || task.attemptedAt ? new Date(task.attempted_at || task.attemptedAt || '').toLocaleTimeString() : '--'}
                             </td>
                             <td className="py-3.5 px-3">
@@ -458,7 +458,7 @@ export default function CascadeDetailsPage() {
                               {(task.build_id || task.buildId) && (
                                 <Link 
                                   href={`/builds/${task.build_id || task.buildId}`}
-                                  className="p-1.5 bg-[#1e293b] hover:bg-blue-600 rounded-lg text-gray-400 hover:text-white transition-all inline-flex items-center justify-center"
+                                  className="p-1.5 bg-white hover:bg-blue-600 rounded-lg text-gray-500 hover:text-[var(--primary)] transition-all inline-flex items-center justify-center"
                                   title="View Pipeline Run"
                                 >
                                   <Terminal className="w-3.5 h-3.5" />
@@ -469,8 +469,8 @@ export default function CascadeDetailsPage() {
                           
                           {/* Task Error Message Row */}
                           {(task.error_message || task.errorMessage) && (
-                            <tr className="bg-red-950/5 border-b border-[#1e293b]/60">
-                              <td colSpan={9} className="py-2.5 px-3 text-red-400 font-mono text-[11px] leading-relaxed">
+                            <tr className="bg-red-950/5 border-b border-[var(--card-border)]">
+                              <td colSpan={9} className="py-2.5 px-3 text-red-600 font-mono text-[11px] leading-relaxed">
                                 <span className="font-bold uppercase tracking-wider block mb-0.5">Task Failure:</span>
                                 {task.error_message || task.errorMessage}
                               </td>
