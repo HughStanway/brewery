@@ -259,6 +259,55 @@ function updateYamlEnvironment(yamlStr: string, serviceName: string, env: Record
   return lines.join('\n');
 }
 
+function RadialGauge({ value, size = 36, strokeWidth = 3, color = '#3b82f6' }: { value: number; size?: number; strokeWidth?: number; color?: string }) {
+  const radius = (size - strokeWidth) / 2;
+  const circumference = radius * 2 * Math.PI;
+  const strokeDashoffset = circumference - (Math.min(100, Math.max(0, value)) / 100) * circumference;
+  
+  const strokeColor = value > 80 ? '#ef4444' : color;
+  const isAlert = value > 80;
+  
+  return (
+    <div className="relative flex-shrink-0" style={{ width: size, height: size }}>
+      <svg className="transform -rotate-90" width={size} height={size}>
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="transparent"
+          stroke="#131b2e"
+          strokeWidth={strokeWidth}
+        />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="transparent"
+          stroke={strokeColor}
+          strokeWidth={strokeWidth}
+          strokeDasharray={circumference}
+          strokeDashoffset={strokeDashoffset}
+          strokeLinecap="round"
+          className={`transition-all duration-500 ease-out ${isAlert ? 'animate-pulse' : ''}`}
+        />
+      </svg>
+      <div className="absolute inset-0 flex items-center justify-center text-[8px] font-mono font-bold text-gray-200">
+        {Math.round(value)}%
+      </div>
+    </div>
+  );
+}
+
+function getSparklinePath(data: number[], width: number, height: number, maxVal: number = 100): string {
+  if (data.length < 2) return '';
+  const points = data.map((val, idx) => {
+    const x = (idx / (data.length - 1)) * width;
+    const y = height - (Math.min(maxVal, val) / maxVal) * height;
+    return `${x},${y}`;
+  });
+  return `M ${points.join(' L ')}`;
+}
+
 function ServiceMetricsCard({ deploymentId, serviceName, serviceType, isSelected, onClick, healthInfo }: {
   deploymentId: string;
   serviceName: string;
@@ -272,6 +321,23 @@ function ServiceMetricsCard({ deploymentId, serviceName, serviceType, isSelected
     queryFn: () => apiClient.getContainerStats(deploymentId, serviceName),
     refetchInterval: 5000,
   });
+
+  const [history, setHistory] = React.useState<{ cpu: number[]; memory: number[] }>({
+    cpu: [],
+    memory: [],
+  });
+
+  React.useEffect(() => {
+    if (stats) {
+      const cpuVal = parseFloat(stats.cpu || '0');
+      const memVal = parseFloat(stats.memoryPercent || '0');
+      setHistory(prev => {
+        const nextCpu = [...prev.cpu, cpuVal].slice(-20);
+        const nextMem = [...prev.memory, memVal].slice(-20);
+        return { cpu: nextCpu, memory: nextMem };
+      });
+    }
+  }, [stats]);
 
   const isOnline = stats?.online || false;
 
@@ -305,31 +371,62 @@ function ServiceMetricsCard({ deploymentId, serviceName, serviceType, isSelected
         </div>
       </div>
 
-      <div className="space-y-2 text-xs">
-        <div className="space-y-1">
-          <div className="flex justify-between text-gray-400 text-[10px]">
-            <span>CPU USAGE</span>
-            <span className="font-mono font-bold text-gray-200">{stats?.cpu || '0.0%'}</span>
+      <div className="space-y-3">
+        {/* CPU Panel: Radial Gauge + Textual percentage + Sparkline */}
+        <div className="flex items-center justify-between gap-3 bg-[#0c1220]/45 p-2 rounded-lg border border-[#1e293b]/40">
+          <div className="flex items-center gap-2">
+            <RadialGauge value={parseFloat(stats?.cpu || '0')} color="#3b82f6" />
+            <div className="flex flex-col">
+              <span className="text-[8px] font-bold text-gray-500 uppercase tracking-wider">CPU</span>
+              <span className="font-mono text-[10px] font-bold text-gray-200">{stats?.cpu || '0.0%'}</span>
+            </div>
           </div>
-          <div className="w-full bg-[#131b2e] rounded-full h-1.5 overflow-hidden">
-            <div 
-              className="bg-blue-500 h-1.5 rounded-full transition-all duration-500" 
-              style={{ width: isOnline ? Math.min(100, parseFloat(stats?.cpu || '0') * 2) + '%' : '0%' }}
-            />
-          </div>
+          {history.cpu.length >= 2 && (
+            <div className="flex-1 flex justify-end">
+              <svg className="w-16 h-6 overflow-visible" viewBox="0 0 60 18">
+                <path
+                  d={getSparklinePath(history.cpu, 60, 18, Math.max(10, ...history.cpu))}
+                  fill="none"
+                  stroke={parseFloat(stats?.cpu || '0') > 80 ? '#ef4444' : '#3b82f6'}
+                  strokeWidth={1.5}
+                  className="drop-shadow-[0_0_2px_rgba(59,130,246,0.4)]"
+                />
+              </svg>
+            </div>
+          )}
         </div>
 
-        <div className="space-y-1">
-          <div className="flex justify-between text-gray-400 text-[10px]">
-            <span>MEMORY</span>
-            <span className="font-mono font-bold text-gray-200">{stats?.memoryPercent || '0.0%'}</span>
+        {/* Memory Panel: Progress bar + Textual percentage + Sparkline */}
+        <div className="flex items-center justify-between gap-3 bg-[#0c1220]/45 p-2 rounded-lg border border-[#1e293b]/40">
+          <div className="flex-1 min-w-0">
+            <div className="flex justify-between items-center text-[8px] font-bold text-gray-500 uppercase tracking-wider mb-1">
+              <span>Memory</span>
+              <span className="font-mono text-[10px] font-bold text-gray-200">{stats?.memoryPercent || '0.0%'}</span>
+            </div>
+            <div className="w-full bg-[#131b2e] rounded-full h-1 overflow-hidden">
+              <div 
+                className={`h-1 rounded-full transition-all duration-500 ${
+                  parseFloat(stats?.memoryPercent || '0') > 80 
+                    ? 'bg-rose-500 animate-pulse' 
+                    : 'bg-emerald-500'
+                }`} 
+                style={{ width: isOnline ? (stats?.memoryPercent || '0%') : '0%' }}
+              />
+            </div>
           </div>
-          <div className="w-full bg-[#131b2e] rounded-full h-1.5 overflow-hidden">
-            <div 
-              className="bg-emerald-500 h-1.5 rounded-full transition-all duration-500" 
-              style={{ width: isOnline ? (stats?.memoryPercent || '0%') : '0%' }}
-            />
-          </div>
+          {history.memory.length >= 2 && (
+            <div className="flex-shrink-0 flex items-center pt-2">
+              <svg className="w-16 h-6 overflow-visible" viewBox="0 0 60 18">
+                <path
+                  d={getSparklinePath(history.memory, 60, 18, Math.max(10, ...history.memory))}
+                  fill="none"
+                  stroke={parseFloat(stats?.memoryPercent || '0') > 80 ? '#ef4444' : '#10b981'}
+                  strokeWidth={1.5}
+                  className="drop-shadow-[0_0_2px_rgba(16,185,129,0.4)]"
+                />
+              </svg>
+            </div>
+          )}
         </div>
 
         <div className="flex justify-between text-gray-500 text-[9px] font-mono pt-1">
@@ -351,12 +448,12 @@ function ServiceMetricsCard({ deploymentId, serviceName, serviceType, isSelected
 function ServiceLogsTerminal({ deploymentId, serviceName }: { deploymentId: string; serviceName: string }) {
   const [isPaused, setIsPaused] = React.useState(false);
   const [clearedLogs, setClearedLogs] = React.useState<string | null>(null);
+  const [filterQuery, setFilterQuery] = React.useState('');
 
   const { data } = useQuery({
     queryKey: ['containerLogs', deploymentId, serviceName],
     queryFn: () => apiClient.getContainerLogs(deploymentId, serviceName),
-    refetchInterval: isPaused ? false : 3000,
-    enabled: !!serviceName,
+    refetchInterval: isPaused ? false : 5000,
   });
 
   const displayLogs = React.useMemo(() => {
@@ -367,17 +464,58 @@ function ServiceLogsTerminal({ deploymentId, serviceName }: { deploymentId: stri
         return data.logs.substring(idx + clearedLogs.length);
       }
     }
-    return data?.logs || 'Loading logs...';
+    return data?.logs || '';
   }, [data, clearedLogs]);
 
+  const rawLines = React.useMemo(() => {
+    if (!displayLogs) return [];
+    return displayLogs.split('\n');
+  }, [displayLogs]);
+
+  const filteredLines = React.useMemo(() => {
+    if (!filterQuery.trim()) return rawLines;
+    try {
+      const regex = new RegExp(filterQuery, 'i');
+      return rawLines.filter(line => regex.test(line));
+    } catch (e) {
+      const lowerQuery = filterQuery.toLowerCase();
+      return rawLines.filter(line => line.toLowerCase().includes(lowerQuery));
+    }
+  }, [rawLines, filterQuery]);
+
   return (
-    <div className="border border-[#1e293b] rounded-xl overflow-hidden bg-[#070b14] shadow-2xl flex flex-col h-[40vh]">
-      <div className="px-4 py-2 border-b border-[#1e293b] bg-[#0c1220] flex items-center justify-between">
+    <div className="bg-[#070b13] border border-[#1e293b] rounded-2xl flex flex-col h-[380px] overflow-hidden shadow-2xl">
+      <div className="bg-[#0b0f19] border-b border-[#1e293b] px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <Terminal className="w-4 h-4 text-amber-500 animate-pulse" />
+          <Terminal className="w-4 h-4 text-blue-500" />
           <span className="text-xs font-mono font-bold text-gray-300">CONTAINER LOGS: {serviceName}</span>
+          {filterQuery && (
+            <span className="text-[10px] bg-blue-500/10 text-blue-400 border border-blue-500/25 px-2 py-0.5 rounded font-mono">
+              {filteredLines.length} match{filteredLines.length === 1 ? '' : 'es'}
+            </span>
+          )}
         </div>
-        <div className="flex items-center gap-2">
+
+        <div className="flex items-center gap-3">
+          {/* Regex / text filter input */}
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Filter logs (regex)..."
+              value={filterQuery}
+              onChange={(e) => setFilterQuery(e.target.value)}
+              className="bg-[#0c1220] border border-[#1e293b] text-gray-200 placeholder-gray-500 rounded-lg text-xs px-2.5 py-1 w-44 focus:outline-none focus:border-blue-500/50 transition-all font-mono"
+            />
+            {filterQuery && (
+              <button 
+                onClick={() => setFilterQuery('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 text-[10px] font-bold"
+              >
+                ×
+              </button>
+            )}
+          </div>
+
           <button 
             onClick={() => setIsPaused(!isPaused)}
             className={`px-3 py-1 rounded-lg text-xs font-semibold border transition-all ${
@@ -396,17 +534,44 @@ function ServiceLogsTerminal({ deploymentId, serviceName }: { deploymentId: stri
           </button>
         </div>
       </div>
-      <div className="p-4 flex-1 font-mono text-xs text-gray-300 overflow-auto whitespace-pre select-text">
-        {displayLogs || '[No log statements recorded for this container]'}
+
+      <div className="p-4 flex-1 font-mono text-xs text-gray-300 overflow-auto space-y-1 select-text bg-[#030712]">
+        {filteredLines.length > 0 ? (
+          filteredLines.map((line, idx) => {
+            const lineLower = line.toLowerCase();
+            let lineClass = 'text-gray-300 pl-2';
+            if (lineLower.includes('error') || lineLower.includes('fatal') || lineLower.includes('severe') || lineLower.includes('fail')) {
+              lineClass = 'text-red-400 bg-red-950/10 border-l border-red-500/50 pl-2';
+            } else if (lineLower.includes('warn') || lineLower.includes('warning')) {
+              lineClass = 'text-amber-400 bg-amber-950/10 border-l border-amber-500/50 pl-2';
+            } else if (lineLower.includes('info')) {
+              lineClass = 'text-emerald-450/90 pl-2';
+            } else if (lineLower.includes('debug')) {
+              lineClass = 'text-slate-500 pl-2';
+            }
+            return (
+              <div key={idx} className={`${lineClass} py-0.5 hover:bg-[#111827]/30 transition-all rounded`}>
+                <span className="text-gray-650 select-none mr-3 text-[10px] w-6 inline-block text-right">{idx + 1}</span>
+                <span>{line}</span>
+              </div>
+            );
+          })
+        ) : (
+          <div className="text-center text-gray-500 py-8 italic">
+            {rawLines.length === 0 ? '[No log statements recorded for this container]' : '[No logs matches the filter query]'}
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-function TopologyMap({ yamlStr, activeServiceName, onSelectService }: {
+function TopologyMap({ yamlStr, activeServiceName, onSelectService, currentHealth, deploymentId }: {
   yamlStr: string;
   activeServiceName: string | null;
   onSelectService: (name: string) => void;
+  currentHealth: ServiceHealthCheck[] | null;
+  deploymentId: string;
 }) {
   const services = React.useMemo(() => {
     try {
@@ -418,6 +583,87 @@ function TopologyMap({ yamlStr, activeServiceName, onSelectService }: {
 
   const serviceNames = Object.keys(services);
 
+  const levels = React.useMemo(() => {
+    const lvls: Record<string, number> = {};
+    for (const name of serviceNames) {
+      lvls[name] = 0;
+    }
+    
+    // Resolve levels using topological ordering algorithm
+    for (let iter = 0; iter < serviceNames.length; iter++) {
+      let changed = false;
+      for (const name of serviceNames) {
+        const svc = services[name];
+        if (svc.depends_on) {
+          for (const dep of svc.depends_on) {
+            if (services[dep]) {
+              const newLevel = lvls[dep] + 1;
+              if (newLevel > lvls[name]) {
+                lvls[name] = newLevel;
+                changed = true;
+              }
+            }
+          }
+        }
+      }
+      if (!changed) break;
+    }
+    return lvls;
+  }, [services, serviceNames]);
+
+  const maxLevel = React.useMemo(() => {
+    const vals = Object.values(levels);
+    return vals.length > 0 ? Math.max(...vals) : 0;
+  }, [levels]);
+
+  const nodesByLevel = React.useMemo(() => {
+    const groups: Record<number, string[]> = {};
+    for (const name of serviceNames) {
+      const lvl = levels[name];
+      if (!groups[lvl]) {
+        groups[lvl] = [];
+      }
+      groups[lvl].push(name);
+    }
+    return groups;
+  }, [levels, serviceNames]);
+
+  const coords = React.useMemo(() => {
+    const pos: Record<string, { x: number; y: number }> = {};
+    const width = 800;
+    const height = 300;
+    const marginX = 100;
+    const marginY = 60;
+    
+    for (let lvl = 0; lvl <= maxLevel; lvl++) {
+      const names = nodesByLevel[lvl] || [];
+      const n = names.length;
+      const x = maxLevel === 0 ? width / 2 : marginX + (lvl * (width - 2 * marginX)) / maxLevel;
+      
+      names.forEach((name, idx) => {
+        const y = n === 1 ? height / 2 : marginY + (idx * (height - 2 * marginY)) / (n - 1);
+        pos[name] = { x, y };
+      });
+    }
+    return pos;
+  }, [levels, maxLevel, nodesByLevel]);
+
+  const edges = React.useMemo(() => {
+    const list: Array<{ from: string; to: string; active: boolean }> = [];
+    for (const name of serviceNames) {
+      const svc = services[name];
+      if (svc.depends_on) {
+        for (const dep of svc.depends_on) {
+          if (services[dep]) {
+            const isActive = activeServiceName === null || activeServiceName === name || activeServiceName === dep;
+            list.push({ from: name, to: dep, active: isActive });
+          }
+        }
+      }
+    }
+    return list;
+  }, [services, serviceNames, activeServiceName]);
+
   if (serviceNames.length === 0) {
     return (
       <div className="p-8 text-center text-gray-500 text-sm font-mono border border-dashed border-[#1e293b] rounded-xl">
@@ -427,40 +673,200 @@ function TopologyMap({ yamlStr, activeServiceName, onSelectService }: {
   }
 
   return (
-    <div className="bg-[#0c1220]/60 border border-[#1e293b] p-6 rounded-2xl flex flex-col gap-6 relative min-h-[200px]">
-      <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400 flex items-center gap-1.5">
-        <Activity className="w-4 h-4 text-emerald-500 animate-pulse" />
-        Stack Topology Map
-      </h4>
-      <div className="flex flex-wrap items-center justify-center gap-8 py-4 relative">
+    <div className="bg-[#0c1220]/60 border border-[#1e293b] p-6 rounded-2xl flex flex-col gap-6 relative min-h-[360px] overflow-hidden">
+      <style dangerouslySetInnerHTML={{ __html: `
+        @keyframes flow {
+          from { stroke-dashoffset: 24; }
+          to { stroke-dashoffset: 0; }
+        }
+        .animate-flow {
+          animation: flow 1.2s linear infinite;
+        }
+      `}} />
+
+      <div className="flex items-center justify-between">
+        <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400 flex items-center gap-1.5">
+          <Activity className="w-4 h-4 text-blue-500 animate-pulse" />
+          Interactive Service Topology Map
+        </h4>
+        <span className="text-[10px] text-gray-500 font-mono">
+          Click nodes to filter logs and stats
+        </span>
+      </div>
+
+      <div className="relative w-full h-[300px] bg-[#030712]/40 rounded-xl border border-[#1e293b]/50 overflow-hidden">
+        <svg 
+          className="absolute inset-0 w-full h-full pointer-events-none" 
+          viewBox="0 0 800 300" 
+          preserveAspectRatio="none"
+        >
+          <defs>
+            <marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#1e293b" />
+            </marker>
+            <marker id="arrow-active" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#3b82f6" />
+            </marker>
+          </defs>
+
+          {edges.map((edge, idx) => {
+            const x1 = coords[edge.from]?.x || 0;
+            const y1 = coords[edge.from]?.y || 0;
+            const x2 = coords[edge.to]?.x || 0;
+            const y2 = coords[edge.to]?.y || 0;
+            
+            let sx = x1;
+            let sy = y1;
+            let ex = x2;
+            let ey = y2;
+            
+            const CARD_HALF_WIDTH = 70;
+            
+            if (x2 < x1) {
+              sx = x1 - CARD_HALF_WIDTH;
+              ex = x2 + CARD_HALF_WIDTH + 6;
+            } else if (x2 > x1) {
+              sx = x1 + CARD_HALF_WIDTH;
+              ex = x2 - CARD_HALF_WIDTH - 6;
+            }
+
+            const cx1 = sx + (ex - sx) * 0.5;
+            const cy1 = sy;
+            const cx2 = sx + (ex - sx) * 0.5;
+            const cy2 = ey;
+            const d = `M ${sx} ${sy} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${ex} ${ey}`;
+
+            return (
+              <React.Fragment key={idx}>
+                <path
+                  d={d}
+                  fill="none"
+                  stroke={edge.active ? '#1d4ed8' : '#0f172a'}
+                  strokeWidth={edge.active ? 3.5 : 2}
+                  strokeOpacity={edge.active ? 0.3 : 0.2}
+                />
+                <path
+                  d={d}
+                  fill="none"
+                  stroke={edge.active ? '#3b82f6' : '#1e293b'}
+                  strokeWidth={edge.active ? 1.5 : 1}
+                  strokeOpacity={edge.active ? 0.8 : 0.3}
+                  markerEnd={edge.active ? 'url(#arrow-active)' : 'url(#arrow)'}
+                />
+                {edge.active && (
+                  <path
+                    d={d}
+                    fill="none"
+                    stroke="#60a5fa"
+                    strokeWidth={2}
+                    strokeDasharray="6 18"
+                    strokeOpacity={0.8}
+                    className="animate-flow"
+                  />
+                )}
+              </React.Fragment>
+            );
+          })}
+        </svg>
+
         {serviceNames.map((name) => {
           const svc = services[name];
           const isSelected = name === activeServiceName;
+          const pos = coords[name] || { x: 400, y: 150 };
+          const health = currentHealth?.find(hc => hc.serviceName === name) || null;
 
           return (
-            <div key={name} className="relative flex flex-col items-center">
-              <button
+            <div 
+              key={name}
+              style={{
+                position: 'absolute',
+                left: `${(pos.x / 800) * 100}%`,
+                top: `${(pos.y / 300) * 100}%`,
+                transform: 'translate(-50%, -50%)',
+              }}
+            >
+              <TopologyNode 
+                name={name}
+                type={svc.type}
+                isSelected={isSelected}
                 onClick={() => onSelectService(name)}
-                className={`px-5 py-3 rounded-xl border flex flex-col items-center gap-1 min-w-[140px] text-center transition-all ${
-                  isSelected 
-                    ? 'bg-blue-600/10 border-blue-500 shadow-lg shadow-blue-500/20 text-white' 
-                    : 'bg-[#131b2e] border-[#1e293b] hover:border-gray-700 text-gray-300'
-                }`}
-              >
-                <span className="font-semibold text-xs">{name}</span>
-                <span className="text-[9px] text-gray-500 font-mono uppercase">{svc.type}</span>
-              </button>
-
-              {svc.depends_on && svc.depends_on.length > 0 && (
-                <div className="text-[9px] text-gray-500 font-mono mt-1 max-w-[150px] text-center">
-                  depends on: {svc.depends_on.join(', ')}
-                </div>
-              )}
+                health={health}
+                deploymentId={deploymentId}
+              />
             </div>
           );
         })}
       </div>
     </div>
+  );
+}
+
+function TopologyNode({ 
+  name, 
+  type,
+  isSelected, 
+  onClick, 
+  health,
+  deploymentId
+}: {
+  name: string;
+  type: string;
+  isSelected: boolean;
+  onClick: () => void;
+  health: ServiceHealthCheck | null;
+  deploymentId: string;
+}) {
+  const { data: stats } = useQuery({
+    queryKey: ['containerStats', deploymentId, name],
+    queryFn: () => apiClient.getContainerStats(deploymentId, name),
+    refetchInterval: 5000,
+  });
+  
+  const isOnline = stats?.online || false;
+  
+  let haloClass = '';
+  let statusText = 'unknown';
+  let badgeClass = 'text-gray-400 bg-gray-500/10 border-gray-500/20';
+  
+  if (health) {
+    if (health.status === 'healthy') {
+      statusText = 'healthy';
+      badgeClass = 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20';
+      haloClass = 'shadow-[0_0_12px_rgba(16,185,129,0.2)] border-emerald-500/30';
+    } else if (health.status === 'unhealthy') {
+      statusText = 'unhealthy';
+      badgeClass = 'text-red-400 bg-red-500/10 border-red-500/20 animate-pulse';
+      haloClass = 'shadow-[0_0_15px_rgba(239,68,68,0.3)] border-red-500/40';
+    } else {
+      statusText = health.status;
+      badgeClass = 'text-amber-400 bg-amber-500/10 border-amber-500/20';
+      haloClass = 'shadow-[0_0_12px_rgba(245,158,11,0.2)] border-amber-500/30';
+    }
+  } else if (isOnline) {
+    statusText = 'running';
+    badgeClass = 'text-blue-400 bg-blue-500/10 border-blue-500/20';
+    haloClass = 'shadow-[0_0_12px_rgba(59,130,246,0.2)] border-blue-500/30';
+  } else {
+    statusText = 'offline';
+    badgeClass = 'text-gray-500 bg-gray-650/10 border-gray-650/20';
+    haloClass = 'border-slate-800/40 opacity-75';
+  }
+
+  return (
+    <button
+      onClick={onClick}
+      className={`px-4 py-2.5 rounded-xl border flex flex-col items-center gap-0.5 min-w-[130px] max-w-[140px] text-center backdrop-blur-md transition-all ${
+        isSelected 
+          ? 'bg-blue-950/40 border-blue-500 shadow-[0_0_18px_rgba(59,130,246,0.3)] text-white scale-105 z-10' 
+          : `bg-[#0d1325]/80 hover:bg-[#131b2e] hover:border-slate-500 text-slate-300 ${haloClass}`
+      }`}
+    >
+      <span className="font-semibold text-xs truncate max-w-full tracking-wide">{name}</span>
+      <span className="text-[8px] text-gray-500 font-mono uppercase tracking-wider">{type}</span>
+      <span className={`text-[7px] font-extrabold uppercase tracking-widest mt-1.5 px-1.5 py-0.5 rounded border ${badgeClass}`}>
+        {statusText}
+      </span>
+    </button>
   );
 }
 
@@ -1151,6 +1557,8 @@ export default function DeploymentsPage() {
                       yamlStr={selectedDeployment.deploymentSpec} 
                       activeServiceName={selectedService} 
                       onSelectService={(name) => setSelectedService(name)} 
+                      currentHealth={currentHealth || null}
+                      deploymentId={selectedDeployment.id}
                     />
 
                     {/* Service Metrics Card Grid */}
