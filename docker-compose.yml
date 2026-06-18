@@ -19,6 +19,14 @@ services:
       timeout: 5s
       retries: 5
 
+  dind:
+    image: docker:25-dind
+    privileged: true
+    environment:
+      - DOCKER_TLS_CERTDIR=
+    volumes:
+      - /tmp/brewery-builds:/tmp/brewery-builds
+
   brewery:
     build:
       context: .
@@ -26,7 +34,7 @@ services:
     env_file:
       - .env
     environment:
-      - DOCKER_HOST=unix:///var/run/docker.sock
+      - DOCKER_HOST=tcp://dind:2375
       - DB_URL=jdbc:postgresql://postgres:5432/supply_chain
       - PUBSUB_EMULATOR_HOST=${PUBSUB_EMULATOR_HOST:-pubsub-emulator:8085}
       - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-prod}
@@ -34,7 +42,6 @@ services:
     ports:
       - "127.0.0.1:${BREWERY_PORT:-8080}:8080"
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
       - artifact_store:/mnt/artifact-store
       # Mount standard Google Application Default Credentials (ADC) from host
       - ~/.config/gcloud:/root/.config/gcloud:ro
@@ -42,13 +49,15 @@ services:
       - ${GCP_CREDENTIALS_HOST_PATH:-./gcp-keys}:${GCP_CREDENTIALS_CONTAINER_PATH:-/app/gcp-keys}:ro
       # Mount project directory for local repository git cloning (development tests)
       - .:${PWD:-/app/src}:ro
-      # Mount temporary builds directory for sibling container builds (DooD)
+      # Mount temporary builds directory for sibling container builds (DooD/DinD)
       - /tmp/brewery-builds:/tmp/brewery-builds
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+      dind:
+        condition: service_started
 
   pubsub-emulator:
     image: gcr.io/google.com/cloudsdktool/google-cloud-cli:emulators
