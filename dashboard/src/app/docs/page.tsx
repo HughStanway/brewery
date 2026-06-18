@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   BookOpen, 
   Terminal, 
@@ -8,22 +8,24 @@ import {
   Layers, 
   ShieldAlert, 
   Network, 
-  GitBranch, 
   Activity, 
-  FileText, 
   Code,
-  ExternalLink,
   ChevronRight,
   RefreshCw,
   Hammer,
   Package,
+  Server,
   ArrowRight,
-  Play,
-  Server
+  CheckCircle,
+  HelpCircle,
+  FileCode,
+  Lock,
+  Globe,
+  Database
 } from 'lucide-react';
 
 export default function DocsPage() {
-  const [activeTab, setActiveTab] = React.useState<'overview' | 'architecture' | 'guide' | 'endpoints' | 'limitations'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'configs' | 'architecture' | 'api' | 'troubleshooting'>('overview');
 
   return (
     <div className="space-y-8 animate-fade-in max-w-6xl mx-auto pb-12">
@@ -34,7 +36,7 @@ export default function DocsPage() {
           Documentation & Platform Guide
         </h2>
         <p className="text-base text-gray-500 leading-relaxed">
-          Deep-dive technical overview of Brewery build pipeline mechanics, system architecture, and API references.
+          Learn the basics of Brewery, configure build/deployment YAML specifications, and explore backend subsystem internals.
         </p>
       </div>
 
@@ -49,7 +51,17 @@ export default function DocsPage() {
                 : 'border-transparent text-gray-500 hover:text-gray-800'
             }`}
           >
-            System Overview
+            🏠 Getting Started
+          </button>
+          <button
+            onClick={() => setActiveTab('configs')}
+            className={`px-5 py-3 text-sm font-semibold uppercase tracking-wider transition-all border-b-2 -mb-[2px] whitespace-nowrap ${
+              activeTab === 'configs'
+                ? 'border-blue-500 text-[var(--primary)] font-bold'
+                : 'border-transparent text-gray-500 hover:text-gray-800'
+            }`}
+          >
+            📄 Config Specifications
           </button>
           <button
             onClick={() => setActiveTab('architecture')}
@@ -59,42 +71,32 @@ export default function DocsPage() {
                 : 'border-transparent text-gray-500 hover:text-gray-800'
             }`}
           >
-            Under-The-Hood Architecture
+            🔄 Subsystem Internals
           </button>
           <button
-            onClick={() => setActiveTab('guide')}
+            onClick={() => setActiveTab('api')}
             className={`px-5 py-3 text-sm font-semibold uppercase tracking-wider transition-all border-b-2 -mb-[2px] whitespace-nowrap ${
-              activeTab === 'guide'
+              activeTab === 'api'
                 ? 'border-blue-500 text-[var(--primary)] font-bold'
                 : 'border-transparent text-gray-500 hover:text-gray-800'
             }`}
           >
-            Getting Started
+            🔌 API Reference
           </button>
           <button
-            onClick={() => setActiveTab('endpoints')}
+            onClick={() => setActiveTab('troubleshooting')}
             className={`px-5 py-3 text-sm font-semibold uppercase tracking-wider transition-all border-b-2 -mb-[2px] whitespace-nowrap ${
-              activeTab === 'endpoints'
+              activeTab === 'troubleshooting'
                 ? 'border-blue-500 text-[var(--primary)] font-bold'
                 : 'border-transparent text-gray-500 hover:text-gray-800'
             }`}
           >
-            API Endpoints
-          </button>
-          <button
-            onClick={() => setActiveTab('limitations')}
-            className={`px-5 py-3 text-sm font-semibold uppercase tracking-wider transition-all border-b-2 -mb-[2px] whitespace-nowrap ${
-              activeTab === 'limitations'
-                ? 'border-blue-500 text-[var(--primary)] font-bold'
-                : 'border-transparent text-gray-500 hover:text-gray-800'
-            }`}
-          >
-            Limits & FAQ
+            ❓ FAQ & Troubleshooting
           </button>
         </div>
       </div>
 
-      {/* System Overview Content */}
+      {/* 🏠 Getting Started Content */}
       {activeTab === 'overview' && (
         <div className="space-y-8">
           <div className="p-8 bg-[var(--card)] border border-[var(--card-border)] rounded-2xl shadow-xl space-y-4">
@@ -103,385 +105,431 @@ export default function DocsPage() {
               What is Brewery?
             </h3>
             <p className="text-sm text-gray-700 leading-relaxed">
-              Brewery is an integrated, state-of-the-art <strong>Continuous Build, Versioning & Deployment Platform</strong>. It automatically coordinates code commit ingestion, containerized builds, artifact registry storage, transitive dependency tracking, conflict detection, and automated cascade rebuilds when dependencies update.
+              Brewery is an integrated, state-of-the-art <strong>Continuous Build, Versioning & Deployment Platform</strong>. It automates containerized builds, maintains a secure artifact registry, maps transitive dependencies in real-time, and schedules automated cascade rebuilds when upstream libraries change.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="p-8 bg-[var(--card)] border border-[var(--card-border)] rounded-2xl shadow-xl space-y-4">
-              <h4 className="text-sm font-bold text-gray-900 uppercase tracking-wider flex items-center gap-2 border-b border-[var(--card-border)] pb-3">
-                <Hammer className="w-5 h-5 text-emerald-400" />
-                Continuous Build Pipelines
-              </h4>
-              <p className="text-sm text-gray-500 leading-relaxed">
-                Builds compile in isolated Docker containers defined by a repository's <code>build.yaml</code>. Successful builds extract artifacts and publish them to the centralized registry, storing critical metadata (checksums, git commit SHAs, and versioning properties).
-              </p>
-            </div>
+          {/* Quickstart Guide */}
+          <div className="p-8 bg-[var(--card)] border border-[var(--card-border)] rounded-2xl shadow-xl space-y-6">
+            <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+              <CheckCircle className="w-5 h-5 text-emerald-500" />
+              Developer Quickstart Guide
+            </h3>
             
-            <div className="p-8 bg-[var(--card)] border border-[var(--card-border)] rounded-2xl shadow-xl space-y-4">
-              <h4 className="text-sm font-bold text-gray-900 uppercase tracking-wider flex items-center gap-2 border-b border-[var(--card-border)] pb-3">
-                <Network className="w-5 h-5 text-violet-400" />
-                Stateful Dependency Graph
-              </h4>
-              <p className="text-sm text-gray-500 leading-relaxed">
-                Whenever artifacts declare versioned dependencies (e.g. <code>bcrypt@^4.0.0</code>), Brewery constructs directed acyclic graphs (DAGs). It validates ranges and alerts engineers if circular loops or version mismatches create conflicts.
-              </p>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              <div className="space-y-2 border border-[var(--card-border)] p-4 rounded-xl bg-gray-50">
+                <div className="w-8 h-8 rounded-full bg-blue-500/10 text-[var(--primary)] flex items-center justify-center font-bold text-sm">1</div>
+                <h4 className="font-bold text-gray-900 text-xs uppercase tracking-wider">Authentication</h4>
+                <p className="text-xs text-gray-500">Log in with credentials. Standard accounts allow read access, while Administrator accounts have full configuration access.</p>
+              </div>
+
+              <div className="space-y-2 border border-[var(--card-border)] p-4 rounded-xl bg-gray-50">
+                <div className="w-8 h-8 rounded-full bg-violet-500/10 text-violet-500 flex items-center justify-center font-bold text-sm">2</div>
+                <h4 className="font-bold text-gray-900 text-xs uppercase tracking-wider">Define Build Spec</h4>
+                <p className="text-xs text-gray-500">Add a <code>build.yaml</code> to the root of your Git repository. Define your compiler image, build commands, and output artifact paths.</p>
+              </div>
+
+              <div className="space-y-2 border border-[var(--card-border)] p-4 rounded-xl bg-gray-50">
+                <div className="w-8 h-8 rounded-full bg-amber-500/10 text-amber-500 flex items-center justify-center font-bold text-sm">3</div>
+                <h4 className="font-bold text-gray-900 text-xs uppercase tracking-wider">Publish Artifacts</h4>
+                <p className="text-xs text-gray-500">Run a build. On success, the platform extracts your build outputs, hashes them (SHA-256), and registers them in the Artifact Registry.</p>
+              </div>
+
+              <div className="space-y-2 border border-[var(--card-border)] p-4 rounded-xl bg-gray-50">
+                <div className="w-8 h-8 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center font-bold text-sm">4</div>
+                <h4 className="font-bold text-gray-900 text-xs uppercase tracking-wider">Deploy Stacks</h4>
+                <p className="text-xs text-gray-500">Write a <code>deployment.yaml</code> referencing your artifacts. Launch your containers, configure environment variables, and manage rollouts.</p>
+              </div>
+            </div>
+          </div>
+
+          {/* User Roles Card */}
+          <div className="p-8 bg-[var(--card)] border border-[var(--card-border)] rounded-2xl shadow-xl space-y-4">
+            <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+              <Lock className="w-5 h-5 text-indigo-500" />
+              Role-Based Access Control (RBAC)
+            </h3>
+            <p className="text-sm text-gray-700 leading-relaxed">
+              Brewery secures dashboard access and backend REST APIs using two main user roles:
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+              <div className="p-5 border border-purple-200 rounded-xl bg-purple-50 space-y-2">
+                <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase bg-purple-100 text-purple-700 border border-purple-200">ADMIN</span>
+                <p className="text-xs text-purple-700 leading-relaxed font-semibold">
+                  Administrators have full read-write privileges over all pipelines and deployments, and exclusive access to the User Settings page to add users, change roles, and reset passwords.
+                </p>
+              </div>
+              <div className="p-5 border border-blue-200 rounded-xl bg-blue-50 space-y-2">
+                <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase bg-blue-100 text-blue-700 border border-blue-200">USER</span>
+                <p className="text-xs text-blue-700 leading-relaxed font-semibold">
+                  Standard Users can view dashboards, monitor active build runs, inspect artifact dependencies, and observe live container deployment rollouts, but cannot alter configuration settings.
+                </p>
+              </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* Under-The-Hood Architecture Content */}
-      {activeTab === 'architecture' && (
+      {/* 📄 Config Specifications Content */}
+      {activeTab === 'configs' && (
         <div className="space-y-8">
+          {/* build.yaml spec */}
+          <div className="p-8 bg-[var(--card)] border border-[var(--card-border)] rounded-2xl shadow-xl space-y-6">
+            <div className="flex items-center gap-3 border-b border-[var(--card-border)] pb-4">
+              <div className="p-2.5 bg-violet-500/10 text-violet-500 rounded-xl">
+                <FileCode className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-gray-900">Build Specification (build.yaml)</h3>
+                <p className="text-xs text-gray-500">Place this file in the root of your Git repository to define containerized build runs.</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {/* Code spec */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-gray-400 font-mono">build.yaml</span>
+                </div>
+                <div className="p-4 bg-gray-50 border border-[var(--card-border)] rounded-2xl overflow-x-auto font-mono text-[11px] text-[var(--primary)] leading-relaxed select-all">
+                  <pre>{`image: maven:3.9-eclipse-temurin-21
+steps:
+  - mvn clean package -DskipTests
+artifacts:
+  name: core-library
+  path: target/core-library.jar
+  dependencies:
+    - name: common-utils
+      version_range: "^1.0.0"
+    - name: bcrypt
+      version_range: "~4.0.0"`}</pre>
+                </div>
+              </div>
+
+              {/* Explanations */}
+              <div className="space-y-4 text-sm">
+                <h4 className="font-bold text-gray-900 uppercase tracking-wider text-xs">Configuration Options</h4>
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="border-b border-[var(--card-border)] font-bold text-gray-500">
+                      <th className="pb-2">Field</th>
+                      <th className="pb-2">Type</th>
+                      <th className="pb-2">Description</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[var(--card-border)] text-gray-700">
+                    <tr>
+                      <td className="py-2 font-mono font-bold">image</td>
+                      <td className="py-2 text-gray-500 font-mono">string</td>
+                      <td className="py-2">Docker builder image (e.g. <code>maven</code>, <code>node</code>, <code>golang</code>).</td>
+                    </tr>
+                    <tr>
+                      <td className="py-2 font-mono font-bold">steps</td>
+                      <td className="py-2 text-gray-500 font-mono">array</td>
+                      <td className="py-2">Sequential shell command steps executed in the compilation environment.</td>
+                    </tr>
+                    <tr>
+                      <td className="py-2 font-mono font-bold">artifacts.name</td>
+                      <td className="py-2 text-gray-500 font-mono">string</td>
+                      <td className="py-2">Unique name of the compiled library/service to output to the registry.</td>
+                    </tr>
+                    <tr>
+                      <td className="py-2 font-mono font-bold">artifacts.path</td>
+                      <td className="py-2 text-gray-500 font-mono">string</td>
+                      <td className="py-2">Relative path within the workspace where compile artifact binary is located.</td>
+                    </tr>
+                    <tr>
+                      <td className="py-2 font-mono font-bold">artifacts.dependencies</td>
+                      <td className="py-2 text-gray-500 font-mono">array</td>
+                      <td className="py-2">Required libraries listing their target names and semantic version ranges.</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          {/* deployment.yaml spec */}
+          <div className="p-8 bg-[var(--card)] border border-[var(--card-border)] rounded-2xl shadow-xl space-y-6">
+            <div className="flex items-center gap-3 border-b border-[var(--card-border)] pb-4">
+              <div className="p-2.5 bg-emerald-500/10 text-emerald-500 rounded-xl">
+                <Globe className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-gray-900">Deployment Specification (deployment.yaml)</h3>
+                <p className="text-xs text-gray-500">Define container stacks, ports mapping, dynamic artifact injection, and environment configuration.</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {/* Code spec */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-gray-400 font-mono">deployment.yaml</span>
+                </div>
+                <div className="p-4 bg-gray-50 border border-[var(--card-border)] rounded-2xl overflow-x-auto font-mono text-[11px] text-emerald-700 leading-relaxed select-all">
+                  <pre>{`services:
+  web-gateway:
+    artifact: gateway-service@^1.2.0
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - DB_URL=jdbc:postgresql://postgres:5432/db
+  auth-worker:
+    artifact: auth-service@~2.0.0
+    environment:
+      - JWT_SECRET=super_secret`}</pre>
+                </div>
+              </div>
+
+              {/* Explanations */}
+              <div className="space-y-4 text-sm">
+                <h4 className="font-bold text-gray-900 uppercase tracking-wider text-xs">Configuration Options</h4>
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="border-b border-[var(--card-border)] font-bold text-gray-500">
+                      <th className="pb-2">Field</th>
+                      <th className="pb-2">Type</th>
+                      <th className="pb-2">Description</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[var(--card-border)] text-gray-700">
+                    <tr>
+                      <td className="py-2 font-mono font-bold">services</td>
+                      <td className="py-2 text-gray-500 font-mono">object</td>
+                      <td className="py-2">List of service container components comprising the deployment stack.</td>
+                    </tr>
+                    <tr>
+                      <td className="py-2 font-mono font-bold">services.[name].artifact</td>
+                      <td className="py-2 text-gray-500 font-mono">string</td>
+                      <td className="py-2">Dynamic reference matching <code>artifact_name@range</code> (resolves latest match).</td>
+                    </tr>
+                    <tr>
+                      <td className="py-2 font-mono font-bold">services.[name].ports</td>
+                      <td className="py-2 text-gray-500 font-mono">array</td>
+                      <td className="py-2">External-to-internal port mapping configurations (e.g. <code>"8080:8080"</code>).</td>
+                    </tr>
+                    <tr>
+                      <td className="py-2 font-mono font-bold">services.[name].environment</td>
+                      <td className="py-2 text-gray-500 font-mono">array</td>
+                      <td className="py-2">List of environment variable definitions passed to the running container.</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🔄 Subsystem Internals Content */}
+      {activeTab === 'architecture' && (
+        <div className="space-y-6">
+          {/* Subsystem Introduction */}
           <div className="p-8 bg-[var(--card)] border border-[var(--card-border)] rounded-2xl shadow-xl space-y-4">
             <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2.5">
               <Server className="w-6 h-6 text-[var(--primary)]" />
               Under-the-Hood Subsystem Internals
             </h3>
             <p className="text-sm text-gray-700 leading-relaxed">
-              Brewery utilizes a modular Spring Boot 3.x core architecture. It persists all states to a PostgreSQL database and integrates with an external container execution system and a messaging topology.
+              Brewery utilizes a modular Spring Boot core orchestrator. It manages build pipelines, parses dependency maps, and coordinates container lifecycles via the following integrated engines:
             </p>
           </div>
 
-          {/* Subsystems breakdowns */}
-          <div className="space-y-6">
-            {/* Ingestion & Pub/Sub */}
-            <div className="p-8 bg-[var(--card)] border border-[var(--card-border)] rounded-2xl shadow-xl space-y-4">
-              <h4 className="text-sm font-bold text-gray-900 uppercase tracking-wider flex items-center gap-2 text-[var(--primary)] border-b border-[var(--card-border)] pb-3">
-                <Terminal className="w-5 h-5" />
-                1. Build Ingestion & Live Pub/Sub Connection
-              </h4>
-              <p className="text-sm text-gray-500 leading-relaxed">
-                In local development, the platform integrates with a Google Pub/Sub emulator. In the **production environment**, Brewery establishes a direct, secure connection to a live **Google Cloud Pub/Sub** service instance.
-              </p>
-              <p className="text-sm text-gray-500 leading-relaxed pl-3 border-l-2 border-blue-500/40">
-                When code changes are pushed to a monitored repository, the hosting service publishes a JSON event payload (containing <code>repository</code>, <code>commit</code>, and <code>branch</code>) to a Google Cloud Pub/Sub topic. Brewery's background subscriber service receives the event, decodes the base64 payload, creates a pending <code>Build</code> record in the database, and schedules it for execution.
-              </p>
-            </div>
+          {/* Ingestion */}
+          <div className="p-6 bg-white border border-gray-200 rounded-2xl shadow-sm space-y-3">
+            <h4 className="font-bold text-gray-900 text-sm flex items-center gap-2 text-[var(--primary)]">
+              <Terminal className="w-4.5 h-4.5" />
+              1. Build Ingestion Engine
+            </h4>
+            <p className="text-xs text-gray-600 leading-relaxed">
+              Brewery connects to a Google Cloud Pub/Sub topic to listen for repository commit hooks. When a webhook event is received (e.g. via git push), the platform base64-decodes the payload containing details of the repository, branch, and commit SHA, maps it to a database record, and queues it for building.
+            </p>
+          </div>
 
-            {/* Docker Container Executor */}
-            <div className="p-8 bg-[var(--card)] border border-[var(--card-border)] rounded-2xl shadow-xl space-y-4">
-              <h4 className="text-sm font-bold text-gray-900 uppercase tracking-wider flex items-center gap-2 text-emerald-400 border-b border-[var(--card-border)] pb-3">
-                <Cpu className="w-5 h-5" />
-                2. Isolated Docker Build Execution
-              </h4>
-              <p className="text-sm text-gray-500 leading-relaxed">
-                The Build Executor manages isolated workspace checkouts and container lifecycles:
-              </p>
-              <ul className="list-disc list-inside text-sm text-gray-500 space-y-2 pl-2">
-                <li>Creates a unique filesystem directory under <code>/tmp/brewery-builds/build-[id]/workspace</code>.</li>
-                <li>Clones the targeted git repository and checkouts the exact commit SHA in the workspace.</li>
-                <li>Parses the <code>build.yaml</code> configuration file to resolve builder image, parameters, and compilation steps.</li>
-                <li>Mounts the temporary workspace folder as a Docker volume and triggers the builder image.</li>
-                <li>Streams container logs to the database in real-time, inspects exit statuses, hashes resulting binaries (SHA-256), and invokes the registry service to catalog the build outputs.</li>
-              </ul>
-            </div>
+          {/* Build Engine */}
+          <div className="p-6 bg-white border border-gray-200 rounded-2xl shadow-sm space-y-3">
+            <h4 className="font-bold text-gray-900 text-sm flex items-center gap-2 text-violet-600">
+              <Cpu className="w-4.5 h-4.5" />
+              2. Containerized Build Executor
+            </h4>
+            <p className="text-xs text-gray-600 leading-relaxed">
+              The platform creates an isolated filesystem directory on the host server. It clones the target repository, checks out the designated git commit SHA, and parses the <code>build.yaml</code> configuration file. A compilation workspace volume is then mounted inside a Docker container using the specified builder image. Build logs are piped to the database in real-time, and exit statuses are evaluated to confirm compilation integrity.
+            </p>
+          </div>
 
-            {/* DAG Graph & Semantic Parsing */}
-            <div className="p-8 bg-[var(--card)] border border-[var(--card-border)] rounded-2xl shadow-xl space-y-4">
-              <h4 className="text-sm font-bold text-gray-900 uppercase tracking-wider flex items-center gap-2 text-violet-400 border-b border-[var(--card-border)] pb-3">
-                <Network className="w-5 h-5" />
-                3. SemVer Resolution & Directed Dependency Mapping
-              </h4>
-              <p className="text-sm text-gray-500 leading-relaxed">
-                The Dependency Resolver operates as a graph-traversal engine on top of relational schemas:
-              </p>
-              <ul className="list-disc list-inside text-sm text-gray-500 space-y-2 pl-2">
-                <li><strong>Range Parsing:</strong> Translates caret conditions (e.g. <code>^4.0.0</code> matches <code>[4.0.0, 5.0.0)</code>) and inequality ranges (e.g. <code>&gt;=1.2.0</code>) into structured boundaries.</li>
-                <li><strong>Relational Graphs:</strong> When an artifact is registered, its metadata is parsed, and corresponding dependency relations are indexed in <code>dependencies</code> and <code>reverse_dependencies</code> database tables.</li>
-                <li><strong>Cycle & Conflict Auditing:</strong> Performs transitive BFS/DFS traversals. If multiple versions of the same library are pulled in, or if a cyclical dependency exists, warning entities are generated to block broken configurations.</li>
-              </ul>
-            </div>
+          {/* Dependency DAG */}
+          <div className="p-6 bg-white border border-gray-200 rounded-2xl shadow-sm space-y-3">
+            <h4 className="font-bold text-gray-900 text-sm flex items-center gap-2 text-indigo-600">
+              <Network className="w-4.5 h-4.5" />
+              3. Directed Dependency Mapping (DAG)
+            </h4>
+            <p className="text-xs text-gray-600 leading-relaxed">
+              When compile outputs are successfully written to the registry, the Dependency Resolver parses the artifact metadata. It indexes dependencies and reverse-dependencies inside target tables. In addition, it carries out Breadth-First and Depth-First graph traversals to ensure version compatibility, verify semantic ranges, and check for circular reference loops.
+            </p>
+          </div>
 
-            {/* State-Based Cascade Queue */}
-            <div className="p-8 bg-[var(--card)] border border-[var(--card-border)] rounded-2xl shadow-xl space-y-4">
-              <h4 className="text-sm font-bold text-gray-900 uppercase tracking-wider flex items-center gap-2 text-amber-400 border-b border-[var(--card-border)] pb-3">
-                <RefreshCw className="w-5 h-5" />
-                4. State-Based Rebuild Cascading
-              </h4>
-              <p className="text-sm text-gray-500 leading-relaxed">
-                The Cascade Engine propagates package changes down the dependency tree:
-              </p>
-              <ul className="list-disc list-inside text-sm text-gray-500 space-y-2 pl-2">
-                <li><strong>Event-Driven Triggers:</strong> A Spring event listener captures successful artifact registrations and triggers the cascade resolver.</li>
-                <li><strong>Chain Scheduling:</strong> Identifies active dependents via reverse dependency mappings and checks if their version ranges are satisfied. It saves a persistent <code>RebuildChain</code> and schedules pending <code>CascadeTask</code> records.</li>
-                <li><strong>In-Place Upgrades:</strong> A background thread pool pulls pending tasks, builds the dependent packages, and registers the output artifacts keeping their original version name. This prevents version inflation while updating the dependency binary bindings in-place.</li>
-              </ul>
-            </div>
+          {/* Cascade Rebuilds */}
+          <div className="p-6 bg-white border border-gray-200 rounded-2xl shadow-sm space-y-3">
+            <h4 className="font-bold text-gray-900 text-sm flex items-center gap-2 text-amber-600">
+              <RefreshCw className="w-4.5 h-4.5" />
+              4. Automated Cascade Rebuilds
+            </h4>
+            <p className="text-xs text-gray-600 leading-relaxed">
+              Whenever a library registers a new version release, the system checks downstream artifacts declared in the dependency tree. If an downstream library's version range matches the new upstream version, a cascade task is created. The platform schedules a background task runner that queues automatic builds for all compatible dependents, propagating updates down the supply chain.
+            </p>
+          </div>
+
+          {/* Deployment Engine */}
+          <div className="p-6 bg-white border border-gray-200 rounded-2xl shadow-sm space-y-3">
+            <h4 className="font-bold text-gray-900 text-sm flex items-center gap-2 text-emerald-600">
+              <Layers className="w-4.5 h-4.5" />
+              5. Stepper Rollouts & Deployment Engine
+            </h4>
+            <p className="text-xs text-gray-600 leading-relaxed">
+              The Deployment Engine evaluates stack versions and launches Docker Compose container sequences. During rollouts, a stepper mechanism monitors health check endpoints periodically. If a service container fails consecutive health check reviews, the engine immediately terminates the rollout and triggers an automated rollback to the previous known active version.
+            </p>
           </div>
         </div>
       )}
 
-      {/* Getting Started Content */}
-      {activeTab === 'guide' && (
-        <div className="space-y-8">
-          <div className="p-8 bg-[var(--card)] border border-[var(--card-border)] rounded-2xl shadow-xl space-y-6">
+      {/* 🔌 API Reference Content */}
+      {activeTab === 'api' && (
+        <div className="space-y-6">
+          <div className="p-8 bg-[var(--card)] border border-[var(--card-border)] rounded-2xl shadow-xl space-y-4">
             <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2.5">
-              <Play className="w-6 h-6 text-emerald-400" />
-              Getting Started Guide
+              <Activity className="w-6 h-6 text-[var(--primary)]" />
+              REST API Endpoint Reference
             </h3>
-            
-            <div className="space-y-8 text-sm text-gray-700">
-              <div className="space-y-3">
-                <h4 className="text-sm font-bold text-gray-900 uppercase tracking-wider flex items-center gap-2 border-b border-[var(--card-border)] pb-3">
-                  <ChevronRight className="w-4 h-4 text-[var(--primary)]" />
-                  1. Define a Repository Build Config
-                </h4>
-                <p className="text-sm text-gray-500 leading-relaxed pl-6">
-                  To register a project with Brewery's automated Build Engine, place a <code>build.yaml</code> configuration file in the root of your repository:
-                </p>
-                <div className="pl-6">
-                  <pre className="p-4 bg-gray-50 border border-[var(--card-border)] rounded-2xl font-mono text-xs text-gray-700 overflow-x-auto">
-{`metadata:
-  name: "auth-lib"
-build:
-  image: "maven:3.9-eclipse-temurin-21"
-steps:
-  build: "mvn clean package"
-artifacts:
-  - pattern: "target/*.jar"
-    type: "jar"
-dependencies:
-  - name: "bcrypt"
-    version_range: "^4.0.0"`}
-                  </pre>
-                </div>
-
-                <div className="space-y-4 pl-6 pt-2 pb-4">
-                  <p className="text-sm text-gray-700 font-semibold uppercase tracking-wider flex items-center gap-1.5">
-                    <Code className="w-4 h-4 text-[var(--primary)]" />
-                    build.yaml Field Definitions
-                  </p>
-                  <div className="space-y-4">
-                    <div className="p-4 bg-gray-50 rounded-2xl border border-[var(--card-border)] space-y-2">
-                      <strong className="text-sm font-bold text-gray-900 block">A. metadata (Required)</strong>
-                      <p className="text-sm text-gray-500 leading-relaxed pl-2">
-                        Contains identifying metadata for the project.
-                      </p>
-                      <ul className="list-disc list-inside text-sm text-gray-500 pl-4 space-y-1">
-                        <li><code className="text-[var(--primary)]">name</code> (String, Required): The catalog name of the compiled artifact.</li>
-                        <li><code className="text-[var(--primary)]">versionScheme</code> (String, Optional): The Semantic Versioning parser format to use.</li>
-                      </ul>
-                    </div>
-
-                    <div className="p-4 bg-gray-50 rounded-2xl border border-[var(--card-border)] space-y-2">
-                      <strong className="text-sm font-bold text-gray-900 block">B. build (Required)</strong>
-                      <p className="text-sm text-gray-500 leading-relaxed pl-2">
-                        Defines runtime resource limits and execution context parameters.
-                      </p>
-                      <ul className="list-disc list-inside text-sm text-gray-500 pl-4 space-y-1">
-                        <li><code className="text-[var(--primary)]">image</code> (String, Required): Docker image name utilized as the isolated build container.</li>
-                        <li><code className="text-[var(--primary)]">timeoutSeconds</code> (Integer, Optional): Run duration boundary before execution aborts (default: 1800).</li>
-                        <li><code className="text-[var(--primary)]">memory</code> (String, Optional): Ram allocation boundaries assigned to the builder container (e.g. <code>2g</code>, <code>4g</code>).</li>
-                        <li><code className="text-[var(--primary)]">cpus</code> (Integer, Optional): Number of core processors allocated for the Docker builder.</li>
-                      </ul>
-                    </div>
-
-                    <div className="p-4 bg-gray-50 rounded-2xl border border-[var(--card-border)] space-y-2">
-                      <strong className="text-sm font-bold text-gray-900 block">C. steps (Required)</strong>
-                      <p className="text-sm text-gray-500 leading-relaxed pl-2">
-                        The shell scripts to execute inside the build container workspace.
-                      </p>
-                      <ul className="list-disc list-inside text-sm text-gray-500 pl-4 space-y-1">
-                        <li><code className="text-[var(--primary)]">setup</code> (String, Optional): Installs prerequisites, setups configurations, or fetches tools.</li>
-                        <li><code className="text-[var(--primary)]">build</code> (String, Required): The compile command compiling the codebase (e.g., <code>mvn clean package</code>, <code>npm run build</code>).</li>
-                        <li><code className="text-[var(--primary)]">test</code> (String, Optional): Test execution scripts.</li>
-                      </ul>
-                    </div>
-
-                    <div className="p-4 bg-gray-50 rounded-2xl border border-[var(--card-border)] space-y-2">
-                      <strong className="text-sm font-bold text-gray-900 block">D. artifacts (Required)</strong>
-                      <p className="text-sm text-gray-500 leading-relaxed pl-2">
-                        Specifies which files generated by the compile commands should be collected.
-                      </p>
-                      <ul className="list-disc list-inside text-sm text-gray-500 pl-4 space-y-1">
-                        <li><code className="text-[var(--primary)]">pattern</code> (String, Required): Filesystem glob pattern matching compiled files inside workspace (e.g. <code>target/*.jar</code>, <code>dist/*.tgz</code>).</li>
-                        <li><code className="text-[var(--primary)]">type</code> (String, Optional): Registry catalog artifact packaging class (e.g., <code>jar</code>, <code>war</code>, <code>tgz</code>).</li>
-                      </ul>
-                    </div>
-
-                    <div className="p-4 bg-gray-50 rounded-2xl border border-[var(--card-border)] space-y-2">
-                      <strong className="text-sm font-bold text-gray-900 block">E. dependencies (Optional)</strong>
-                      <p className="text-sm text-gray-500 leading-relaxed pl-2">
-                        Defines requirements on other artifacts in the platform.
-                      </p>
-                      <ul className="list-disc list-inside text-sm text-gray-500 pl-4 space-y-1">
-                        <li><code className="text-[var(--primary)]">name</code> (String, Required): Dependency artifact catalog identifier.</li>
-                        <li><code className="text-[var(--primary)]">version_range</code> / <code className="text-[var(--primary)]">versionRange</code> (String, Required): Target SemVer range filters (e.g. <code>^4.0.0</code>, <code>&gt;=1.2.0</code>).</li>
-                        <li><code className="text-[var(--primary)]">optional</code> (Boolean, Optional): If set true, prevents failing builds if missing.</li>
-                      </ul>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                <h4 className="text-sm font-bold text-gray-900 uppercase tracking-wider flex items-center gap-2 border-b border-[var(--card-border)] pb-3">
-                  <ChevronRight className="w-4 h-4 text-[var(--primary)]" />
-                  2. Uploading Artifacts to the Registry
-                </h4>
-                <p className="text-sm text-gray-500 leading-relaxed pl-6">
-                  You can register a library version directly by uploading the pre-compiled binary via the REST API or using the upload interface on the Artifact Registry page:
-                </p>
-                <div className="pl-6">
-                  <pre className="p-4 bg-gray-50 border border-[var(--card-border)] rounded-2xl font-mono text-xs text-gray-700 overflow-x-auto">
-{`curl -X POST \\
-  -F "file=@bcrypt-4.0.0.jar" \\
-  -F "name=bcrypt" \\
-  -F "version=4.0.0" \\
-  -F "artifact_type=jar" \\
-  -F "repository=myteam/bcrypt" \\
-  -F "commit=bc400" \\
-  "http://localhost:8080/api/registry/artifacts"`}
-                  </pre>
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                <h4 className="text-sm font-bold text-gray-900 uppercase tracking-wider flex items-center gap-2 border-b border-[var(--card-border)] pb-3">
-                  <ChevronRight className="w-4 h-4 text-[var(--primary)]" />
-                  3. Ingesting via Pub/Sub Events
-                </h4>
-                <p className="text-sm text-gray-500 leading-relaxed pl-6">
-                  Trigger automated builds by publishing a JSON push event payload to the live Google Cloud Pub/Sub topic configured for the environment:
-                </p>
-                <div className="pl-6">
-                  <pre className="p-4 bg-gray-50 border border-[var(--card-border)] rounded-2xl font-mono text-xs text-gray-700 overflow-x-auto">
-{`# Base64 encoded JSON payload containing "repository", "commit", "branch"
-PAYLOAD='{"repository":"/path/to/myteam/auth-lib","commit":"a1b2c3d","branch":"main"}'
-BASE64_DATA=$(echo -n $PAYLOAD | base64)
-
-curl -X POST \\
-  -H "Content-Type: application/json" \\
-  -d "{\\"messages\\": [{\\"data\\": \\"\${BASE64_DATA}\\"}]}" \\
-  "https://pubsub.googleapis.com/v1/projects/brewery-production/topics/brewery-jobs:publish"`}
-                  </pre>
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                <h4 className="text-sm font-bold text-gray-900 uppercase tracking-wider flex items-center gap-2 border-b border-[var(--card-border)] pb-3">
-                  <ChevronRight className="w-4 h-4 text-[var(--primary)]" />
-                  4. Monitoring Cascading Rebuilds
-                </h4>
-                <p className="text-sm text-gray-500 leading-relaxed pl-6">
-                  Once a package is registered, Brewery automatically runs cascade checks. If you publish a new version of a library (e.g. <code>bcrypt@4.0.1</code>), Brewery checks all downstream dependents. If their declared semver requirements are met, it automatically spawns a rebuild chain.
-                </p>
-                <p className="text-sm text-gray-500 leading-relaxed pl-6">
-                  You can audit active tasks, cancel running rebuild chains, or trace dry-run previews on the <strong>Cascade Rebuilds</strong> dashboard tab.
-                </p>
-              </div>
-            </div>
+            <p className="text-sm text-gray-500 leading-relaxed">
+              All backend endpoints are bound relative to the base context path `/api` (or proxied directly via the Next.js routes).
+            </p>
           </div>
-        </div>
-      )}
 
-      {/* Endpoints Content */}
-      {activeTab === 'endpoints' && (
-        <div className="p-8 bg-[var(--card)] border border-[var(--card-border)] rounded-2xl shadow-xl space-y-6">
-          <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2.5 border-b border-[var(--card-border)] pb-3">
-            <Code className="w-6 h-6 text-[var(--primary)]" />
-            API Endpoints Reference
-          </h3>
-          
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm border-collapse font-sans">
+          <div className="p-6 bg-white border border-gray-200 rounded-2xl shadow-sm space-y-4">
+            <h4 className="font-bold text-gray-900 text-sm border-b border-gray-100 pb-3 flex items-center gap-2">
+              <Lock className="w-4 h-4 text-indigo-500" />
+              Authentication & Accounts API
+            </h4>
+            <table className="w-full text-left border-collapse text-xs">
               <thead>
-                <tr className="border-b border-[var(--card-border)] text-gray-500 font-semibold uppercase tracking-wider">
-                  <th className="py-3 px-4">Subsystem</th>
-                  <th className="py-3 px-4">Method</th>
-                  <th className="py-3 px-4">Endpoint Path</th>
-                  <th className="py-3 px-4">Action Description</th>
+                <tr className="border-b border-gray-200 text-gray-400 font-bold">
+                  <th className="pb-2">Method</th>
+                  <th className="pb-2">Path</th>
+                  <th className="pb-2">Access Role</th>
+                  <th className="pb-2">Description</th>
                 </tr>
               </thead>
-              <tbody className="font-mono text-sm text-gray-700">
-                <tr className="border-b border-[var(--card-border)]">
-                  <td className="py-4 px-4 text-emerald-400 font-semibold font-sans">Registry</td>
-                  <td className="py-4 px-4"><span className="text-green-400 font-bold">POST</span></td>
-                  <td className="py-4 px-4">/api/registry/artifacts</td>
-                  <td className="py-4 px-4 text-gray-500 font-sans">Upload and register a new artifact version binary.</td>
+              <tbody className="divide-y divide-gray-100 text-gray-700 font-medium">
+                <tr>
+                  <td className="py-3"><span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold">POST</span></td>
+                  <td className="py-3 font-mono">/auth/login</td>
+                  <td className="py-3">Public</td>
+                  <td className="py-3">Validate credentials, start session, and set HttpOnly session cookie.</td>
                 </tr>
-                <tr className="border-b border-[var(--card-border)]">
-                  <td className="py-4 px-4 text-emerald-400 font-semibold font-sans">Registry</td>
-                  <td className="py-4 px-4"><span className="text-[var(--primary)] font-bold">GET</span></td>
-                  <td className="py-4 px-4">/api/registry/artifacts</td>
-                  <td className="py-4 px-4 text-gray-500 font-sans">List all registered artifacts.</td>
+                <tr>
+                  <td className="py-3"><span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold">POST</span></td>
+                  <td className="py-3 font-mono">/auth/logout</td>
+                  <td className="py-3">Authenticated</td>
+                  <td className="py-3">Terminate active session and invalidate cookie.</td>
                 </tr>
-                <tr className="border-b border-[var(--card-border)]">
-                  <td className="py-4 px-4 text-emerald-400 font-semibold font-sans">Registry</td>
-                  <td className="py-4 px-4"><span className="text-[var(--primary)] font-bold">GET</span></td>
-                  <td className="py-4 px-4">/api/registry/artifacts/&#123;name&#125;</td>
-                  <td className="py-4 px-4 text-gray-500 font-sans">Get version listing and details for an artifact name.</td>
+                <tr>
+                  <td className="py-3"><span className="px-2 py-0.5 rounded bg-blue-100 text-blue-800 font-bold">GET</span></td>
+                  <td className="py-3 font-mono">/auth/me</td>
+                  <td className="py-3">Authenticated</td>
+                  <td className="py-3">Retrieve authenticated user name and role.</td>
                 </tr>
-                <tr className="border-b border-[var(--card-border)]">
-                  <td className="py-4 px-4 text-emerald-400 font-semibold font-sans">Registry</td>
-                  <td className="py-4 px-4"><span className="text-[var(--primary)] font-bold">GET</span></td>
-                  <td className="py-4 px-4">/api/registry/artifacts/&#123;name&#125;/&#123;version&#125;</td>
-                  <td className="py-4 px-4 text-gray-500 font-sans">Get metadata files/manifest details for a version.</td>
+                <tr>
+                  <td className="py-3"><span className="px-2 py-0.5 rounded bg-blue-100 text-blue-800 font-bold">GET</span></td>
+                  <td className="py-3 font-mono">/users</td>
+                  <td className="py-3">ADMIN</td>
+                  <td className="py-3">List all registered user accounts.</td>
                 </tr>
-                
-                <tr className="border-b border-[var(--card-border)]">
-                  <td className="py-4 px-4 text-[var(--primary)] font-semibold font-sans">Build Engine</td>
-                  <td className="py-4 px-4"><span className="text-[var(--primary)] font-bold">GET</span></td>
-                  <td className="py-4 px-4">/api/builds</td>
-                  <td className="py-4 px-4 text-gray-500 font-sans">Fetch list of all builds.</td>
+                <tr>
+                  <td className="py-3"><span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold">POST</span></td>
+                  <td className="py-3 font-mono">/users</td>
+                  <td className="py-3">ADMIN</td>
+                  <td className="py-3">Create a new user with BCrypt hashed password.</td>
                 </tr>
-                <tr className="border-b border-[var(--card-border)]">
-                  <td className="py-4 px-4 text-[var(--primary)] font-semibold font-sans">Build Engine</td>
-                  <td className="py-4 px-4"><span className="text-[var(--primary)] font-bold">GET</span></td>
-                  <td className="py-4 px-4">/api/builds/&#123;id&#125;</td>
-                  <td className="py-4 px-4 text-gray-500 font-sans">Get build execution status, compile time, and terminal logs.</td>
+                <tr>
+                  <td className="py-3"><span className="px-2 py-0.5 rounded bg-amber-100 text-amber-800 font-bold">PUT</span></td>
+                  <td className="py-3 font-mono">/users/&#123;id&#125;/username</td>
+                  <td className="py-3">ADMIN</td>
+                  <td className="py-3">Modify a user account username.</td>
                 </tr>
+                <tr>
+                  <td className="py-3"><span className="px-2 py-0.5 rounded bg-amber-100 text-amber-800 font-bold">PUT</span></td>
+                  <td className="py-3 font-mono">/users/&#123;id&#125;/role</td>
+                  <td className="py-3">ADMIN</td>
+                  <td className="py-3">Update a user permissions role (USER / ADMIN).</td>
+                </tr>
+                <tr>
+                  <td className="py-3"><span className="px-2 py-0.5 rounded bg-amber-100 text-amber-800 font-bold">PUT</span></td>
+                  <td className="py-3 font-mono">/users/&#123;id&#125;/password</td>
+                  <td className="py-3">ADMIN</td>
+                  <td className="py-3">Reset a user password with a new hash.</td>
+                </tr>
+                <tr>
+                  <td className="py-3"><span className="px-2 py-0.5 rounded bg-red-100 text-red-800 font-bold">DELETE</span></td>
+                  <td className="py-3 font-mono">/users/&#123;id&#125;</td>
+                  <td className="py-3">ADMIN</td>
+                  <td className="py-3">Delete a user account. Safely blocks if it's the last admin.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
 
-                <tr className="border-b border-[var(--card-border)]">
-                  <td className="py-4 px-4 text-violet-400 font-semibold font-sans">Resolver</td>
-                  <td className="py-4 px-4"><span className="text-green-400 font-bold">POST</span></td>
-                  <td className="py-4 px-4">/api/dependencies/resolve/&#123;name&#125;/&#123;version&#125;</td>
-                  <td className="py-4 px-4 text-gray-500 font-sans">Resolve dependency mapping and scan for conflicts.</td>
+          <div className="p-6 bg-white border border-gray-200 rounded-2xl shadow-sm space-y-4">
+            <h4 className="font-bold text-gray-900 text-sm border-b border-gray-100 pb-3 flex items-center gap-2">
+              <Hammer className="w-4 h-4 text-violet-500" />
+              Builds & Deployments API
+            </h4>
+            <table className="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr className="border-b border-gray-200 text-gray-400 font-bold">
+                  <th className="pb-2">Method</th>
+                  <th className="pb-2">Path</th>
+                  <th className="pb-2">Access Role</th>
+                  <th className="pb-2">Description</th>
                 </tr>
-                <tr className="border-b border-[var(--card-border)]">
-                  <td className="py-4 px-4 text-violet-400 font-semibold font-sans">Resolver</td>
-                  <td className="py-4 px-4"><span className="text-[var(--primary)] font-bold">GET</span></td>
-                  <td className="py-4 px-4">/api/dependencies/graph/&#123;name&#125;/&#123;version&#125;</td>
-                  <td className="py-4 px-4 text-gray-500 font-sans">Get direct/transitive dependency graph relations.</td>
+              </thead>
+              <tbody className="divide-y divide-gray-100 text-gray-700 font-medium">
+                <tr>
+                  <td className="py-3"><span className="px-2 py-0.5 rounded bg-blue-100 text-blue-800 font-bold">GET</span></td>
+                  <td className="py-3 font-mono">/builds</td>
+                  <td className="py-3">Authenticated</td>
+                  <td className="py-3">List all system build execution history.</td>
                 </tr>
-                <tr className="border-b border-[var(--card-border)]">
-                  <td className="py-4 px-4 text-violet-400 font-semibold font-sans">Resolver</td>
-                  <td className="py-4 px-4"><span className="text-[var(--primary)] font-bold">GET</span></td>
-                  <td className="py-4 px-4">/api/dependencies/conflicts</td>
-                  <td className="py-4 px-4 text-gray-500 font-sans">Retrieve all registered dependency conflict warnings.</td>
+                <tr>
+                  <td className="py-3"><span className="px-2 py-0.5 rounded bg-blue-100 text-blue-800 font-bold">GET</span></td>
+                  <td className="py-3 font-mono">/builds/&#123;id&#125;</td>
+                  <td className="py-3">Authenticated</td>
+                  <td className="py-3">Retrieve build metadata details, logs, and compile errors.</td>
                 </tr>
-
-                <tr className="border-b border-[var(--card-border)]">
-                  <td className="py-4 px-4 text-amber-400 font-semibold font-sans">Cascade</td>
-                  <td className="py-4 px-4"><span className="text-green-400 font-bold">POST</span></td>
-                  <td className="py-4 px-4">/api/cascade/trigger/&#123;name&#125;/&#123;version&#125;</td>
-                  <td className="py-4 px-4 text-gray-500 font-sans">Manually trigger cascade analysis.</td>
+                <tr>
+                  <td className="py-3"><span className="px-2 py-0.5 rounded bg-blue-100 text-blue-800 font-bold">GET</span></td>
+                  <td className="py-3 font-mono">/deployments</td>
+                  <td className="py-3">Authenticated</td>
+                  <td className="py-3">List active deployment stacks configurations.</td>
                 </tr>
-                <tr className="border-b border-[var(--card-border)]">
-                  <td className="py-4 px-4 text-amber-400 font-semibold font-sans">Cascade</td>
-                  <td className="py-4 px-4"><span className="text-[var(--primary)] font-bold">GET</span></td>
-                  <td className="py-4 px-4">/api/cascade/chains</td>
-                  <td className="py-4 px-4 text-gray-500 font-sans">List all historical rebuild chain runs.</td>
+                <tr>
+                  <td className="py-3"><span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold">POST</span></td>
+                  <td className="py-3 font-mono">/deployments</td>
+                  <td className="py-3">Authenticated</td>
+                  <td className="py-3">Create or update a stack configuration from YAML.</td>
                 </tr>
-                <tr className="border-b border-[var(--card-border)]">
-                  <td className="py-4 px-4 text-amber-400 font-semibold font-sans">Cascade</td>
-                  <td className="py-4 px-4"><span className="text-[var(--primary)] font-bold">GET</span></td>
-                  <td className="py-4 px-4">/api/cascade/chains/&#123;id&#125;</td>
-                  <td className="py-4 px-4 text-gray-500 font-sans">Fetch detailed status of tasks and runs within a chain.</td>
+                <tr>
+                  <td className="py-3"><span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold">POST</span></td>
+                  <td className="py-3 font-mono">/deployments/&#123;id&#125;/deploy</td>
+                  <td className="py-3">Authenticated</td>
+                  <td className="py-3">Trigger an active rollout stepper sequence.</td>
                 </tr>
-                <tr className="border-b border-[var(--card-border)]">
-                  <td className="py-4 px-4 text-amber-400 font-semibold font-sans">Cascade</td>
-                  <td className="py-4 px-4"><span className="text-green-400 font-bold">POST</span></td>
-                  <td className="py-4 px-4">/api/cascade/chains/&#123;id&#125;/cancel</td>
-                  <td className="py-4 px-4 text-gray-500 font-sans">Cancel a running chain and skip pending builds.</td>
-                </tr>
-                <tr className="border-b border-[var(--card-border)]">
-                  <td className="py-4 px-4 text-amber-400 font-semibold font-sans">Cascade</td>
-                  <td className="py-4 px-4"><span className="text-[var(--primary)] font-bold">GET</span></td>
-                  <td className="py-4 px-4">/api/cascade/impact/&#123;name&#125;/&#123;version&#125;</td>
-                  <td className="py-4 px-4 text-gray-500 font-sans">Fetch dry-run impact analysis of dependent packages.</td>
+                <tr>
+                  <td className="py-3"><span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold">POST</span></td>
+                  <td className="py-3 font-mono">/deployments/&#123;id&#125;/rollback/&#123;v&#125;</td>
+                  <td className="py-3">Authenticated</td>
+                  <td className="py-3">Rollback a deployment stack to a specific version number.</td>
                 </tr>
               </tbody>
             </table>
@@ -489,53 +537,84 @@ curl -X POST \\
         </div>
       )}
 
-      {/* Limits & FAQ Content */}
-      {activeTab === 'limitations' && (
-        <div className="space-y-6">
-          <div className="p-8 bg-[var(--card)] border border-[var(--card-border)] rounded-2xl shadow-xl space-y-6">
-            <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2.5 border-b border-[var(--card-border)] pb-3">
-              <ShieldAlert className="w-6 h-6 text-amber-400" />
-              Platform Constraints & Design Rules
+      {/* ❓ FAQ & Troubleshooting Content */}
+      {activeTab === 'troubleshooting' && (
+        <div className="space-y-8">
+          {/* Version Ranges FAQ */}
+          <div className="p-8 bg-[var(--card)] border border-[var(--card-border)] rounded-2xl shadow-xl space-y-4">
+            <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+              <HelpCircle className="w-5 h-5 text-amber-500" />
+              Understanding Version Ranges Reference
             </h3>
-            
-            <div className="space-y-6 text-sm text-gray-700">
-              <div className="p-6 bg-gray-50 rounded-2xl border border-[var(--card-border)] space-y-3">
-                <h4 className="text-sm font-bold text-gray-900 uppercase tracking-wider flex items-center gap-2 border-b border-[var(--card-border)] pb-3">
-                  <RefreshCw className="w-4 h-4 text-amber-400" />
-                  In-place Rebuilding Strategy
-                </h4>
-                <p className="text-sm text-gray-500 leading-relaxed">
-                  When a cascade triggers a rebuild on a dependent package (e.g., rebuilding <code>auth-lib@1.0.0</code> when <code>bcrypt</code> updates), Brewery rebuilds and updates the original target version <strong>in-place</strong> in the registry. It does not auto-increment version strings. This ensures that downstream dependents can continue resolving the artifact range requirements without version inflation.
+            <p className="text-sm text-gray-700 leading-relaxed">
+              Brewery integrates a range resolution parser to map dependencies. Refer to this guide to understand caret vs tilde range resolutions:
+            </p>
+            <div className="overflow-x-auto pt-2">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="border-b border-[var(--card-border)] font-bold text-gray-500 uppercase">
+                    <th className="pb-2">Operator Range</th>
+                    <th className="pb-2">Equivalent Bounds</th>
+                    <th className="pb-2">Matching Example Versions</th>
+                    <th className="pb-2">Non-Matching Example Versions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--card-border)] text-gray-700">
+                  <tr>
+                    <td className="py-3 font-mono font-bold">^1.2.3</td>
+                    <td className="py-3 font-mono">&gt;=1.2.3 &lt;2.0.0</td>
+                    <td className="py-3 text-emerald-600 font-semibold">1.2.3, 1.2.5, 1.9.0</td>
+                    <td className="py-3 text-red-600 font-semibold">1.2.2, 2.0.0</td>
+                  </tr>
+                  <tr>
+                    <td className="py-3 font-mono font-bold">~1.2.3</td>
+                    <td className="py-3 font-mono">&gt;=1.2.3 &lt;1.3.0</td>
+                    <td className="py-3 text-emerald-600 font-semibold">1.2.3, 1.2.9</td>
+                    <td className="py-3 text-red-600 font-semibold">1.2.2, 1.3.0</td>
+                  </tr>
+                  <tr>
+                    <td className="py-3 font-mono font-bold">1.x</td>
+                    <td className="py-3 font-mono">&gt;=1.0.0 &lt;2.0.0</td>
+                    <td className="py-3 text-emerald-600 font-semibold">1.0.0, 1.5.0, 1.9.9</td>
+                    <td className="py-3 text-red-600 font-semibold">0.9.9, 2.0.0</td>
+                  </tr>
+                  <tr>
+                    <td className="py-3 font-mono font-bold">1.0.0 - 2.0.0</td>
+                    <td className="py-3 font-mono">&gt;=1.0.0 &lt;=2.0.0</td>
+                    <td className="py-3 text-emerald-600 font-semibold">1.0.0, 1.5.0, 2.0.0</td>
+                    <td className="py-3 text-red-600 font-semibold">0.9.9, 2.0.1</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Common Errors Troubleshooting */}
+          <div className="p-8 bg-[var(--card)] border border-[var(--card-border)] rounded-2xl shadow-xl space-y-6">
+            <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+              <ShieldAlert className="w-5 h-5 text-red-500" />
+              Common Errors Troubleshooting
+            </h3>
+
+            <div className="space-y-4">
+              <div className="p-5 border border-gray-200 rounded-xl bg-gray-50 space-y-2">
+                <h4 className="font-bold text-gray-900 text-sm">"Failed to Connect to Platform" Error on dashboard startup</h4>
+                <p className="text-xs text-gray-600 leading-relaxed">
+                  Verify that the Brewery backend Spring Boot application is running on port <code>8080</code> on your server. If running in containers, verify that database container is active and Liquibase has completed initializing database schemas.
                 </p>
               </div>
 
-              <div className="p-6 bg-gray-50 rounded-2xl border border-[var(--card-border)] space-y-3">
-                <h4 className="text-sm font-bold text-gray-900 uppercase tracking-wider flex items-center gap-2 border-b border-[var(--card-border)] pb-3">
-                  <Terminal className="w-4 h-4 text-[var(--primary)]" />
-                  Sequential Task Scheduler
-                </h4>
-                <p className="text-sm text-gray-500 leading-relaxed">
-                  The Cascade Rebuild scheduler operates on a 1-minute loop (or configurable delay), processing pending rebuild jobs sequentially. To prevent local CPU/Docker resource depletion, containerized builds are executed one at a time.
+              <div className="p-5 border border-gray-200 rounded-xl bg-gray-50 space-y-2">
+                <h4 className="font-bold text-gray-900 text-sm">"Docker socket not specified" build failure</h4>
+                <p className="text-xs text-gray-600 leading-relaxed">
+                  If executing locally, ensure that the Docker desktop application is active. If executing inside containers, check that the host docker socket file mount <code>/var/run/docker.sock</code> is correctly passed in your run command configs.
                 </p>
               </div>
 
-              <div className="p-6 bg-gray-50 rounded-2xl border border-[var(--card-border)] space-y-3">
-                <h4 className="text-sm font-bold text-gray-900 uppercase tracking-wider flex items-center gap-2 border-b border-[var(--card-border)] pb-3">
-                  <Network className="w-4 h-4 text-violet-400" />
-                  Caret (^) Range Boundary Rules
-                </h4>
-                <p className="text-sm text-gray-500 leading-relaxed">
-                  The version resolver validates caret conditions based on standard semantic constraints. For instance, <code>^4.0.0</code> is satisfied by version <code>4.0.1</code>, but not by <code>5.0.0</code>. Pre-releases and multi-range union expressions default to strict pinned comparisons.
-                </p>
-              </div>
-
-              <div className="p-6 bg-gray-50 rounded-2xl border border-[var(--card-border)] space-y-3">
-                <h4 className="text-sm font-bold text-gray-900 uppercase tracking-wider flex items-center gap-2 border-b border-[var(--card-border)] pb-3">
-                  <Cpu className="w-4 h-4 text-emerald-400" />
-                  Mock and Absolute Repositories
-                </h4>
-                <p className="text-sm text-gray-500 leading-relaxed">
-                  The build executor simulates builds for team namespace repositories (e.g. <code>myteam/auth-lib</code>) using mock files and workspace stubs. Real local directories specified via absolute paths (e.g. <code>/Users/hughstanway/Projects/brewery</code>) are cloned and built using actual git repositories.
+              <div className="p-5 border border-gray-200 rounded-xl bg-gray-50 space-y-2">
+                <h4 className="font-bold text-gray-900 text-sm">Authentication failures after renaming default user account</h4>
+                <p className="text-xs text-gray-600 leading-relaxed">
+                  The initial administrator account <code>admin / password</code> is generated dynamically on first boot. If you modify its username or password in Settings, you must update your active login credentials immediately. Note that the backend prevents deleting or demoting the last remaining admin to prevent account lockout.
                 </p>
               </div>
             </div>
