@@ -318,6 +318,11 @@ export const apiClient = {
       method: 'POST',
       body: JSON.stringify(userData)
     }),
+  updateUsername: (id: string, username: string) => 
+    request<any>(`/users/${id}/username`, {
+      method: 'PUT',
+      body: JSON.stringify({ username })
+    }),
   updateUserRole: (id: string, role: string) => 
     request<any>(`/users/${id}/role`, {
       method: 'PUT',

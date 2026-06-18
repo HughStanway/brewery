@@ -48,8 +48,28 @@ public class UserController {
         return ResponseEntity.status(HttpStatus.CREATED).body(new UserDto(saved));
     }
 
+    @PutMapping("/{id}/username")
+    public ResponseEntity<?> updateUsername(@PathVariable("id") UUID id, @RequestBody UpdateUsernameRequest request) {
+        User user = userRepository.findById(id).orElse(null);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponse("User not found"));
+        }
+        if (request.getUsername() == null || request.getUsername().isBlank()) {
+            return ResponseEntity.badRequest().body(new ErrorResponse("Username cannot be empty"));
+        }
+        String newUsername = request.getUsername().trim();
+        if (!newUsername.equalsIgnoreCase(user.getUsername())) {
+            if (userRepository.findByUsername(newUsername).isPresent()) {
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(new ErrorResponse("Username is already taken"));
+            }
+        }
+        user.setUsername(newUsername);
+        User saved = userRepository.save(user);
+        return ResponseEntity.ok(new UserDto(saved));
+    }
+
     @PutMapping("/{id}/role")
-    public ResponseEntity<?> updateRole(@PathVariable UUID id, @RequestBody UpdateRoleRequest request) {
+    public ResponseEntity<?> updateRole(@PathVariable("id") UUID id, @RequestBody UpdateRoleRequest request) {
         User user = userRepository.findById(id).orElse(null);
         if (user == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponse("User not found"));
@@ -58,13 +78,24 @@ public class UserController {
             return ResponseEntity.badRequest().body(new ErrorResponse("Role cannot be empty"));
         }
 
-        user.setRole(request.getRole().toUpperCase());
+        String targetRole = request.getRole().toUpperCase();
+        if ("ADMIN".equalsIgnoreCase(user.getRole()) && !"ADMIN".equalsIgnoreCase(targetRole)) {
+            // Count active admin users
+            long adminCount = userRepository.findAll().stream()
+                    .filter(u -> "ADMIN".equalsIgnoreCase(u.getRole()))
+                    .count();
+            if (adminCount <= 1) {
+                return ResponseEntity.badRequest().body(new ErrorResponse("Cannot change role. At least one admin account must always exist in the system."));
+            }
+        }
+
+        user.setRole(targetRole);
         User saved = userRepository.save(user);
         return ResponseEntity.ok(new UserDto(saved));
     }
 
     @PutMapping("/{id}/password")
-    public ResponseEntity<?> resetPassword(@PathVariable UUID id, @RequestBody ResetPasswordRequest request) {
+    public ResponseEntity<?> resetPassword(@PathVariable("id") UUID id, @RequestBody ResetPasswordRequest request) {
         User user = userRepository.findById(id).orElse(null);
         if (user == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponse("User not found"));
@@ -79,10 +110,20 @@ public class UserController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> deleteUser(@PathVariable UUID id) {
+    public ResponseEntity<?> deleteUser(@PathVariable("id") UUID id) {
         User user = userRepository.findById(id).orElse(null);
         if (user == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponse("User not found"));
+        }
+
+        if ("ADMIN".equalsIgnoreCase(user.getRole())) {
+            // Count active admin users
+            long adminCount = userRepository.findAll().stream()
+                    .filter(u -> "ADMIN".equalsIgnoreCase(u.getRole()))
+                    .count();
+            if (adminCount <= 1) {
+                return ResponseEntity.badRequest().body(new ErrorResponse("Cannot delete user. At least one admin account must always exist in the system."));
+            }
         }
         
         userRepository.delete(user);
@@ -94,6 +135,11 @@ public class UserController {
         private String username;
         private String password;
         private String role;
+    }
+
+    @Data
+    public static class UpdateUsernameRequest {
+        private String username;
     }
 
     @Data

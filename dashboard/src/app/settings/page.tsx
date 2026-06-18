@@ -13,17 +13,19 @@ import {
   ShieldAlert, 
   CheckCircle,
   X,
-  XCircle
+  XCircle,
+  Edit2
 } from 'lucide-react';
 
 export default function SettingsPage() {
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, logout } = useAuth();
   const queryClient = useQueryClient();
 
   // Modals state
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isResetOpen, setIsResetOpen] = useState(false);
   const [isRoleOpen, setIsRoleOpen] = useState(false);
+  const [isUsernameOpen, setIsUsernameOpen] = useState(false);
 
   // Selected user for actions
   const [selectedUser, setSelectedUser] = useState<any>(null);
@@ -32,6 +34,7 @@ export default function SettingsPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('USER');
+  const [newUsername, setNewUsername] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [newRole, setNewRole] = useState('USER');
 
@@ -68,6 +71,22 @@ export default function SettingsPage() {
     }
   });
 
+  // Update Username Mutation
+  const updateUsernameMutation = useMutation({
+    mutationFn: ({ id, username }: { id: string; username: string }) => 
+      apiClient.updateUsername(id, username),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      setSuccessMsg('Username updated successfully');
+      setIsUsernameOpen(false);
+      setNewUsername('');
+      clearMessagesAfterDelay();
+    },
+    onError: (err: any) => {
+      setErrorMsg(err.message || 'Failed to update username');
+    }
+  });
+
   // Update Role Mutation
   const updateRoleMutation = useMutation({
     mutationFn: ({ id, role }: { id: string; role: string }) => 
@@ -101,10 +120,15 @@ export default function SettingsPage() {
   // Delete User Mutation
   const deleteMutation = useMutation({
     mutationFn: apiClient.deleteUser,
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
       setSuccessMsg('User deleted successfully');
       clearMessagesAfterDelay();
+      
+      // If we deleted our own logged-in user account, log out immediately
+      if (selectedUser && selectedUser.id === variables) {
+        logout();
+      }
     },
     onError: (err: any) => {
       setErrorMsg(err.message || 'Failed to delete user');
@@ -147,6 +171,14 @@ export default function SettingsPage() {
     createMutation.mutate({ username, password, role });
   };
 
+  const handleUpdateUsername = (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMsg(null);
+    if (selectedUser) {
+      updateUsernameMutation.mutate({ id: selectedUser.id, username: newUsername });
+    }
+  };
+
   const handleUpdateRole = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
@@ -164,13 +196,14 @@ export default function SettingsPage() {
   };
 
   const handleDelete = (id: string, name: string) => {
+    let confirmMsg = `Are you sure you want to delete user "${name}"?`;
     if (name === currentUser.username) {
-      setErrorMsg('You cannot delete your own logged-in user account.');
-      clearMessagesAfterDelay();
-      return;
+      confirmMsg = `WARNING: You are deleting your own logged-in user account. You will be logged out immediately. Proceed?`;
     }
-    if (confirm(`Are you sure you want to delete user "${name}"?`)) {
+    if (confirm(confirmMsg)) {
       setErrorMsg(null);
+      // Save user reference to check in onSuccess
+      setSelectedUser(users?.find(u => u.id === id));
       deleteMutation.mutate(id);
     }
   };
@@ -251,6 +284,20 @@ export default function SettingsPage() {
                       {u.createdAt ? new Date(u.createdAt).toLocaleString() : 'N/A'}
                     </td>
                     <td className="py-4 text-right space-x-2">
+                      {/* Edit Username Button */}
+                      <button
+                        onClick={() => {
+                          setSelectedUser(u);
+                          setNewUsername(u.username);
+                          setErrorMsg(null);
+                          setIsUsernameOpen(true);
+                        }}
+                        className="p-2 bg-gray-50 hover:bg-blue-50 border border-gray-200 hover:border-blue-200 text-gray-600 hover:text-blue-600 rounded-lg transition-colors inline-flex items-center justify-center shadow-sm"
+                        title="Edit Username"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+
                       {/* Change Role Button */}
                       <button
                         onClick={() => {
@@ -281,13 +328,8 @@ export default function SettingsPage() {
                       {/* Delete Button */}
                       <button
                         onClick={() => handleDelete(u.id, u.username)}
-                        disabled={u.username === currentUser.username}
-                        className={`p-2 rounded-lg border transition-colors inline-flex items-center justify-center shadow-sm ${
-                          u.username === currentUser.username
-                            ? 'bg-gray-100 text-gray-300 border-gray-100 cursor-not-allowed'
-                            : 'bg-red-50 hover:bg-red-600 border-red-200 hover:border-red-600 text-red-600 hover:text-white'
-                        }`}
-                        title={u.username === currentUser.username ? 'Cannot delete yourself' : 'Delete User'}
+                        className="p-2 bg-red-50 hover:bg-red-600 border border-red-200 hover:border-red-600 text-red-600 hover:text-white rounded-lg transition-colors inline-flex items-center justify-center shadow-sm"
+                        title="Delete User"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -364,6 +406,52 @@ export default function SettingsPage() {
                   className="px-5 py-2.5 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all shadow disabled:opacity-50"
                 >
                   {createMutation.isPending ? 'Creating...' : 'Create Account'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* UPDATE USERNAME MODAL */}
+      {isUsernameOpen && selectedUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="bg-white border border-gray-200 w-full max-w-md rounded-3xl shadow-2xl overflow-hidden animate-zoomIn">
+            <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+              <h3 className="font-bold text-gray-900 text-base">Update Username</h3>
+              <button onClick={() => setIsUsernameOpen(false)} className="text-gray-400 hover:text-gray-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <form onSubmit={handleUpdateUsername} className="p-6 space-y-4">
+              <p className="text-xs text-gray-500 font-semibold">
+                Changing username for <span className="font-bold text-gray-800">"{selectedUser.username}"</span>:
+              </p>
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-gray-700 uppercase tracking-wider block">Username</label>
+                <input
+                  type="text"
+                  required
+                  value={newUsername}
+                  onChange={(e) => setNewUsername(e.target.value)}
+                  placeholder="Enter new username"
+                  className="w-full bg-gray-50 border border-gray-200 focus:border-blue-500 focus:bg-white rounded-2xl px-4 py-3 text-sm text-gray-900 outline-none transition-all font-semibold"
+                />
+              </div>
+              <div className="pt-2 flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsUsernameOpen(false)}
+                  className="px-5 py-2.5 rounded-2xl border border-gray-200 hover:bg-gray-50 text-xs font-bold text-gray-600 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={updateUsernameMutation.isPending}
+                  className="px-5 py-2.5 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all shadow disabled:opacity-50"
+                >
+                  {updateUsernameMutation.isPending ? 'Saving...' : 'Save Changes'}
                 </button>
               </div>
             </form>
