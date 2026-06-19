@@ -302,6 +302,9 @@ export const apiClient = {
   restart: (id: string) => request<Deployment>(`/deployments/${id}/restart`, { method: 'POST' }),
   deleteDeployment: (id: string) => request<void>(`/deployments/${id}`, { method: 'DELETE' }),
 
+  // System Settings API
+  getSystemConfig: () => request<any>('/system/config'),
+
   // Auth API
   login: (username: string, password: string) => 
     request<{ username: string; role: string }>('/auth/login', {
