@@ -402,6 +402,11 @@ public class DeploymentServiceImpl implements DeploymentService {
         Deployment deployment = deploymentRepository.findById(deploymentId).orElse(null);
         if (deployment == null) return;
 
+        if ("paused".equalsIgnoreCase(deployment.getStatus())) {
+            log.info("Deployment {} is paused. Skipping health check execution.", deployment.getName());
+            return;
+        }
+
         log.info("Running health checks check for deployment: {}", deployment.getName());
         try {
             DeploymentSpec spec = parseSpec(deployment.getDeploymentSpec());
@@ -644,6 +649,18 @@ public class DeploymentServiceImpl implements DeploymentService {
             
             deployment.setStatus("paused");
             deployment = deploymentRepository.save(deployment);
+
+            // Update all service health checks to paused status
+            try {
+                List<ServiceHealthCheck> healthChecks = healthCheckRepository.findByDeploymentId(deploymentId);
+                for (ServiceHealthCheck hc : healthChecks) {
+                    hc.setStatus("paused");
+                    hc.setErrorMessage("Deployment manually paused");
+                    healthCheckRepository.save(hc);
+                }
+            } catch (Exception he) {
+                log.warn("Failed to update service health checks status to paused for deployment {}", deploymentId, he);
+            }
             
             recordEvent(deploymentId, "progressed", "Deployment stack paused manually", null);
             return deployment;
