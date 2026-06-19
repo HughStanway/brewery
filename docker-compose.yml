@@ -24,6 +24,9 @@ services:
     privileged: true
     environment:
       - DOCKER_TLS_CERTDIR=
+    ports:
+      - "127.0.0.1:2375:2375"
+      - "127.0.0.1:8000-8100:8000-8100"
     volumes:
       - brewery_builds:/tmp/brewery-builds
       - artifact_store:/mnt/artifact-store
