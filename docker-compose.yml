@@ -72,8 +72,7 @@ services:
       dind:
         condition: service_healthy
     networks:
-      brewery_net:
-        ipv4_address: 172.20.0.10
+      - brewery_net
 
   pubsub-emulator:
     image: gcr.io/google.com/cloudsdktool/google-cloud-cli:emulators
@@ -98,8 +97,7 @@ services:
     depends_on:
       - brewery
     networks:
-      brewery_net:
-        ipv4_address: 172.20.0.20
+      - brewery_net
 
 volumes:
   postgres_data:
