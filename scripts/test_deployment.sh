@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Source the auth helper to get session cookies
+source "$(dirname "$0")/auth_helper.sh"
+
 REGISTRY_URL="http://localhost:8080/api/registry"
 DEPLOYMENTS_URL="http://localhost:8080/api/deployments"
 
@@ -27,7 +30,7 @@ chmod +x mock_server.sh
 echo ""
 echo "2. Registering mock-server-bin@1.0.0 in the registry..."
 BUILD_ID="fb060fe3-4529-4c1f-afb3-e7d386220379"
-RESP=$(curl -s -X POST \
+RESP=$(curl -s -b "${COOKIE_JAR}" -X POST \
   -F "file=@mock_server.sh" \
   -F "name=mock-server-bin" \
   -F "version=1.0.0" \
@@ -66,7 +69,7 @@ services:
 # Escape YAML string for JSON body
 JSON_SPEC=$(echo "$SPEC_YAML" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g' | awk '{printf "%s\\n", $0}' | tr -d '\r')
 
-CREATE_RESP=$(curl -s -X POST \
+CREATE_RESP=$(curl -s -b "${COOKIE_JAR}" -X POST \
   -H "Content-Type: application/json" \
   -d "{\"name\": \"integration-test-stack\", \"specYaml\": \"${JSON_SPEC}\"}" \
   "${DEPLOYMENTS_URL}")
@@ -84,7 +87,7 @@ fi
 # 4. Trigger deployment rollout
 echo ""
 echo "4. Triggering deployment rollout for integration-test-stack..."
-DEPLOY_RESP=$(curl -s -X POST "${DEPLOYMENTS_URL}/${DEPLOYMENT_ID}/deploy")
+DEPLOY_RESP=$(curl -s -b "${COOKIE_JAR}" -X POST "${DEPLOYMENTS_URL}/${DEPLOYMENT_ID}/deploy")
 
 if [[ "$DEPLOY_RESP" == *"healthy"* || "$DEPLOY_RESP" == *"deploying"* ]]; then
   echo "${PASS} Rollout triggered successfully"
@@ -99,10 +102,10 @@ echo "5. Waiting for container startup and polling health check..."
 sleep 5
 
 # Force health check check
-curl -s -X POST "${DEPLOYMENTS_URL}/${DEPLOYMENT_ID}/health/check" > /dev/null
+curl -s -b "${COOKIE_JAR}" -X POST "${DEPLOYMENTS_URL}/${DEPLOYMENT_ID}/health/check" > /dev/null
 
 # Get deployment status
-STATUS_RESP=$(curl -s "${DEPLOYMENTS_URL}/${DEPLOYMENT_ID}")
+STATUS_RESP=$(curl -s -b "${COOKIE_JAR}" "${DEPLOYMENTS_URL}/${DEPLOYMENT_ID}")
 FINAL_STATUS=$(echo "$STATUS_RESP" | grep -o '"status":"[^"]*"' | head -1 | cut -d'"' -f4)
 
 if [ "$FINAL_STATUS" == "healthy" ]; then
@@ -113,7 +116,7 @@ else
 fi
 
 # Get health check list
-HEALTH_RESP=$(curl -s "${DEPLOYMENTS_URL}/${DEPLOYMENT_ID}/health")
+HEALTH_RESP=$(curl -s -b "${COOKIE_JAR}" "${DEPLOYMENTS_URL}/${DEPLOYMENT_ID}/health")
 echo "Active health metrics: ${HEALTH_RESP}"
 
 # 6. Clean up docker container on host to avoid cluttering

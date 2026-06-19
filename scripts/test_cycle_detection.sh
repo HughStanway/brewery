@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Source the auth helper to get session cookies
+source "$(dirname "$0")/auth_helper.sh"
+
 REGISTRY_URL="http://localhost:8080/api/registry"
 DEPS_URL="http://localhost:8080/api/dependencies"
 
@@ -35,7 +38,7 @@ echo "dummy cycle-C 1.0.0" > cycle-c-1.0.0.jar
 # ─── Step 1: Register cycle-C@1.0.0 (depends on cycle-A ^1.0.0) ──────────────
 echo ""
 echo "1. Registering cycle-C@1.0.0 (depends on cycle-A ^1.0.0)..."
-RESP=$(curl -s -X POST \
+RESP=$(curl -s -b "${COOKIE_JAR}" -X POST \
   -F "file=@cycle-c-1.0.0.jar" \
   -F "name=cycle-C" \
   -F "version=1.0.0" \
@@ -51,7 +54,7 @@ assert_contains "cycle-C@1.0.0 registered" "$RESP" "cycle-C"
 # ─── Step 2: Register cycle-B@1.0.0 (depends on cycle-C ^1.0.0) ──────────────
 echo ""
 echo "2. Registering cycle-B@1.0.0 (depends on cycle-C ^1.0.0)..."
-RESP=$(curl -s -X POST \
+RESP=$(curl -s -b "${COOKIE_JAR}" -X POST \
   -F "file=@cycle-b-1.0.0.jar" \
   -F "name=cycle-B" \
   -F "version=1.0.0" \
@@ -67,7 +70,7 @@ assert_contains "cycle-B@1.0.0 registered" "$RESP" "cycle-B"
 # ─── Step 3: Register cycle-A@1.0.0 (depends on cycle-B ^1.0.0) ──────────────
 echo ""
 echo "3. Registering cycle-A@1.0.0 (depends on cycle-B ^1.0.0)..."
-RESP=$(curl -s -X POST \
+RESP=$(curl -s -b "${COOKIE_JAR}" -X POST \
   -F "file=@cycle-a-1.0.0.jar" \
   -F "name=cycle-A" \
   -F "version=1.0.0" \
@@ -86,7 +89,7 @@ rm -f cycle-a-1.0.0.jar cycle-b-1.0.0.jar cycle-c-1.0.0.jar
 # ─── Step 4: Resolve dependencies on cycle-A@1.0.0 ────────────────────────────
 echo ""
 echo "4. Triggering dependency resolution on cycle-A@1.0.0..."
-RESOLVE_RESP=$(curl -s -X POST \
+RESOLVE_RESP=$(curl -s -b "${COOKIE_JAR}" -X POST \
   -H "Content-Type: application/json" \
   -d '{"include_transitive": true}' \
   "${DEPS_URL}/resolve/cycle-A/1.0.0")
@@ -98,7 +101,7 @@ assert_contains "Cycle A -> B -> C -> A detected in resolve response" \
 # ─── Step 5: Verify conflicts table in DB ─────────────────────────────────────
 echo ""
 echo "5. Verifying conflicts lists in database..."
-CONFLICTS_RESP=$(curl -s "${DEPS_URL}/conflicts")
+CONFLICTS_RESP=$(curl -s -b "${COOKIE_JAR}" "${DEPS_URL}/conflicts")
 
 assert_contains "Cycle logged in database conflicts" \
   "$CONFLICTS_RESP" \

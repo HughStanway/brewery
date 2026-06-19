@@ -214,9 +214,7 @@ public class BuildExecutorImpl implements BuildExecutor {
             // 6. Create and Start Docker Container
             log.info("Creating builder container. buildId={}, image={}", build.getId(), image);
             
-            Volume volume = new Volume("/workspace");
-            HostConfig hostConfig = HostConfig.newHostConfig()
-                    .withBinds(new Bind(workspaceDir.getAbsolutePath(), volume));
+            HostConfig hostConfig = HostConfig.newHostConfig();
 
             // Set memory boundaries if configured (e.g. "4g" -> 4294967296 bytes)
             if (config.getBuild().getMemory() != null) {
@@ -236,6 +234,15 @@ public class BuildExecutorImpl implements BuildExecutor {
             CreateContainerResponse container = createCmd.exec();
 
             containerId = container.getId();
+
+            // Copy workspace files to the container before starting it
+            log.info("Copying workspace files to builder container. buildId={}, containerId={}", build.getId(), containerId);
+            dockerClient.copyArchiveToContainerCmd(containerId)
+                    .withHostResource(workspaceDir.getAbsolutePath())
+                    .withDirChildrenOnly(true)
+                    .withRemotePath("/workspace")
+                    .exec();
+
             log.info("Starting builder container. buildId={}, containerId={}", build.getId(), containerId);
             dockerClient.startContainerCmd(containerId).exec();
 
@@ -284,6 +291,12 @@ public class BuildExecutorImpl implements BuildExecutor {
 
             if (exitCode == null || exitCode != 0) {
                 throw new RuntimeException("Build script exited with non-zero exit code: " + exitCode);
+            }
+
+            // Copy the built workspace files back from the container to get the artifacts
+            log.info("Copying built workspace back from container. buildId={}, containerId={}", build.getId(), containerId);
+            try (InputStream tarStream = dockerClient.copyArchiveFromContainerCmd(containerId, "/workspace").exec()) {
+                untar(tarStream, tempDir);
             }
 
             // 8. Extract Artifacts
@@ -439,6 +452,41 @@ public class BuildExecutorImpl implements BuildExecutor {
             return Long.parseLong(clean);
         } catch (Exception e) {
             return 0;
+        }
+    }
+
+    private void untar(InputStream is, File targetDir) throws IOException {
+        try (org.apache.commons.compress.archivers.tar.TarArchiveInputStream tais =
+                new org.apache.commons.compress.archivers.tar.TarArchiveInputStream(is)) {
+            org.apache.commons.compress.archivers.tar.TarArchiveEntry entry;
+            while ((entry = tais.getNextTarEntry()) != null) {
+                if (entry.getName() == null || entry.getName().isBlank()) {
+                    continue;
+                }
+                
+                File outputFile = new File(targetDir, entry.getName());
+                
+                // Prevent Zip Slip vulnerability
+                String canonicalDestinationPath = outputFile.getCanonicalPath();
+                String canonicalTargetPath = targetDir.getCanonicalPath();
+                if (!canonicalDestinationPath.startsWith(canonicalTargetPath + File.separator) && !canonicalDestinationPath.equals(canonicalTargetPath)) {
+                    throw new IOException("Entry is outside of the target dir: " + entry.getName());
+                }
+
+                if (entry.isDirectory()) {
+                    if (!outputFile.isDirectory() && !outputFile.mkdirs()) {
+                        throw new IOException("Failed to create directory " + outputFile);
+                    }
+                } else {
+                    File parent = outputFile.getParentFile();
+                    if (!parent.isDirectory() && !parent.mkdirs()) {
+                        throw new IOException("Failed to create directory " + parent);
+                    }
+                    try (java.io.FileOutputStream fos = new java.io.FileOutputStream(outputFile)) {
+                        org.apache.commons.io.IOUtils.copy(tais, fos);
+                    }
+                }
+            }
         }
     }
 }

@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Source the auth helper to get session cookies
+source "$(dirname "$0")/auth_helper.sh"
+
 # Load .env file from project root if it exists
 if [ -f "$(dirname "$0")/../.env" ]; then
     export $(grep -v '^#' "$(dirname "$0")/../.env" | xargs)
@@ -18,9 +21,9 @@ ERRORS=0
 echo "=== Testing Build Failure on Test Step Failure ==="
 echo ""
 
-# 1. Create a temporary Git repository to simulate a failing codebase (inside shared /tmp/brewery-builds)
-mkdir -p /tmp/brewery-builds
-TEMP_REPO_DIR=$(mktemp -d /tmp/brewery-builds/brewery-failing-repo-XXXXXX)
+# 1. Create a temporary Git repository to simulate a failing codebase (inside shared project directory target/test-repos)
+mkdir -p target/test-repos
+TEMP_REPO_DIR=$(mktemp -d "$(pwd)/target/test-repos/brewery-failing-repo-XXXXXX")
 echo "Creating temporary git repository at ${TEMP_REPO_DIR}..."
 
 cd "${TEMP_REPO_DIR}"
@@ -101,7 +104,7 @@ echo "✓ Message published."
 echo "Polling builds list for the new build..."
 BUILD_ID=""
 for i in {1..15}; do
-  BUILDS_RESP=$(curl -s "${BUILDS_URL}")
+  BUILDS_RESP=$(curl -s -b "${COOKIE_JAR}" "${BUILDS_URL}")
   
   # Filter correctly for our repo
   MATCHING_BUILD=$(echo "${BUILDS_RESP}" | grep -o '{"id":"[^"]*","repository":"'"${TEMP_REPO_DIR}"'"[^}]*}' || true)
@@ -125,7 +128,7 @@ FINISHED=false
 STATUS=""
 ERROR_MSG=""
 for i in {1..30}; do
-  BUILD_INFO=$(curl -s "${BUILDS_URL}/${BUILD_ID}")
+  BUILD_INFO=$(curl -s -b "${COOKIE_JAR}" "${BUILDS_URL}/${BUILD_ID}")
   STATUS=$(echo "${BUILD_INFO}" | grep -o '"status":"[^"]*"' | cut -d'"' -f4 || true)
   if [ "${STATUS}" = "failed" ] || [ "${STATUS}" = "success" ]; then
     FINISHED=true
@@ -163,7 +166,8 @@ fi
 
 # Verify artifact is NOT registered in the registry
 echo "Checking if artifact was registered..."
-REG_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${REGISTRY_URL}/artifacts/failing-lib/${VERSION}")
+REG_STATUS=$(curl -s -b "${COOKIE_JAR}" -o /dev/null -w "%{http_code}" "${REGISTRY_URL}/artifacts/failing-lib/${VERSION}")
+# Note: Since the artifact should not be found, it should return 404. If it returns 401, that is an error.
 if [ "${REG_STATUS}" -eq 404 ]; then
   echo "${PASS} Artifact was NOT registered in the registry (returned 404)."
 else

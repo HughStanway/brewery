@@ -216,6 +216,23 @@ public class DeploymentServiceImpl implements DeploymentService {
             File composeFile = new File(deployDir, "docker-compose.yml");
             Files.writeString(composeFile.toPath(), composeYaml, StandardCharsets.UTF_8);
 
+            // Ensure local bind volume brewery_artifact_store exists inside the Docker daemon
+            if (usesArtifactStore) {
+                try {
+                    List<String> createVolCmd = List.of(
+                        "docker", "volume", "create",
+                        "--driver", "local",
+                        "--opt", "type=none",
+                        "--opt", "device=/mnt/artifact-store",
+                        "--opt", "o=bind",
+                        "brewery_artifact_store"
+                    );
+                    executeCommand(createVolCmd);
+                } catch (Exception e) {
+                    log.warn("Failed to ensure brewery_artifact_store volume exists: {}", e.getMessage());
+                }
+            }
+
             // 4. Run docker compose up
             List<String> composeCommand = List.of("docker", "compose", "-p", deployment.getName(), "-f", composeFile.getAbsolutePath(), "up", "-d", "--remove-orphans");
             String outputLogs = executeCommand(composeCommand);

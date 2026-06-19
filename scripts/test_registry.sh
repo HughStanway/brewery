@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Source the auth helper to get session cookies
+source "$(dirname "$0")/auth_helper.sh"
+
 REGISTRY_URL="http://localhost:8080/api/registry"
 echo "=== Phase 2: Testing Artifact Registry APIs ==="
 
@@ -13,7 +16,7 @@ BUILD_ID="fb060fe3-4529-4c1f-afb3-e7d386220372"
 
 # 2. Upload the artifact
 echo -e "\n1. Uploading artifact..."
-UPLOAD_RESPONSE=$(curl -s --fail-with-body \
+UPLOAD_RESPONSE=$(curl -s -b "${COOKIE_JAR}" --fail-with-body \
   -X POST \
   -F "file=@dummy-lib-1.0.0.jar" \
   -F "name=dummy-lib" \
@@ -32,31 +35,31 @@ echo "${UPLOAD_RESPONSE}"
 
 # 3. List versions
 echo -e "\n2. Listing versions of 'dummy-lib'..."
-LIST_RESPONSE=$(curl -s --fail-with-body "${REGISTRY_URL}/artifacts/dummy-lib")
+LIST_RESPONSE=$(curl -s -b "${COOKIE_JAR}" --fail-with-body "${REGISTRY_URL}/artifacts/dummy-lib")
 echo "Response:"
 echo "${LIST_RESPONSE}"
 
 # 4. Get metadata for 1.0.0
 echo -e "\n3. Retrieving metadata for 'dummy-lib' version '1.0.0'..."
-META_RESPONSE=$(curl -s --fail-with-body "${REGISTRY_URL}/artifacts/dummy-lib/1.0.0")
+META_RESPONSE=$(curl -s -b "${COOKIE_JAR}" --fail-with-body "${REGISTRY_URL}/artifacts/dummy-lib/1.0.0")
 echo "Response:"
 echo "${META_RESPONSE}"
 
 # 5. Download the artifact
 echo -e "\n4. Downloading artifact 'dummy-lib' version '1.0.0'..."
-curl -s --fail-with-body -o downloaded-dummy.jar "${REGISTRY_URL}/artifacts/dummy-lib/1.0.0/download"
+curl -s -b "${COOKIE_JAR}" --fail-with-body -o downloaded-dummy.jar "${REGISTRY_URL}/artifacts/dummy-lib/1.0.0/download"
 echo "Downloaded file content:"
 cat downloaded-dummy.jar
 
 # 6. Search registry
 echo -e "\n5. Searching for 'dummy-lib'..."
-SEARCH_RESPONSE=$(curl -s --fail-with-body "${REGISTRY_URL}/search?q=dummy&tag=stable")
+SEARCH_RESPONSE=$(curl -s -b "${COOKIE_JAR}" --fail-with-body "${REGISTRY_URL}/search?q=dummy&tag=stable")
 echo "Response:"
 echo "${SEARCH_RESPONSE}"
 
 # 7. Add tags
 echo -e "\n6. Adding tag 'production' to 'dummy-lib' version '1.0.0'..."
-TAG_RESPONSE=$(curl -s --fail-with-body \
+TAG_RESPONSE=$(curl -s -b "${COOKIE_JAR}" --fail-with-body \
   -X POST \
   -H "Content-Type: application/json" \
   -d '{"tags": ["production"]}' \
@@ -66,7 +69,7 @@ echo "${TAG_RESPONSE}"
 
 # 8. Create version alias
 echo -e "\n7. Creating alias 'latest' mapping to version '1.0.0'..."
-ALIAS_RESPONSE=$(curl -s --fail-with-body \
+ALIAS_RESPONSE=$(curl -s -b "${COOKIE_JAR}" --fail-with-body \
   -X POST \
   -H "Content-Type: application/json" \
   -d '{"name": "dummy-lib", "alias": "latest", "target_version": "1.0.0"}' \
@@ -76,13 +79,13 @@ echo "${ALIAS_RESPONSE}"
 
 # 9. Get alias resolution
 echo -e "\n8. Resolving alias 'latest'..."
-RESOLVE_RESPONSE=$(curl -s --fail-with-body "${REGISTRY_URL}/aliases/dummy-lib/latest")
+RESOLVE_RESPONSE=$(curl -s -b "${COOKIE_JAR}" --fail-with-body "${REGISTRY_URL}/aliases/dummy-lib/latest")
 echo "Response:"
 echo "${RESOLVE_RESPONSE}"
 
 # 10. Delete the artifact
 echo -e "\n9. Deleting artifact 'dummy-lib' version '1.0.0'..."
-DELETE_RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" -X DELETE "${REGISTRY_URL}/artifacts/dummy-lib/1.0.0")
+DELETE_RESPONSE=$(curl -s -b "${COOKIE_JAR}" -o /dev/null -w "%{http_code}" -X DELETE "${REGISTRY_URL}/artifacts/dummy-lib/1.0.0")
 echo "HTTP Status Code: ${DELETE_RESPONSE}"
 if [ "${DELETE_RESPONSE}" -ne 204 ]; then
   echo "✗ Failed to delete artifact, status: ${DELETE_RESPONSE}"
@@ -92,7 +95,7 @@ echo "✓ Artifact deleted successfully (status 204)"
 
 # 11. Verify deletion (retrieve metadata should fail with 404)
 echo -e "\n10. Verifying deletion of 'dummy-lib' version '1.0.0'..."
-VERIFY_GET_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${REGISTRY_URL}/artifacts/dummy-lib/1.0.0")
+VERIFY_GET_STATUS=$(curl -s -b "${COOKIE_JAR}" -o /dev/null -w "%{http_code}" "${REGISTRY_URL}/artifacts/dummy-lib/1.0.0")
 echo "HTTP Status Code for GET: ${VERIFY_GET_STATUS}"
 if [ "${VERIFY_GET_STATUS}" -ne 404 ]; then
   echo "✗ Expected 404 for deleted artifact metadata, got: ${VERIFY_GET_STATUS}"

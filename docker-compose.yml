@@ -25,7 +25,13 @@ services:
     environment:
       - DOCKER_TLS_CERTDIR=
     volumes:
-      - /tmp/brewery-builds:/tmp/brewery-builds
+      - brewery_builds:/tmp/brewery-builds
+      - artifact_store:/mnt/artifact-store
+    healthcheck:
+      test: ["CMD", "docker", "info"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   brewery:
     build:
@@ -50,14 +56,14 @@ services:
       # Mount project directory for local repository git cloning (development tests)
       - .:${PWD:-/app/src}:ro
       # Mount temporary builds directory for sibling container builds (DooD/DinD)
-      - /tmp/brewery-builds:/tmp/brewery-builds
+      - brewery_builds:/tmp/brewery-builds
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
       dind:
-        condition: service_started
+        condition: service_healthy
 
   pubsub-emulator:
     image: gcr.io/google.com/cloudsdktool/google-cloud-cli:emulators
@@ -83,3 +89,4 @@ services:
 volumes:
   postgres_data:
   artifact_store:
+  brewery_builds:

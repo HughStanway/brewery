@@ -39,11 +39,14 @@ done
 EOF
 chmod +x "${MOCK_FILE}"
 
+# Source the auth helper to get session cookies
+source "$(dirname "$0")/auth_helper.sh"
+
 # 2. Upload the artifact to the registry
 echo "2. Uploading artifact to registry..."
 BUILD_ID=$(uuidgen 2>/dev/null | tr 'A-Z' 'a-z' || python3 -c "import uuid; print(uuid.uuid4())" 2>/dev/null || echo "fb060fe3-4529-4c1f-afb3-e7d386220379")
 
-UPLOAD_RESP=$(curl -s -X POST \
+UPLOAD_RESP=$(curl -s -b "${COOKIE_JAR}" -X POST \
   -F "file=@${MOCK_FILE}" \
   -F "name=${NAME}" \
   -F "version=${VERSION}" \
@@ -64,7 +67,7 @@ fi
 
 # 3. Create/update version alias 'latest' to point to this version
 echo "3. Updating 'latest' alias to point to version ${VERSION}..."
-ALIAS_RESP=$(curl -s -X POST \
+ALIAS_RESP=$(curl -s -b "${COOKIE_JAR}" -X POST \
   -H "Content-Type: application/json" \
   -d "{\"name\": \"${NAME}\", \"alias\": \"latest\", \"target_version\": \"${VERSION}\"}" \
   "${REGISTRY_URL}/aliases")

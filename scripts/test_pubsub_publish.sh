@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Source the auth helper to get session cookies
+source "$(dirname "$0")/auth_helper.sh"
+
 # Load .env file from project root if it exists
 if [ -f "$(dirname "$0")/../.env" ]; then
     export $(grep -v '^#' "$(dirname "$0")/../.env" | xargs)
@@ -16,7 +19,7 @@ echo "=== Testing Brewery Pub/Sub Ingestion and Dependency Resolution ==="
 # 1. Register bcrypt dependency first so it can be resolved
 echo "Registering bcrypt dependency..."
 echo "dummy bcrypt" > bcrypt-4.0.1.jar
-curl -s --fail-with-body -X POST \
+curl -s -b "${COOKIE_JAR}" --fail-with-body -X POST \
   -F "file=@bcrypt-4.0.1.jar" \
   -F "name=bcrypt" \
   -F "version=4.0.1" \
@@ -54,6 +57,7 @@ fi
 
 # 4. Publish to Emulator
 echo "2. Publishing message to Pub/Sub Emulator..."
+# Note: Google Pub/Sub Emulator is not authenticated
 RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" \
     -X POST \
     -H "Content-Type: application/json" \
@@ -75,7 +79,7 @@ echo "✓ Success! Message published."
 echo "3. Polling for built artifact metadata at /api/registry/artifacts/brewery/${VERSION}..."
 BUILT=false
 for i in {1..30}; do
-  RESPONSE_CODE=$(curl -s -o /dev/null -w "%{http_code}" "${REGISTRY_URL}/artifacts/brewery/${VERSION}")
+  RESPONSE_CODE=$(curl -s -b "${COOKIE_JAR}" -o /dev/null -w "%{http_code}" "${REGISTRY_URL}/artifacts/brewery/${VERSION}")
   if [ "$RESPONSE_CODE" -eq 200 ]; then
     BUILT=true
     echo "✓ Artifact built and registered successfully!"
@@ -92,7 +96,7 @@ fi
 
 # 6. Retrieve metadata and verify dependencies exist in it
 echo -e "\n4. Fetching artifact metadata from registry..."
-META=$(curl -s "${REGISTRY_URL}/artifacts/brewery/${VERSION}")
+META=$(curl -s -b "${COOKIE_JAR}" "${REGISTRY_URL}/artifacts/brewery/${VERSION}")
 echo "Metadata response:"
 echo "${META}"
 
@@ -105,7 +109,7 @@ fi
 
 # 7. Resolve dependencies via the API
 echo -e "\n5. Resolving dependencies via resolve API..."
-RESOLVE_RESPONSE=$(curl -s -X POST \
+RESOLVE_RESPONSE=$(curl -s -b "${COOKIE_JAR}" -X POST \
   -H "Content-Type: application/json" \
   -d '{"include_transitive": true}' \
   "${DEPS_URL}/resolve/brewery/${VERSION}")
@@ -121,7 +125,7 @@ fi
 
 # 8. Query forward dependency graph to verify DB records exist
 echo -e "\n6. Verifying DB graph record propagation..."
-GRAPH_RESPONSE=$(curl -s "${DEPS_URL}/graph/brewery/${VERSION}?depth=2&direction=forward")
+GRAPH_RESPONSE=$(curl -s -b "${COOKIE_JAR}" "${DEPS_URL}/graph/brewery/${VERSION}?depth=2&direction=forward")
 echo "Graph response:"
 echo "${GRAPH_RESPONSE}"
 
@@ -137,7 +141,7 @@ echo -e "\n=== Pub/Sub Dependency Ingestion & Resolution Validation Completed Su
 # 9. Register bcrypt dependency first so it can be resolved
 echo "Registering new bcrypt dependency version..."
 echo "dummy bcrypt" > bcrypt-4.0.2.jar
-curl -s --fail-with-body -X POST \
+curl -s -b "${COOKIE_JAR}" --fail-with-body -X POST \
   -F "file=@bcrypt-4.0.2.jar" \
   -F "name=bcrypt" \
   -F "version=4.0.2" \

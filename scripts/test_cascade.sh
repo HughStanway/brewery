@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Source the auth helper to get session cookies
+source "$(dirname "$0")/auth_helper.sh"
+
 REGISTRY_URL="http://localhost:8080/api/registry"
 CASCADE_URL="http://localhost:8080/api/cascade"
 
@@ -46,7 +49,7 @@ echo "dummy auth-lib" > auth-lib-1.0.0.jar
 # ─── Step 1: Register bcrypt@4.0.0 (leaf dependency, no deps) ────────────────
 echo ""
 echo "1. Registering bcrypt@4.0.0..."
-RESP=$(curl -s -X POST \
+RESP=$(curl -s -b "${COOKIE_JAR}" -X POST \
   -F "file=@bcrypt-4.0.0.jar" \
   -F "name=bcrypt" \
   -F "version=4.0.0" \
@@ -61,7 +64,7 @@ assert_contains "bcrypt@4.0.0 registered" "$RESP" "bcrypt"
 # ─── Step 2: Register auth-lib@1.0.0 with dependency on bcrypt ^4.0.0 ────────
 echo ""
 echo "2. Registering auth-lib@1.0.0 (depends on bcrypt ^4.0.0)..."
-RESP=$(curl -s -X POST \
+RESP=$(curl -s -b "${COOKIE_JAR}" -X POST \
   -F "file=@auth-lib-1.0.0.jar" \
   -F "name=auth-lib" \
   -F "version=1.0.0" \
@@ -77,7 +80,7 @@ assert_contains "auth-lib@1.0.0 registered" "$RESP" "auth-lib"
 # Explicitly resolve dependencies for auth-lib@1.0.0 to create reverse dependencies instantly
 echo ""
 echo "Forcing synchronous dependency resolution for auth-lib@1.0.0..."
-curl -s -X POST \
+curl -s -b "${COOKIE_JAR}" -X POST \
   -H "Content-Type: application/json" \
   -d '{"include_transitive": true}' \
   "http://localhost:8080/api/dependencies/resolve/auth-lib/1.0.0" > /dev/null
@@ -85,7 +88,7 @@ curl -s -X POST \
 # ─── Step 3: Register bcrypt@4.0.1 (trigger - new version) ──────────────────
 echo ""
 echo "3. Registering bcrypt@4.0.1 (trigger artifact)..."
-RESP=$(curl -s -X POST \
+RESP=$(curl -s -b "${COOKIE_JAR}" -X POST \
   -F "file=@bcrypt-4.0.1.jar" \
   -F "name=bcrypt" \
   -F "version=4.0.1" \
@@ -103,13 +106,13 @@ sleep 2
 # ─── Step 4: Extract chain_id of the automatically triggered cascade ─────────
 echo ""
 echo "4. Extracting automatically triggered cascade chain_id..."
-CHAIN_ID=$(curl -s "${CASCADE_URL}/chains" | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
+CHAIN_ID=$(curl -s -b "${COOKIE_JAR}" "${CASCADE_URL}/chains" | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
 assert_not_empty "chain_id extracted" "$CHAIN_ID"
 
 # ─── Step 6: GET /api/cascade/chains/{chain_id} ──────────────────────────────
 echo ""
 echo "5. Getting chain status for chain ${CHAIN_ID}..."
-CHAIN_RESP=$(curl -s "${CASCADE_URL}/chains/${CHAIN_ID}")
+CHAIN_RESP=$(curl -s -b "${COOKIE_JAR}" "${CASCADE_URL}/chains/${CHAIN_ID}")
 echo "Chain status: ${CHAIN_RESP}"
 assert_contains "Chain status returns tasks" "$CHAIN_RESP" "tasks"
 assert_contains "auth-lib appears in chain tasks" "$CHAIN_RESP" "auth-lib"
@@ -117,7 +120,7 @@ assert_contains "auth-lib appears in chain tasks" "$CHAIN_RESP" "auth-lib"
 # ─── Step 7: GET /api/cascade/impact/bcrypt/4.0.1 ───────────────────────────
 echo ""
 echo "6. Getting cascade impact for bcrypt@4.0.1..."
-IMPACT_RESP=$(curl -s "${CASCADE_URL}/impact/bcrypt/4.0.1")
+IMPACT_RESP=$(curl -s -b "${COOKIE_JAR}" "${CASCADE_URL}/impact/bcrypt/4.0.1")
 echo "Impact response: ${IMPACT_RESP}"
 assert_contains "Impact analysis returns affected_artifacts" "$IMPACT_RESP" "affected_artifacts"
 assert_contains "Impact shows auth-lib as affected" "$IMPACT_RESP" "auth-lib"
@@ -129,7 +132,7 @@ echo "7. Waiting up to 30s for cascade tasks to complete..."
 WAIT_SECS=0
 FINAL_STATUS=""
 while [ $WAIT_SECS -lt 30 ]; do
-    POLL_RESP=$(curl -s "${CASCADE_URL}/chains/${CHAIN_ID}")
+    POLL_RESP=$(curl -s -b "${COOKIE_JAR}" "${CASCADE_URL}/chains/${CHAIN_ID}")
     # Check if there are any pending or building tasks
     PENDING_COUNT=$( (echo "$POLL_RESP" | grep -o '"pending"' || true) | wc -l | tr -d ' ')
     BUILDING_COUNT=$( (echo "$POLL_RESP" | grep -o '"building"' || true) | wc -l | tr -d ' ')
@@ -145,7 +148,7 @@ done
 # ─── Step 9: Final status check ──────────────────────────────────────────────
 echo ""
 echo "8. Final chain status check..."
-FINAL_RESP=$(curl -s "${CASCADE_URL}/chains/${CHAIN_ID}")
+FINAL_RESP=$(curl -s -b "${COOKIE_JAR}" "${CASCADE_URL}/chains/${CHAIN_ID}")
 echo "Final chain status: ${FINAL_RESP}"
 assert_contains "Final response has chain_id" "$FINAL_RESP" "chain_id"
 assert_contains "Final response has task_count" "$FINAL_RESP" "task_count"
