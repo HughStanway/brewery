@@ -22,6 +22,7 @@ public class ArtifactMetadataJson {
     private Map<String, String> checksums;
     private String artifactUrl;
     private String downloadUrl;
+    private String primaryEntrypoint;
     private List<DependencyInfo> dependencies;
     private List<String> tags;
 

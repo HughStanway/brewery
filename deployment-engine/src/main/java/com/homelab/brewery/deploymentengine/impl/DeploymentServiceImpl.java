@@ -15,6 +15,7 @@ import com.homelab.brewery.common.repository.ServiceHealthCheckRepository;
 import com.homelab.brewery.deploymentengine.model.DeploymentSpec;
 import com.homelab.brewery.deploymentengine.service.DeploymentService;
 import com.homelab.brewery.registry.SemanticVersionResolver;
+import com.homelab.brewery.registry.model.ArtifactMetadataJson;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -122,12 +123,18 @@ public class DeploymentServiceImpl implements DeploymentService {
             Map<String, Object> servicesMap = new LinkedHashMap<>();
             boolean usesArtifactStore = false;
 
+            File deployDir = new File("/tmp/brewery-builds/deployments/deploy-" + deployment.getId());
+            deployDir.mkdirs();
+
             for (Map.Entry<String, DeploymentSpec.ServiceSpec> entry : spec.getServices().entrySet()) {
                 String serviceName = entry.getKey();
                 DeploymentSpec.ServiceSpec service = entry.getValue();
 
                 Map<String, Object> serviceMap = new LinkedHashMap<>();
                 serviceMap.put("container_name", deployment.getName() + "-" + serviceName);
+
+                boolean serviceUsesArtifactStore = false;
+                boolean useWrapperScript = false;
 
                 // Set image & wrapper settings depending on Type
                 String image = service.getArtifact();
@@ -138,25 +145,77 @@ public class DeploymentServiceImpl implements DeploymentService {
                     Artifact artifact = artifactRepository.findByNameAndVersion(artifactName, resolvedVer)
                             .orElseThrow(() -> new IllegalStateException("Resolved artifact not found: " + artifactName + "@" + resolvedVer));
 
+                    boolean isTarGz = artifact.getStoragePath() != null && artifact.getStoragePath().endsWith(".tar.gz");
+                    boolean hasInit = service.getInit() != null && !service.getInit().isEmpty();
+                    useWrapperScript = isTarGz || hasInit;
+
+                    String baseImage = service.getRuntimeImage();
+
+                    String primaryEntrypoint = null;
+                    if (artifact.getMetadata() != null && !artifact.getMetadata().isBlank()) {
+                        try {
+                            ArtifactMetadataJson meta = objectMapper.readValue(artifact.getMetadata(), ArtifactMetadataJson.class);
+                            primaryEntrypoint = meta.getPrimaryEntrypoint();
+                        } catch (Exception e) {
+                            log.warn("Failed to parse metadata json for entrypoint mapping", e);
+                        }
+                    }
+
                     if ("binary".equalsIgnoreCase(service.getType())) {
-                        serviceMap.put("image", "ubuntu:22.04");
-                        serviceMap.put("entrypoint", List.of(artifact.getStoragePath()));
+                        serviceMap.put("image", baseImage != null ? baseImage : "ubuntu:22.04");
+                        serviceUsesArtifactStore = true;
                         usesArtifactStore = true;
+                        if (useWrapperScript) {
+                            writeWrapperScript(deployDir, serviceName, service, artifact, artifactName, isTarGz, primaryEntrypoint);
+                            serviceMap.put("entrypoint", List.of("/entrypoint.sh"));
+                        } else {
+                            serviceMap.put("entrypoint", List.of(artifact.getStoragePath()));
+                        }
                     } else if ("jar".equalsIgnoreCase(service.getType())) {
-                        serviceMap.put("image", "eclipse-temurin:21-jre");
-                        serviceMap.put("command", List.of("java", "-jar", artifact.getStoragePath()));
+                        serviceMap.put("image", baseImage != null ? baseImage : "eclipse-temurin:21-jre");
+                        serviceUsesArtifactStore = true;
                         usesArtifactStore = true;
+                        if (useWrapperScript) {
+                            writeWrapperScript(deployDir, serviceName, service, artifact, artifactName, isTarGz, primaryEntrypoint);
+                            serviceMap.put("entrypoint", List.of("/entrypoint.sh"));
+                        } else {
+                            serviceMap.put("command", List.of("java", "-jar", artifact.getStoragePath()));
+                        }
                     } else if ("python-app".equalsIgnoreCase(service.getType())) {
-                        serviceMap.put("image", "python:3.10-slim");
-                        serviceMap.put("command", List.of("python", artifact.getStoragePath()));
+                        serviceMap.put("image", baseImage != null ? baseImage : "python:3.10-slim");
+                        serviceUsesArtifactStore = true;
                         usesArtifactStore = true;
+                        if (useWrapperScript) {
+                            writeWrapperScript(deployDir, serviceName, service, artifact, artifactName, isTarGz, primaryEntrypoint);
+                            serviceMap.put("entrypoint", List.of("/entrypoint.sh"));
+                        } else {
+                            serviceMap.put("command", List.of("python", artifact.getStoragePath()));
+                        }
                     } else {
                         // Docker type
                         serviceMap.put("image", artifact.getStoragePath());
                     }
+
+                    List<String> serviceVolumes = new ArrayList<>();
+                    if (service.getVolumes() != null) {
+                        serviceVolumes.addAll(service.getVolumes());
+                    }
+                    if (serviceUsesArtifactStore) {
+                        serviceVolumes.add("artifact_store:/mnt/artifact-store:ro");
+                    }
+                    if (useWrapperScript) {
+                        String hostScriptPath = "/tmp/brewery-builds/deployments/deploy-" + deployment.getId() + "/entrypoint-" + serviceName + ".sh";
+                        serviceVolumes.add(hostScriptPath + ":/entrypoint.sh:ro");
+                    }
+                    if (!serviceVolumes.isEmpty()) {
+                        serviceMap.put("volumes", serviceVolumes);
+                    }
                 } else {
                     // Direct docker hub/registry pull image
                     serviceMap.put("image", image);
+                    if (service.getVolumes() != null && !service.getVolumes().isEmpty()) {
+                        serviceMap.put("volumes", service.getVolumes());
+                    }
                 }
 
                 if (service.getReplicas() != null && service.getReplicas() > 1) {
@@ -171,17 +230,6 @@ public class DeploymentServiceImpl implements DeploymentService {
 
                 if (service.getPorts() != null) {
                     serviceMap.put("ports", service.getPorts());
-                }
-
-                List<String> serviceVolumes = new ArrayList<>();
-                if (service.getVolumes() != null) {
-                    serviceVolumes.addAll(service.getVolumes());
-                }
-                if (usesArtifactStore) {
-                    serviceVolumes.add("artifact_store:/mnt/artifact-store:ro");
-                }
-                if (!serviceVolumes.isEmpty()) {
-                    serviceMap.put("volumes", serviceVolumes);
                 }
 
                 if (service.getDepends_on() != null) {
@@ -211,8 +259,6 @@ public class DeploymentServiceImpl implements DeploymentService {
             String composeYaml = generateComposeYaml(composeMap);
 
             // 3. Write Compose to file
-            File deployDir = new File("/tmp/brewery-builds/deployments/deploy-" + deployment.getId());
-            deployDir.mkdirs();
             File composeFile = new File(deployDir, "docker-compose.yml");
             Files.writeString(composeFile.toPath(), composeYaml, StandardCharsets.UTF_8);
 
@@ -771,6 +817,93 @@ public class DeploymentServiceImpl implements DeploymentService {
         versionRepository.deleteAll(versions);
 
         deploymentRepository.delete(deployment);
+    }
+
+    private void writeWrapperScript(File deployDir, String serviceName, DeploymentSpec.ServiceSpec service, Artifact artifact, String artifactName, boolean isTarGz, String primaryEntrypoint) throws java.io.IOException {
+        File scriptFile = new File(deployDir, "entrypoint-" + serviceName + ".sh");
+        StringBuilder script = new StringBuilder();
+        script.append("#!/bin/sh\n");
+        script.append("set -e\n");
+
+        if (isTarGz) {
+            script.append("echo '=== Unpacking Artifact archive ==='\n");
+            script.append("mkdir -p /app\n");
+            script.append("tar -xzf ").append(artifact.getStoragePath()).append(" -C /app\n");
+        }
+
+        if (service.getInit() != null && !service.getInit().isEmpty()) {
+            script.append("echo '=== Running Initialization Steps ==='\n");
+            for (String initCmd : service.getInit()) {
+                script.append(initCmd).append("\n");
+            }
+        }
+
+        script.append("echo '=== Launching Service ==='\n");
+        if ("binary".equalsIgnoreCase(service.getType())) {
+            if (isTarGz) {
+                String entrypoint = primaryEntrypoint;
+                if (entrypoint == null || entrypoint.isBlank()) {
+                    entrypoint = artifactName;
+                }
+                script.append("if [ -f \"/app/").append(entrypoint).append("\" ]; then\n")
+                      .append("  chmod +x \"/app/").append(entrypoint).append("\"\n")
+                      .append("  exec \"/app/").append(entrypoint).append("\" \"$@\"\n")
+                      .append("else\n")
+                      .append("  # Find first file in /app that is a regular file and try to run it\n")
+                      .append("  FIRST_FILE=$(find /app -type f | head -n 1)\n")
+                      .append("  if [ -n \"$FIRST_FILE\" ]; then\n")
+                      .append("    chmod +x \"$FIRST_FILE\"\n")
+                      .append("    exec \"$FIRST_FILE\" \"$@\"\n")
+                      .append("  else\n")
+                      .append("    echo 'No executable file found in /app'\n")
+                      .append("    exit 1\n")
+                      .append("  fi\n")
+                      .append("fi\n");
+            } else {
+                script.append("exec ").append(artifact.getStoragePath()).append(" \"$@\"\n");
+            }
+        } else if ("jar".equalsIgnoreCase(service.getType())) {
+            if (isTarGz) {
+                String entrypoint = primaryEntrypoint;
+                if (entrypoint != null && entrypoint.endsWith(".jar")) {
+                    script.append("exec java -jar \"/app/").append(entrypoint).append("\" \"$@\"\n");
+                } else {
+                    script.append("JAR_FILE=$(find /app -name \"*.jar\" | head -n 1)\n")
+                          .append("if [ -n \"$JAR_FILE\" ]; then\n")
+                          .append("  exec java -jar \"$JAR_FILE\" \"$@\"\n")
+                          .append("else\n")
+                          .append("  echo 'No .jar file found in /app'\n")
+                          .append("  exit 1\n")
+                          .append("fi\n");
+                }
+            } else {
+                script.append("exec java -jar ").append(artifact.getStoragePath()).append(" \"$@\"\n");
+            }
+        } else if ("python-app".equalsIgnoreCase(service.getType())) {
+            if (isTarGz) {
+                String entrypoint = primaryEntrypoint;
+                if (entrypoint != null && entrypoint.endsWith(".py")) {
+                    script.append("exec python \"/app/").append(entrypoint).append("\" \"$@\"\n");
+                } else {
+                    script.append("PY_FILE=$(find /app -name \"*.py\" | head -n 1)\n")
+                          .append("if [ -n \"$PY_FILE\" ]; then\n")
+                          .append("  exec python \"$PY_FILE\" \"$@\"\n")
+                          .append("else\n")
+                          .append("  echo 'No .py file found in /app'\n")
+                          .append("  exit 1\n")
+                          .append("fi\n");
+                }
+            } else {
+                script.append("exec python ").append(artifact.getStoragePath()).append(" \"$@\"\n");
+            }
+        }
+
+        Files.writeString(scriptFile.toPath(), script.toString(), StandardCharsets.UTF_8);
+        try {
+            scriptFile.setExecutable(true, false);
+        } catch (Exception e) {
+            log.warn("Failed to set executable permissions on {}", scriptFile.getAbsolutePath(), e);
+        }
     }
 
     private void deleteDirectory(File dir) {

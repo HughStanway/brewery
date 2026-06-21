@@ -30,6 +30,8 @@ public class DeploymentSpec {
         private List<String> volumes;
         private HealthCheckConfig healthCheck;
         private ResourceConfig resources;
+        private String runtimeImage;
+        private List<String> init;
         private List<String> depends_on;
     }
 

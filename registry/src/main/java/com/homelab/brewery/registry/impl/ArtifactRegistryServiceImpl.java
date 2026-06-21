@@ -70,7 +70,8 @@ public class ArtifactRegistryServiceImpl implements ArtifactRegistryService {
             String filename,
             InputStream artifactStream,
             List<ArtifactMetadataJson.DependencyInfo> dependencies,
-            List<String> tags) {
+            List<String> tags,
+            String primaryEntrypoint) {
 
         log.info("Registering new artifact: {} version {}", name, version);
 
@@ -86,6 +87,7 @@ public class ArtifactRegistryServiceImpl implements ArtifactRegistryService {
         jsonMetadata.setBuiltAt(Instant.now().toString());
         jsonMetadata.setDependencies(dependencies);
         jsonMetadata.setTags(tags);
+        jsonMetadata.setPrimaryEntrypoint(primaryEntrypoint);
 
         // Set URLs
         String downloadUrl = "/api/registry/artifacts/" + name + "/" + version + "/download";
@@ -151,7 +153,11 @@ public class ArtifactRegistryServiceImpl implements ArtifactRegistryService {
                 }
             }
 
-            artifact.setStoragePath(artifactFile.toAbsolutePath().toString());
+            if ("docker-image".equalsIgnoreCase(artifactType)) {
+                artifact.setStoragePath("registry:5000/" + name + ":" + version);
+            } else {
+                artifact.setStoragePath(artifactFile.toAbsolutePath().toString());
+            }
             artifact.setFileSizeBytes(fileSizeBytes);
             artifact.setChecksum(checksum);
             artifact.setIsLatest(true);

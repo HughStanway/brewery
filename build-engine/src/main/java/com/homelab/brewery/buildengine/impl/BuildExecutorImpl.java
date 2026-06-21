@@ -43,6 +43,10 @@ import java.util.HexFormat;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
+import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
+import org.apache.commons.compress.archivers.tar.TarArchiveOutputStream;
+import java.util.zip.GZIPOutputStream;
+import java.io.BufferedOutputStream;
 
 @Service
 @Slf4j
@@ -335,32 +339,111 @@ public class BuildExecutorImpl implements BuildExecutor {
             }
 
             for (BuildYamlConfig.ArtifactConfig artConfig : config.getArtifacts()) {
-                List<File> files = findFiles(workspaceDir, artConfig.getPattern());
-                if (files.isEmpty()) {
-                    throw new IOException("No files matched pattern '" + artConfig.getPattern() + "' in workspace");
-                }
-
                 String name = artConfig.getName() != null && !artConfig.getName().isBlank()
                         ? artConfig.getName()
                         : config.getMetadata().getName();
 
-                for (File file : files) {
-                    try (InputStream is = new FileInputStream(file)) {
-                        registryService.registerArtifact(
-                                name,
-                                artifactVersion,
-                                artConfig.getType() != null ? artConfig.getType() : "binary",
-                                build.getId().toString(),
-                                build.getRepository(),
-                                build.getBranch(),
-                                build.getCommit(),
-                                file.getName(),
-                                is,
-                                dependencies,
-                                java.util.Collections.emptyList()
-                        );
+                if ("docker-image".equalsIgnoreCase(artConfig.getType())) {
+                    String imageTag = "registry:5000/" + name + ":" + artifactVersion;
+                    log.info("Building docker image: {} from pattern: {}", imageTag, artConfig.getPattern());
+                    File dockerFileOrDir = new File(workspaceDir, artConfig.getPattern());
+                    com.github.dockerjava.api.command.BuildImageCmd buildCmd = dockerClient.buildImageCmd();
+                    if (dockerFileOrDir.isDirectory()) {
+                        buildCmd.withBaseDirectory(dockerFileOrDir);
+                    } else {
+                        buildCmd.withDockerfile(dockerFileOrDir)
+                                .withBaseDirectory(dockerFileOrDir.getParentFile());
                     }
-                    log.info("Saved and registered artifact. buildId={}, file={}", build.getId(), file.getName());
+                    buildCmd.withTags(java.util.Set.of(imageTag)).start().awaitCompletion();
+
+                    log.info("Pushing docker image: {}", imageTag);
+                    dockerClient.pushImageCmd(imageTag).start().awaitCompletion();
+
+                    java.io.ByteArrayInputStream placeholderStream = new java.io.ByteArrayInputStream(imageTag.getBytes(StandardCharsets.UTF_8));
+                    registryService.registerArtifact(
+                            name,
+                            artifactVersion,
+                            "docker-image",
+                            build.getId().toString(),
+                            build.getRepository(),
+                            build.getBranch(),
+                            build.getCommit(),
+                            "image-tag.txt",
+                            placeholderStream,
+                            dependencies,
+                            java.util.Collections.emptyList(),
+                            imageTag
+                    );
+                    log.info("Saved and registered docker image artifact. buildId={}, tag={}", build.getId(), imageTag);
+                } else {
+                    File patternFile = new File(workspaceDir, artConfig.getPattern());
+                    List<File> filesToPackage = new ArrayList<>();
+                    boolean isDirectory = patternFile.exists() && patternFile.isDirectory();
+
+                    if (isDirectory) {
+                        try (Stream<Path> stream = Files.walk(patternFile.toPath())) {
+                            stream.filter(Files::isRegularFile)
+                                  .map(Path::toFile)
+                                  .forEach(filesToPackage::add);
+                        }
+                    } else {
+                        filesToPackage = findFiles(workspaceDir, artConfig.getPattern());
+                    }
+
+                    if (filesToPackage.isEmpty()) {
+                        throw new IOException("No files matched pattern '" + artConfig.getPattern() + "' in workspace");
+                    }
+
+                    if (isDirectory || filesToPackage.size() > 1) {
+                        File tarFile = new File(tempDir, name + ".tar.gz");
+                        File baseDirForTar = isDirectory ? patternFile : workspaceDir;
+                        createTarGz(filesToPackage, baseDirForTar, tarFile);
+
+                        String primaryEntrypoint = filesToPackage.get(0).getName();
+                        try {
+                            primaryEntrypoint = baseDirForTar.toPath().relativize(filesToPackage.get(0).toPath()).toString();
+                        } catch (Exception e) {
+                            // ignore
+                        }
+
+                        try (InputStream is = new FileInputStream(tarFile)) {
+                            registryService.registerArtifact(
+                                    name,
+                                    artifactVersion,
+                                    artConfig.getType() != null ? artConfig.getType() : "binary",
+                                    build.getId().toString(),
+                                    build.getRepository(),
+                                    build.getBranch(),
+                                    build.getCommit(),
+                                    name + ".tar.gz",
+                                    is,
+                                    dependencies,
+                                    java.util.Collections.emptyList(),
+                                    primaryEntrypoint
+                            );
+                        }
+                        log.info("Saved and registered archived artifact. buildId={}, file={}, primaryEntrypoint={}", 
+                                build.getId(), tarFile.getName(), primaryEntrypoint);
+                    } else {
+                        File file = filesToPackage.get(0);
+                        try (InputStream is = new FileInputStream(file)) {
+                            registryService.registerArtifact(
+                                    name,
+                                    artifactVersion,
+                                    artConfig.getType() != null ? artConfig.getType() : "binary",
+                                    build.getId().toString(),
+                                    build.getRepository(),
+                                    build.getBranch(),
+                                    build.getCommit(),
+                                    file.getName(),
+                                    is,
+                                    dependencies,
+                                    java.util.Collections.emptyList(),
+                                    file.getName()
+                            );
+                        }
+                        log.info("Saved and registered artifact. buildId={}, file={}", build.getId(), file.getName());
+                    }
                 }
             }
 
@@ -453,6 +536,30 @@ public class BuildExecutorImpl implements BuildExecutor {
         } catch (Exception e) {
             return 0;
         }
+    }
+
+    private File createTarGz(List<File> files, File baseDir, File outputFile) throws IOException {
+        try (java.io.FileOutputStream fos = new java.io.FileOutputStream(outputFile);
+             java.io.BufferedOutputStream bos = new java.io.BufferedOutputStream(fos);
+             java.util.zip.GZIPOutputStream gzos = new java.util.zip.GZIPOutputStream(bos);
+             org.apache.commons.compress.archivers.tar.TarArchiveOutputStream taos =
+                     new org.apache.commons.compress.archivers.tar.TarArchiveOutputStream(gzos)) {
+            
+            taos.setLongFileMode(org.apache.commons.compress.archivers.tar.TarArchiveOutputStream.LONGFILE_GNU);
+            
+            for (File file : files) {
+                String relativePath = baseDir.toPath().relativize(file.toPath()).toString();
+                org.apache.commons.compress.archivers.tar.TarArchiveEntry entry =
+                        new org.apache.commons.compress.archivers.tar.TarArchiveEntry(file, relativePath);
+                taos.putArchiveEntry(entry);
+                try (java.io.FileInputStream fis = new java.io.FileInputStream(file)) {
+                    org.apache.commons.io.IOUtils.copy(fis, taos);
+                }
+                taos.closeArchiveEntry();
+            }
+            taos.finish();
+        }
+        return outputFile;
     }
 
     private void untar(InputStream is, File targetDir) throws IOException {

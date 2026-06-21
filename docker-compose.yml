@@ -26,6 +26,7 @@ services:
   dind:
     image: docker:25-dind
     privileged: true
+    command: ["--insecure-registry", "registry:5000"]
     environment:
       - DOCKER_TLS_CERTDIR=
     volumes:
@@ -84,6 +85,14 @@ services:
     networks:
       - brewery_net
 
+  registry:
+    image: registry:2
+    restart: unless-stopped
+    volumes:
+      - registry_data:/var/lib/registry
+    networks:
+      - brewery_net
+
   dashboard:
     build:
       context: ./dashboard
@@ -103,6 +112,7 @@ volumes:
   postgres_data:
   artifact_store:
   brewery_builds:
+  registry_data:
 
 networks:
   brewery_net:

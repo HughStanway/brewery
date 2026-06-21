@@ -84,7 +84,8 @@ public class ArtifactRegistryController {
                         file.getOriginalFilename(),
                         is,
                         dependencies,
-                        tags != null ? tags : Collections.emptyList()
+                        tags != null ? tags : Collections.emptyList(),
+                        file.getOriginalFilename()
                 );
 
                 Map<String, Object> response = new HashMap<>();

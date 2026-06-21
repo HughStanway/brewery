@@ -1,25 +1,10 @@
 metadata:
-  name: brewery
+  name: speedtest-dashboard
   versionScheme: semver
 build:
   image: alpine:latest
-  timeoutSeconds: 300
-  memory: 512m
-  cpus: 1
-steps:
-  setup: |
-    echo "Setting up build..."
-  build: |
-    echo "Building..."
-    echo "test content" > target_artifact.txt
-  test: |
-    echo "Testing..."
+  timeoutSeconds: 600
 artifacts:
-  - name: brewery
-    pattern: "target_artifact.txt"
-    type: text
-
-dependencies:
-  - name: bcrypt
-    version_range: "^4.0.0"
-
+  - name: speedtest-dashboard
+    pattern: "backend/Dockerfile"
+    type: "docker-image"
