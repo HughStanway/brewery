@@ -351,13 +351,17 @@ public class BuildExecutorImpl implements BuildExecutor {
                     if (dockerFileOrDir.isDirectory()) {
                         buildCmd.withBaseDirectory(dockerFileOrDir);
                     } else {
-                        buildCmd.withDockerfile(dockerFileOrDir)
-                                .withBaseDirectory(dockerFileOrDir.getParentFile());
+                        buildCmd.withBaseDirectory(workspaceDir)
+                                .withDockerfile(dockerFileOrDir);
                     }
-                    buildCmd.withTags(java.util.Set.of(imageTag)).start().awaitCompletion();
+                    buildCmd.withTags(java.util.Set.of(imageTag))
+                            .exec(new com.github.dockerjava.core.command.BuildImageResultCallback())
+                            .awaitCompletion();
 
                     log.info("Pushing docker image: {}", imageTag);
-                    dockerClient.pushImageCmd(imageTag).start().awaitCompletion();
+                    dockerClient.pushImageCmd(imageTag)
+                                .exec(new com.github.dockerjava.core.command.PushImageResultCallback())
+                                .awaitCompletion();
 
                     java.io.ByteArrayInputStream placeholderStream = new java.io.ByteArrayInputStream(imageTag.getBytes(StandardCharsets.UTF_8));
                     registryService.registerArtifact(
@@ -468,7 +472,7 @@ public class BuildExecutorImpl implements BuildExecutor {
             if (tempDir.exists()) {
                 try {
                     FileUtils.deleteDirectory(tempDir);
-                } catch (IOException e) {
+                } catch (Exception e) {
                     log.error("Failed to clean up build directory: {}", tempDir.getAbsolutePath(), e);
                 }
             }
