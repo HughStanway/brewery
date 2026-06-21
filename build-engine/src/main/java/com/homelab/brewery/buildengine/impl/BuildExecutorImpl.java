@@ -354,14 +354,49 @@ public class BuildExecutorImpl implements BuildExecutor {
                         buildCmd.withBaseDirectory(workspaceDir)
                                 .withDockerfile(dockerFileOrDir);
                     }
+
+                    // Capture docker build output and append to the build log
+                    StringBuilder dockerBuildLog = new StringBuilder();
+                    dockerBuildLog.append("\n--- Docker Build Output ---\n");
                     buildCmd.withTags(java.util.Set.of(imageTag))
-                            .exec(new com.github.dockerjava.core.command.BuildImageResultCallback())
+                            .exec(new com.github.dockerjava.core.command.BuildImageResultCallback() {
+                                @Override
+                                public void onNext(com.github.dockerjava.api.model.BuildResponseItem item) {
+                                    if (item.getStream() != null) {
+                                        dockerBuildLog.append(item.getStream());
+                                    } else if (item.getErrorDetail() != null && item.getErrorDetail().getMessage() != null) {
+                                        dockerBuildLog.append("ERROR: ").append(item.getErrorDetail().getMessage()).append("\n");
+                                    }
+                                    super.onNext(item);
+                                }
+                            })
                             .awaitCompletion();
 
+                    // Capture docker push output
+                    StringBuilder dockerPushLog = new StringBuilder();
+                    dockerPushLog.append("\n--- Docker Push Output ---\n");
                     log.info("Pushing docker image: {}", imageTag);
                     dockerClient.pushImageCmd(imageTag)
-                                .exec(new com.github.dockerjava.core.command.PushImageResultCallback())
-                                .awaitCompletion();
+                            .exec(new com.github.dockerjava.core.command.PushImageResultCallback() {
+                                @Override
+                                public void onNext(com.github.dockerjava.api.model.PushResponseItem item) {
+                                    if (item.getStatus() != null) {
+                                        String line = item.getStatus();
+                                        if (item.getProgress() != null) {
+                                            line += " " + item.getProgress();
+                                        }
+                                        dockerPushLog.append(line).append("\n");
+                                    } else if (item.getErrorDetail() != null && item.getErrorDetail().getMessage() != null) {
+                                        dockerPushLog.append("ERROR: ").append(item.getErrorDetail().getMessage()).append("\n");
+                                    }
+                                    super.onNext(item);
+                                }
+                            })
+                            .awaitCompletion();
+
+                    // Append docker build and push logs to the build record
+                    String existingLogs = build.getLogs() != null ? build.getLogs() : "";
+                    build.setLogs(existingLogs + dockerBuildLog + dockerPushLog);
 
                     java.io.ByteArrayInputStream placeholderStream = new java.io.ByteArrayInputStream(imageTag.getBytes(StandardCharsets.UTF_8));
                     registryService.registerArtifact(
