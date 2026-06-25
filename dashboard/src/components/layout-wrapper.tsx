@@ -37,7 +37,7 @@ export default function LayoutWrapper({ children }: LayoutWrapperProps) {
     { name: 'Cascade Rebuilds', href: '/cascade', icon: RefreshCw },
     { name: 'Deployments', href: '/deployments', icon: Rocket },
     { name: 'Documentation', href: '/docs', icon: BookOpen },
-    ...(user?.role === 'ADMIN' ? [{ name: 'Settings', href: '/settings', icon: Settings }] : []),
+    { name: 'Settings', href: '/settings', icon: Settings },
   ];
 
   return (

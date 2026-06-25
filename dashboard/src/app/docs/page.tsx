@@ -172,156 +172,293 @@ export default function DocsPage() {
 
       {/* 📄 Config Specifications Content */}
       {activeTab === 'configs' && (
-        <div className="space-y-8">
-          {/* build.yaml spec */}
-          <div className="p-8 bg-[var(--card)] border border-[var(--card-border)] rounded-2xl shadow-xl space-y-6">
+        <div className="space-y-10">
+
+          {/* ── build.yaml ─────────────────────────────────────── */}
+          <div className="p-8 bg-[var(--card)] border border-[var(--card-border)] rounded-2xl shadow-xl space-y-8">
             <div className="flex items-center gap-3 border-b border-[var(--card-border)] pb-4">
-              <div className="p-2.5 bg-violet-500/10 text-violet-500 rounded-xl">
-                <FileCode className="w-6 h-6" />
-              </div>
+              <div className="p-2.5 bg-violet-500/10 text-violet-500 rounded-xl"><FileCode className="w-6 h-6" /></div>
               <div>
-                <h3 className="text-lg font-bold text-gray-900">Build Specification (build.yaml)</h3>
-                <p className="text-xs text-gray-500">Place this file in the root of your Git repository to define containerized build runs.</p>
+                <h3 className="text-lg font-bold text-gray-900">Build Specification — build.yaml</h3>
+                <p className="text-xs text-gray-500">Place this file in the root of your Git repository. It is <strong>required</strong> for every project Brewery builds.</p>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              {/* Code spec */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-gray-400 font-mono">build.yaml</span>
-                </div>
-                <div className="p-4 bg-gray-50 border border-[var(--card-border)] rounded-2xl overflow-x-auto font-mono text-[11px] text-[var(--primary)] leading-relaxed select-all">
-                  <pre>{`image: maven:3.9-eclipse-temurin-21
+            <div className="space-y-2">
+              <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Full annotated example</span>
+              <div className="p-4 bg-gray-950 border border-gray-800 rounded-2xl overflow-x-auto font-mono text-[11px] text-violet-300 leading-relaxed select-all">
+                <pre>{`metadata:
+  name: "my-service"          # Required. Registry artifact name.
+  versionScheme: "semver"     # Optional. Reserved for future use.
+
+build:
+  image: "golang:1.21-alpine" # Required. Builder container image.
+  timeoutSeconds: 1800        # Optional. Kill timeout in seconds. Default: 1800.
+  memory: "4g"                # Optional. Memory cap for builder container (e.g. "512m", "2g").
+  platform: "linux/amd64"     # Optional. Platform for docker pull/create (e.g. "linux/arm64").
+
 steps:
-  - mvn clean package -DskipTests
+  setup: |                    # Optional. Runs first. Dependency installs, env prep.
+    go mod download
+  build: |                    # Optional. Runs second. Main compilation command.
+    go build -o dist/myapp ./cmd/server
+  test: |                     # Optional. Runs third. Tests/linting. Non-zero exit fails the build.
+    go test ./...
+
 artifacts:
-  name: core-library
-  path: target/core-library.jar
-  dependencies:
-    - name: common-utils
-      version_range: "^1.0.0"
-    - name: bcrypt
-      version_range: "~4.0.0"`}</pre>
-                </div>
-              </div>
+  - name: "my-service"        # Optional. Defaults to metadata.name if omitted.
+    type: "binary"            # Required. One of: binary, jar, python-app, docker-image.
+    pattern: "dist/myapp"     # Required. Glob path to output file(s) in workspace.
 
-              {/* Explanations */}
-              <div className="space-y-4 text-sm">
-                <h4 className="font-bold text-gray-900 uppercase tracking-wider text-xs">Configuration Options</h4>
-                <table className="w-full text-left border-collapse text-xs">
-                  <thead>
-                    <tr className="border-b border-[var(--card-border)] font-bold text-gray-500">
-                      <th className="pb-2">Field</th>
-                      <th className="pb-2">Type</th>
-                      <th className="pb-2">Description</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[var(--card-border)] text-gray-700">
-                    <tr>
-                      <td className="py-2 font-mono font-bold">image</td>
-                      <td className="py-2 text-gray-500 font-mono">string</td>
-                      <td className="py-2">Docker builder image (e.g. <code>maven</code>, <code>node</code>, <code>golang</code>).</td>
-                    </tr>
-                    <tr>
-                      <td className="py-2 font-mono font-bold">steps</td>
-                      <td className="py-2 text-gray-500 font-mono">array</td>
-                      <td className="py-2">Sequential shell command steps executed in the compilation environment.</td>
-                    </tr>
-                    <tr>
-                      <td className="py-2 font-mono font-bold">artifacts.name</td>
-                      <td className="py-2 text-gray-500 font-mono">string</td>
-                      <td className="py-2">Unique name of the compiled library/service to output to the registry.</td>
-                    </tr>
-                    <tr>
-                      <td className="py-2 font-mono font-bold">artifacts.path</td>
-                      <td className="py-2 text-gray-500 font-mono">string</td>
-                      <td className="py-2">Relative path within the workspace where compile artifact binary is located.</td>
-                    </tr>
-                    <tr>
-                      <td className="py-2 font-mono font-bold">artifacts.dependencies</td>
-                      <td className="py-2 text-gray-500 font-mono">array</td>
-                      <td className="py-2">Required libraries listing their target names and semantic version ranges.</td>
-                    </tr>
-                  </tbody>
-                </table>
+  - name: "my-service-image"  # Multiple artifacts per project are supported.
+    type: "docker-image"
+    pattern: "backend/Dockerfile"  # Path to Dockerfile, or directory containing one.
+
+dependencies:
+  - name: "common-utils"      # Required. Must match a registered artifact name.
+    version_range: "^1.0.0"  # Required. Semver range. Also accepted as versionRange.
+    type: "jar"               # Optional. Informational type hint.
+    optional: false           # Optional. If true, missing dep does not fail the build.`}</pre>
               </div>
+            </div>
+
+            <div className="space-y-3">
+              <h4 className="text-xs font-bold text-violet-700 uppercase tracking-wider flex items-center gap-2"><ChevronRight className="w-3.5 h-3.5" />metadata</h4>
+              <table className="w-full text-left border-collapse text-xs">
+                <thead><tr className="border-b border-[var(--card-border)] text-gray-400 font-bold"><th className="pb-2 pr-4">Field</th><th className="pb-2 pr-4">Type</th><th className="pb-2 pr-4">Required</th><th className="pb-2">Description</th></tr></thead>
+                <tbody className="divide-y divide-[var(--card-border)] text-gray-700">
+                  <tr><td className="py-2 pr-4 font-mono font-bold">metadata.name</td><td className="py-2 pr-4 font-mono text-gray-500">string</td><td className="py-2 pr-4 text-red-500 font-semibold">Required</td><td className="py-2">Canonical name for this project in the registry. Used as the image/artifact name and must be unique per project.</td></tr>
+                  <tr><td className="py-2 pr-4 font-mono font-bold">metadata.versionScheme</td><td className="py-2 pr-4 font-mono text-gray-500">string</td><td className="py-2 pr-4 text-gray-400">Optional</td><td className="py-2">Parsed and stored but reserved for future use. Intended to support alternative versioning strategies (e.g. <code>semver</code>, <code>calver</code>).</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div className="space-y-3">
+              <h4 className="text-xs font-bold text-violet-700 uppercase tracking-wider flex items-center gap-2"><ChevronRight className="w-3.5 h-3.5" />build</h4>
+              <table className="w-full text-left border-collapse text-xs">
+                <thead><tr className="border-b border-[var(--card-border)] text-gray-400 font-bold"><th className="pb-2 pr-4">Field</th><th className="pb-2 pr-4">Type</th><th className="pb-2 pr-4">Required</th><th className="pb-2">Description</th></tr></thead>
+                <tbody className="divide-y divide-[var(--card-border)] text-gray-700">
+                  <tr><td className="py-2 pr-4 font-mono font-bold">build.image</td><td className="py-2 pr-4 font-mono text-gray-500">string</td><td className="py-2 pr-4 text-red-500 font-semibold">Required</td><td className="py-2">Docker image for the ephemeral builder container (e.g. <code>maven:3.9</code>, <code>golang:1.21-alpine</code>, <code>node:20</code>). Always pulled fresh before the build runs.</td></tr>
+                  <tr><td className="py-2 pr-4 font-mono font-bold">build.timeoutSeconds</td><td className="py-2 pr-4 font-mono text-gray-500">integer</td><td className="py-2 pr-4 text-gray-400">Optional</td><td className="py-2">Seconds the engine waits before killing the builder container and marking the build failed. <strong>Default: 1800</strong> (30 min).</td></tr>
+                  <tr><td className="py-2 pr-4 font-mono font-bold">build.memory</td><td className="py-2 pr-4 font-mono text-gray-500">string</td><td className="py-2 pr-4 text-gray-400">Optional</td><td className="py-2">Maximum RAM for the builder container. Accepts suffixes <code>k</code>, <code>m</code>, <code>g</code> (e.g. <code>"512m"</code>, <code>"4g"</code>). Passed directly to Docker's <code>--memory</code> flag on container creation.</td></tr>
+                  <tr><td className="py-2 pr-4 font-mono font-bold">build.platform</td><td className="py-2 pr-4 font-mono text-gray-500">string</td><td className="py-2 pr-4 text-gray-400">Optional</td><td className="py-2">Target platform for <code>docker pull</code> and <code>docker create</code> (e.g. <code>"linux/amd64"</code>, <code>"linux/arm64"</code>). Useful for cross-compilation or ARM environments.</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div className="space-y-3">
+              <h4 className="text-xs font-bold text-violet-700 uppercase tracking-wider flex items-center gap-2"><ChevronRight className="w-3.5 h-3.5" />steps</h4>
+              <p className="text-xs text-gray-500">All three keys are optional. They are concatenated in order into a single <code>set -e</code> shell script injected into the builder container and executed from <code>/workspace</code>. A labelled echo precedes each step in the build log.</p>
+              <table className="w-full text-left border-collapse text-xs">
+                <thead><tr className="border-b border-[var(--card-border)] text-gray-400 font-bold"><th className="pb-2 pr-4">Field</th><th className="pb-2 pr-4">Required</th><th className="pb-2">Description</th></tr></thead>
+                <tbody className="divide-y divide-[var(--card-border)] text-gray-700">
+                  <tr><td className="py-2 pr-4 font-mono font-bold">steps.setup</td><td className="py-2 pr-4 text-gray-400">Optional</td><td className="py-2">Runs <strong>first</strong>. Environment preparation: installing OS packages, downloading dependencies, setting config files.</td></tr>
+                  <tr><td className="py-2 pr-4 font-mono font-bold">steps.build</td><td className="py-2 pr-4 text-gray-400">Optional</td><td className="py-2">Runs <strong>second</strong>. Main compilation (e.g. <code>mvn package</code>, <code>go build</code>, <code>npm run build</code>). Output must be written inside <code>/workspace</code> to be accessible after the container exits.</td></tr>
+                  <tr><td className="py-2 pr-4 font-mono font-bold">steps.test</td><td className="py-2 pr-4 text-gray-400">Optional</td><td className="py-2">Runs <strong>third</strong>. Unit tests, integration tests, linting. A non-zero exit code marks the build failed and no artifact is registered.</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div className="space-y-3">
+              <h4 className="text-xs font-bold text-violet-700 uppercase tracking-wider flex items-center gap-2"><ChevronRight className="w-3.5 h-3.5" />artifacts</h4>
+              <p className="text-xs text-gray-500">A list of one or more outputs to register after a successful build. At least one entry is required. Multiple artifacts can be produced from a single build run.</p>
+              <table className="w-full text-left border-collapse text-xs">
+                <thead><tr className="border-b border-[var(--card-border)] text-gray-400 font-bold"><th className="pb-2 pr-4">Field</th><th className="pb-2 pr-4">Type</th><th className="pb-2 pr-4">Required</th><th className="pb-2">Description</th></tr></thead>
+                <tbody className="divide-y divide-[var(--card-border)] text-gray-700">
+                  <tr><td className="py-2 pr-4 font-mono font-bold">artifacts[].name</td><td className="py-2 pr-4 font-mono text-gray-500">string</td><td className="py-2 pr-4 text-gray-400">Optional</td><td className="py-2">Registry name for this artifact. Defaults to <code>metadata.name</code> if omitted.</td></tr>
+                  <tr><td className="py-2 pr-4 font-mono font-bold">artifacts[].type</td><td className="py-2 pr-4 font-mono text-gray-500">string</td><td className="py-2 pr-4 text-red-500 font-semibold">Required</td><td className="py-2">
+                    Controls how the output is processed and deployed:
+                    <ul className="mt-1.5 space-y-1 list-disc list-inside text-gray-600">
+                      <li><code>binary</code> — compiled executable. Deployed via <code>exec</code> in a runtime container (default: <code>ubuntu:22.04</code>).</li>
+                      <li><code>jar</code> — Java archive. Deployed via <code>java -jar</code> (default runtime: <code>eclipse-temurin:21-jre</code>).</li>
+                      <li><code>python-app</code> — Python script/package. Deployed via <code>python</code> (default runtime: <code>python:3.10-slim</code>).</li>
+                      <li><code>docker-image</code> — runs <code>docker build</code> against a Dockerfile, pushes the image to the internal registry at <code>registry:5000</code>, and stores an image-tag pointer. No binary bytes stored in the artifact store.</li>
+                    </ul>
+                  </td></tr>
+                  <tr><td className="py-2 pr-4 font-mono font-bold">artifacts[].pattern</td><td className="py-2 pr-4 font-mono text-gray-500">string</td><td className="py-2 pr-4 text-red-500 font-semibold">Required</td><td className="py-2">
+                    For <code>binary</code>, <code>jar</code>, <code>python-app</code>: glob path relative to workspace root (e.g. <code>target/*.jar</code>, <code>dist/myapp</code>). Multiple matched files are automatically bundled into a <code>.tar.gz</code> archive with the first file as the <code>primaryEntrypoint</code>.<br />
+                    For <code>docker-image</code>: path to the Dockerfile (e.g. <code>backend/Dockerfile</code>) or a directory containing one. The repo root is always the Docker build context, making all files accessible to <code>COPY</code> instructions.
+                  </td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div className="space-y-3">
+              <h4 className="text-xs font-bold text-violet-700 uppercase tracking-wider flex items-center gap-2"><ChevronRight className="w-3.5 h-3.5" />dependencies</h4>
+              <p className="text-xs text-gray-500">Declares which other Brewery-managed artifacts this project depends on. Drives the dependency graph and automatic cascade rebuilds when upstream artifacts publish new versions.</p>
+              <table className="w-full text-left border-collapse text-xs">
+                <thead><tr className="border-b border-[var(--card-border)] text-gray-400 font-bold"><th className="pb-2 pr-4">Field</th><th className="pb-2 pr-4">Type</th><th className="pb-2 pr-4">Required</th><th className="pb-2">Description</th></tr></thead>
+                <tbody className="divide-y divide-[var(--card-border)] text-gray-700">
+                  <tr><td className="py-2 pr-4 font-mono font-bold">dependencies[].name</td><td className="py-2 pr-4 font-mono text-gray-500">string</td><td className="py-2 pr-4 text-red-500 font-semibold">Required</td><td className="py-2">Exact name of the upstream artifact as registered in the Brewery registry.</td></tr>
+                  <tr><td className="py-2 pr-4 font-mono font-bold">dependencies[].version_range</td><td className="py-2 pr-4 font-mono text-gray-500">string</td><td className="py-2 pr-4 text-red-500 font-semibold">Required</td><td className="py-2">Semver constraint the upstream version must satisfy to trigger a cascade rebuild. Accepts <code>^</code>, <code>~</code>, <code>x</code> wildcards, and exact versions. Also accepted as <code>versionRange</code> (camelCase — both are supported).</td></tr>
+                  <tr><td className="py-2 pr-4 font-mono font-bold">dependencies[].type</td><td className="py-2 pr-4 font-mono text-gray-500">string</td><td className="py-2 pr-4 text-gray-400">Optional</td><td className="py-2">Informational artifact type hint (e.g. <code>jar</code>). Stored in metadata but does not affect build behaviour.</td></tr>
+                  <tr><td className="py-2 pr-4 font-mono font-bold">dependencies[].optional</td><td className="py-2 pr-4 font-mono text-gray-500">boolean</td><td className="py-2 pr-4 text-gray-400">Optional</td><td className="py-2">When <code>true</code>, a missing or unresolvable upstream artifact does not cause the build to fail. Default: <code>false</code>.</td></tr>
+                </tbody>
+              </table>
             </div>
           </div>
 
-          {/* deployment.yaml spec */}
-          <div className="p-8 bg-[var(--card)] border border-[var(--card-border)] rounded-2xl shadow-xl space-y-6">
+          {/* ── deployment.yaml ───────────────────────────────── */}
+          <div className="p-8 bg-[var(--card)] border border-[var(--card-border)] rounded-2xl shadow-xl space-y-8">
             <div className="flex items-center gap-3 border-b border-[var(--card-border)] pb-4">
-              <div className="p-2.5 bg-emerald-500/10 text-emerald-500 rounded-xl">
-                <Globe className="w-6 h-6" />
-              </div>
+              <div className="p-2.5 bg-emerald-500/10 text-emerald-500 rounded-xl"><Globe className="w-6 h-6" /></div>
               <div>
-                <h3 className="text-lg font-bold text-gray-900">Deployment Specification (deployment.yaml)</h3>
-                <p className="text-xs text-gray-500">Define container stacks, ports mapping, dynamic artifact injection, and environment configuration.</p>
+                <h3 className="text-lg font-bold text-gray-900">Deployment Specification — deployment.yaml</h3>
+                <p className="text-xs text-gray-500">Describes which artifacts to run, how to configure them, and how to manage rollouts and health checks.</p>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              {/* Code spec */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-gray-400 font-mono">deployment.yaml</span>
-                </div>
-                <div className="p-4 bg-gray-50 border border-[var(--card-border)] rounded-2xl overflow-x-auto font-mono text-[11px] text-emerald-700 leading-relaxed select-all">
-                  <pre>{`services:
-  web-gateway:
-    artifact: gateway-service@^1.2.0
-    ports:
-      - "8080:8080"
-    environment:
-      - SPRING_PROFILES_ACTIVE=prod
-      - DB_URL=jdbc:postgresql://postgres:5432/db
-  auth-worker:
-    artifact: auth-service@~2.0.0
-    environment:
-      - JWT_SECRET=super_secret`}</pre>
-                </div>
-              </div>
+            <div className="space-y-2">
+              <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Full annotated example</span>
+              <div className="p-4 bg-gray-950 border border-gray-800 rounded-2xl overflow-x-auto font-mono text-[11px] text-emerald-300 leading-relaxed select-all">
+                <pre>{`version: 1
 
-              {/* Explanations */}
-              <div className="space-y-4 text-sm">
-                <h4 className="font-bold text-gray-900 uppercase tracking-wider text-xs">Configuration Options</h4>
-                <table className="w-full text-left border-collapse text-xs">
-                  <thead>
-                    <tr className="border-b border-[var(--card-border)] font-bold text-gray-500">
-                      <th className="pb-2">Field</th>
-                      <th className="pb-2">Type</th>
-                      <th className="pb-2">Description</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[var(--card-border)] text-gray-700">
-                    <tr>
-                      <td className="py-2 font-mono font-bold">services</td>
-                      <td className="py-2 text-gray-500 font-mono">object</td>
-                      <td className="py-2">List of service container components comprising the deployment stack.</td>
-                    </tr>
-                    <tr>
-                      <td className="py-2 font-mono font-bold">services.[name].artifact</td>
-                      <td className="py-2 text-gray-500 font-mono">string</td>
-                      <td className="py-2">Dynamic reference matching <code>artifact_name@range</code> (resolves latest match).</td>
-                    </tr>
-                    <tr>
-                      <td className="py-2 font-mono font-bold">services.[name].ports</td>
-                      <td className="py-2 text-gray-500 font-mono">array</td>
-                      <td className="py-2">External-to-internal port mapping configurations (e.g. <code>"8080:8080"</code>).</td>
-                    </tr>
-                    <tr>
-                      <td className="py-2 font-mono font-bold">services.[name].environment</td>
-                      <td className="py-2 text-gray-500 font-mono">array</td>
-                      <td className="py-2">List of environment variable definitions passed to the running container.</td>
-                    </tr>
-                  </tbody>
-                </table>
+deployment:
+  name: "my-stack"              # Required. Unique stack identifier. Used as docker compose -p name.
+  description: "My application" # Optional. Human-readable label stored with the deployment.
+
+services:
+  backend:
+    artifact: "my-service@^1.0.0"    # Brewery artifact ref: name@semver-range.
+                                      # Use name@latest to always pull the newest version.
+                                      # No @ = raw Docker image (e.g. "postgres:15") pulled directly.
+    type: "jar"                       # Required for Brewery artifacts. One of: binary, jar, python-app, docker-image.
+    replicas: 2                       # Optional. Docker Compose deploy.replicas (applied only if > 1).
+    runtimeImage: "eclipse-temurin:21-jre"  # Optional. Overrides the default runtime image for the service type.
+    ports:
+      - "8080:8080"                   # Optional. Host:container port mappings.
+    volumes:
+      - "app_data:/app/data"          # Optional. Named volumes or bind mounts.
+    environment:
+      SPRING_PROFILES_ACTIVE: "prod"  # Optional. Key/value env vars injected into the container.
+      DB_URL: "jdbc:postgresql://db:5432/mydb"
+    depends_on:
+      - "db"                          # Optional. Services in this stack that must start first.
+    init:
+      - "chmod +x /app/migrate.sh"    # Optional. Shell commands run BEFORE the main process starts.
+      - "/app/migrate.sh"             # Triggers automatic wrapper entrypoint script generation.
+    healthCheck:
+      endpoint: "GET http://172.20.0.10:8080/actuator/health"  # HTTP GET check. 2xx-3xx = healthy.
+      # command: "curl -f http://localhost:8080/health"         # Alternative: docker exec command.
+      interval: "30s"                 # Polling frequency (informational; stored in spec).
+      timeout: "5s"                   # Response timeout (informational; stored in spec).
+      retries: 3                      # Successes needed to recover healthy state (stored in spec).
+      unhealthyThreshold: 2           # Consecutive failures before marking unhealthy (stored in spec).
+    resources:
+      memory: "1g"                    # Informational. Stored in spec; not enforced at compose level.
+      cpus: "1.0"                     # Informational. Stored in spec; not enforced at compose level.
+
+  db:
+    artifact: "postgres:15"           # Raw Docker Hub image — no @ means direct pull, no registry lookup.
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_PASSWORD: "secret"
+
+volumes:
+  app_data: {}                        # Named volume declarations. Passed verbatim to docker compose.
+
+networks:
+  my-network:                         # Custom network definitions. Passed verbatim to docker compose.
+    driver: bridge
+
+policies:
+  strategy: "rolling"                 # Informational deployment strategy label.
+  waitForHealthy: true                # Reserved for future stepper gating logic.
+  healthCheckTimeout: "120s"          # Reserved for future stepper timeout configuration.
+
+rollback:
+  automatic: true                     # ACTIVE. On rollout failure, automatically re-applies the last
+                                      # successful version's stored docker-compose config.
+  onFailure: true                     # Informational alias for automatic (not separately evaluated).
+  keepPreviousVersions: 5             # Informational. Version pruning not yet automated.`}</pre>
               </div>
+            </div>
+
+            <div className="space-y-3">
+              <h4 className="text-xs font-bold text-emerald-700 uppercase tracking-wider flex items-center gap-2"><ChevronRight className="w-3.5 h-3.5" />Top-level fields</h4>
+              <table className="w-full text-left border-collapse text-xs">
+                <thead><tr className="border-b border-[var(--card-border)] text-gray-400 font-bold"><th className="pb-2 pr-4">Field</th><th className="pb-2 pr-4">Type</th><th className="pb-2 pr-4">Required</th><th className="pb-2">Description</th></tr></thead>
+                <tbody className="divide-y divide-[var(--card-border)] text-gray-700">
+                  <tr><td className="py-2 pr-4 font-mono font-bold">version</td><td className="py-2 pr-4 font-mono text-gray-500">integer</td><td className="py-2 pr-4 text-gray-400">Optional</td><td className="py-2">Schema version. Parsed but not validated. Use <code>1</code>.</td></tr>
+                  <tr><td className="py-2 pr-4 font-mono font-bold">deployment.name</td><td className="py-2 pr-4 font-mono text-gray-500">string</td><td className="py-2 pr-4 text-red-500 font-semibold">Required</td><td className="py-2">Unique stack identifier. Must match the name used when registering via the API/UI. Used as the Docker Compose project name (<code>-p</code> flag) and as the prefix for all container names (<code>name-serviceName</code>).</td></tr>
+                  <tr><td className="py-2 pr-4 font-mono font-bold">deployment.description</td><td className="py-2 pr-4 font-mono text-gray-500">string</td><td className="py-2 pr-4 text-gray-400">Optional</td><td className="py-2">Human-readable description stored with the deployment record.</td></tr>
+                  <tr><td className="py-2 pr-4 font-mono font-bold">volumes</td><td className="py-2 pr-4 font-mono text-gray-500">map</td><td className="py-2 pr-4 text-gray-400">Optional</td><td className="py-2">Named Docker volume declarations. Passed verbatim into the generated <code>docker-compose.yml</code>. For binary artifact types the engine automatically adds an <code>artifact_store</code> external volume.</td></tr>
+                  <tr><td className="py-2 pr-4 font-mono font-bold">networks</td><td className="py-2 pr-4 font-mono text-gray-500">map</td><td className="py-2 pr-4 text-gray-400">Optional</td><td className="py-2">Custom Docker network definitions. Passed verbatim into the generated <code>docker-compose.yml</code> networks section.</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div className="space-y-3">
+              <h4 className="text-xs font-bold text-emerald-700 uppercase tracking-wider flex items-center gap-2"><ChevronRight className="w-3.5 h-3.5" />{'services.<name>'}</h4>
+              <table className="w-full text-left border-collapse text-xs">
+                <thead><tr className="border-b border-[var(--card-border)] text-gray-400 font-bold"><th className="pb-2 pr-4">Field</th><th className="pb-2 pr-4">Type</th><th className="pb-2 pr-4">Required</th><th className="pb-2">Description</th></tr></thead>
+                <tbody className="divide-y divide-[var(--card-border)] text-gray-700">
+                  <tr><td className="py-2 pr-4 font-mono font-bold">artifact</td><td className="py-2 pr-4 font-mono text-gray-500">string</td><td className="py-2 pr-4 text-red-500 font-semibold">Required</td><td className="py-2">
+                    Two formats:
+                    <ul className="mt-1 space-y-0.5 list-disc list-inside text-gray-600">
+                      <li><code>name@range</code> — Brewery registry lookup (e.g. <code>my-service@^1.2.0</code>, <code>my-service@latest</code>). Resolved against all available versions at deploy time.</li>
+                      <li>No <code>@</code> — raw Docker image pulled directly by Compose (e.g. <code>postgres:15</code>). No registry lookup occurs.</li>
+                    </ul>
+                  </td></tr>
+                  <tr><td className="py-2 pr-4 font-mono font-bold">type</td><td className="py-2 pr-4 font-mono text-gray-500">string</td><td className="py-2 pr-4 text-gray-400">Conditional</td><td className="py-2">Required when using <code>name@range</code> format. One of <code>binary</code>, <code>jar</code>, <code>python-app</code>, <code>docker-image</code>. Not needed for raw Docker image references.</td></tr>
+                  <tr><td className="py-2 pr-4 font-mono font-bold">replicas</td><td className="py-2 pr-4 font-mono text-gray-500">integer</td><td className="py-2 pr-4 text-gray-400">Optional</td><td className="py-2">Number of container replicas. Only applied when value is greater than 1 (maps to <code>deploy.replicas</code> in docker-compose).</td></tr>
+                  <tr><td className="py-2 pr-4 font-mono font-bold">runtimeImage</td><td className="py-2 pr-4 font-mono text-gray-500">string</td><td className="py-2 pr-4 text-gray-400">Optional</td><td className="py-2">Override the default runtime container image for non-docker-image types. Defaults: <code>binary</code> → <code>ubuntu:22.04</code>, <code>jar</code> → <code>eclipse-temurin:21-jre</code>, <code>python-app</code> → <code>python:3.10-slim</code>.</td></tr>
+                  <tr><td className="py-2 pr-4 font-mono font-bold">ports</td><td className="py-2 pr-4 font-mono text-gray-500">array</td><td className="py-2 pr-4 text-gray-400">Optional</td><td className="py-2">Host-to-container port mappings (e.g. <code>"4000:8080"</code>). Passed directly to the generated docker-compose service.</td></tr>
+                  <tr><td className="py-2 pr-4 font-mono font-bold">volumes</td><td className="py-2 pr-4 font-mono text-gray-500">array</td><td className="py-2 pr-4 text-gray-400">Optional</td><td className="py-2">Named volume mounts or bind mounts (e.g. <code>"app_data:/app/data"</code>). For non-docker-image types, the engine automatically appends a read-only <code>artifact_store</code> volume mount.</td></tr>
+                  <tr><td className="py-2 pr-4 font-mono font-bold">environment</td><td className="py-2 pr-4 font-mono text-gray-500">map</td><td className="py-2 pr-4 text-gray-400">Optional</td><td className="py-2">Key/value environment variables injected into the container. Must be a YAML map (not an array). Passed directly to docker-compose.</td></tr>
+                  <tr><td className="py-2 pr-4 font-mono font-bold">depends_on</td><td className="py-2 pr-4 font-mono text-gray-500">array</td><td className="py-2 pr-4 text-gray-400">Optional</td><td className="py-2">Other service names in this stack that must start before this service. Maps to docker-compose <code>depends_on</code>.</td></tr>
+                  <tr><td className="py-2 pr-4 font-mono font-bold">init</td><td className="py-2 pr-4 font-mono text-gray-500">array</td><td className="py-2 pr-4 text-gray-400">Optional</td><td className="py-2">Shell commands run inside the container's entrypoint script <strong>before</strong> the main process starts (e.g. DB migrations, permission fixes). Triggers automatic wrapper script generation — the engine writes and mounts an <code>/entrypoint.sh</code>.</td></tr>
+                  <tr><td className="py-2 pr-4 font-mono font-bold">resources.memory</td><td className="py-2 pr-4 font-mono text-gray-500">string</td><td className="py-2 pr-4 text-gray-400">Optional</td><td className="py-2">Desired memory limit (e.g. <code>"1g"</code>). Stored in spec; not currently enforced at the docker-compose level.</td></tr>
+                  <tr><td className="py-2 pr-4 font-mono font-bold">resources.cpus</td><td className="py-2 pr-4 font-mono text-gray-500">string</td><td className="py-2 pr-4 text-gray-400">Optional</td><td className="py-2">Desired CPU allocation (e.g. <code>"1.0"</code>). Stored in spec; not currently enforced at the docker-compose level.</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div className="space-y-3">
+              <h4 className="text-xs font-bold text-emerald-700 uppercase tracking-wider flex items-center gap-2"><ChevronRight className="w-3.5 h-3.5" />{'services.<name>.healthCheck'}</h4>
+              <p className="text-xs text-gray-500">When defined, the deployment engine's background scheduler periodically runs this check and updates the service status in the database. Services without a <code>healthCheck</code> block are marked <code>unknown</code>. Provide either <code>endpoint</code> <em>or</em> <code>command</code> — not both.</p>
+              <table className="w-full text-left border-collapse text-xs">
+                <thead><tr className="border-b border-[var(--card-border)] text-gray-400 font-bold"><th className="pb-2 pr-4">Field</th><th className="pb-2 pr-4">Type</th><th className="pb-2 pr-4">Required</th><th className="pb-2">Description</th></tr></thead>
+                <tbody className="divide-y divide-[var(--card-border)] text-gray-700">
+                  <tr><td className="py-2 pr-4 font-mono font-bold">endpoint</td><td className="py-2 pr-4 font-mono text-gray-500">string</td><td className="py-2 pr-4 text-gray-400">Optional</td><td className="py-2">HTTP health check. Format: <code>GET http://&lt;host&gt;:&lt;port&gt;/path</code>. The engine strips the <code>GET </code> prefix and issues a real HTTP GET with a 5-second connection and read timeout. Any 2xx–3xx response = healthy.</td></tr>
+                  <tr><td className="py-2 pr-4 font-mono font-bold">command</td><td className="py-2 pr-4 font-mono text-gray-500">string</td><td className="py-2 pr-4 text-gray-400">Optional</td><td className="py-2">Alternative to <code>endpoint</code>. Runs via <code>docker exec &lt;stack&gt;-&lt;service&gt; /bin/sh -c &lt;command&gt;</code>. Zero exit code = healthy.</td></tr>
+                  <tr><td className="py-2 pr-4 font-mono font-bold">interval</td><td className="py-2 pr-4 font-mono text-gray-500">string</td><td className="py-2 pr-4 text-gray-400">Optional</td><td className="py-2">Desired polling frequency (e.g. <code>"30s"</code>). Stored in spec; actual cadence controlled by the engine's global cron schedule.</td></tr>
+                  <tr><td className="py-2 pr-4 font-mono font-bold">timeout</td><td className="py-2 pr-4 font-mono text-gray-500">string</td><td className="py-2 pr-4 text-gray-400">Optional</td><td className="py-2">Desired response timeout (e.g. <code>"5s"</code>). Stored in spec; HTTP checks use a fixed 5s connection timeout.</td></tr>
+                  <tr><td className="py-2 pr-4 font-mono font-bold">retries</td><td className="py-2 pr-4 font-mono text-gray-500">integer</td><td className="py-2 pr-4 text-gray-400">Optional</td><td className="py-2">Consecutive successes needed to recover healthy state after a failure. Stored in spec as configuration intent.</td></tr>
+                  <tr><td className="py-2 pr-4 font-mono font-bold">unhealthyThreshold</td><td className="py-2 pr-4 font-mono text-gray-500">integer</td><td className="py-2 pr-4 text-gray-400">Optional</td><td className="py-2">Consecutive failures before marking the service <code>unhealthy</code>. Stored in spec as configuration intent.</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div className="space-y-3">
+              <h4 className="text-xs font-bold text-emerald-700 uppercase tracking-wider flex items-center gap-2"><ChevronRight className="w-3.5 h-3.5" />policies</h4>
+              <table className="w-full text-left border-collapse text-xs">
+                <thead><tr className="border-b border-[var(--card-border)] text-gray-400 font-bold"><th className="pb-2 pr-4">Field</th><th className="pb-2 pr-4">Type</th><th className="pb-2 pr-4">Required</th><th className="pb-2">Description</th></tr></thead>
+                <tbody className="divide-y divide-[var(--card-border)] text-gray-700">
+                  <tr><td className="py-2 pr-4 font-mono font-bold">policies.strategy</td><td className="py-2 pr-4 font-mono text-gray-500">string</td><td className="py-2 pr-4 text-gray-400">Optional</td><td className="py-2">Deployment strategy label (e.g. <code>"rolling"</code>, <code>"recreate"</code>). Stored in spec for documentation; not currently evaluated.</td></tr>
+                  <tr><td className="py-2 pr-4 font-mono font-bold">policies.waitForHealthy</td><td className="py-2 pr-4 font-mono text-gray-500">boolean</td><td className="py-2 pr-4 text-gray-400">Optional</td><td className="py-2">Intended to gate rollout progression until health checks pass. Reserved for future stepper logic.</td></tr>
+                  <tr><td className="py-2 pr-4 font-mono font-bold">policies.healthCheckTimeout</td><td className="py-2 pr-4 font-mono text-gray-500">string</td><td className="py-2 pr-4 text-gray-400">Optional</td><td className="py-2">Maximum time to wait for services to become healthy before aborting a rollout. Reserved for future stepper logic.</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div className="space-y-3">
+              <h4 className="text-xs font-bold text-emerald-700 uppercase tracking-wider flex items-center gap-2"><ChevronRight className="w-3.5 h-3.5" />rollback</h4>
+              <table className="w-full text-left border-collapse text-xs">
+                <thead><tr className="border-b border-[var(--card-border)] text-gray-400 font-bold"><th className="pb-2 pr-4">Field</th><th className="pb-2 pr-4">Type</th><th className="pb-2 pr-4">Required</th><th className="pb-2">Description</th></tr></thead>
+                <tbody className="divide-y divide-[var(--card-border)] text-gray-700">
+                  <tr><td className="py-2 pr-4 font-mono font-bold">rollback.automatic</td><td className="py-2 pr-4 font-mono text-gray-500">boolean</td><td className="py-2 pr-4 text-gray-400">Optional</td><td className="py-2"><strong>Actively enforced.</strong> When <code>true</code> and a rollout fails, the engine automatically re-runs <code>docker compose up</code> with the most recent previously-successful version's stored compose config. Stack status is set to <code>rolled_back</code>.</td></tr>
+                  <tr><td className="py-2 pr-4 font-mono font-bold">rollback.onFailure</td><td className="py-2 pr-4 font-mono text-gray-500">boolean</td><td className="py-2 pr-4 text-gray-400">Optional</td><td className="py-2">Informational alias for <code>automatic</code>. Parsed and stored but not separately evaluated.</td></tr>
+                  <tr><td className="py-2 pr-4 font-mono font-bold">rollback.keepPreviousVersions</td><td className="py-2 pr-4 font-mono text-gray-500">integer</td><td className="py-2 pr-4 text-gray-400">Optional</td><td className="py-2">Intended number of historical versions to retain. Parsed and stored but automated pruning is not yet implemented — all versions are kept indefinitely and remain available for manual rollback.</td></tr>
+                </tbody>
+              </table>
             </div>
           </div>
+
         </div>
       )}
+
 
       {/* 🔄 Subsystem Internals Content */}
       {activeTab === 'architecture' && (
@@ -349,14 +486,76 @@ artifacts:
           </div>
 
           {/* Build Engine */}
-          <div className="p-6 bg-white border border-gray-200 rounded-2xl shadow-sm space-y-3">
+          <div className="p-6 bg-white border border-gray-200 rounded-2xl shadow-sm space-y-4">
             <h4 className="font-bold text-gray-900 text-sm flex items-center gap-2 text-violet-600">
               <Cpu className="w-4.5 h-4.5" />
               2. Containerized Build Executor
             </h4>
             <p className="text-xs text-gray-600 leading-relaxed">
-              The platform creates an isolated filesystem directory on the host server. It clones the target repository, checks out the designated git commit SHA, and parses the <code>build.yaml</code> configuration file. A compilation workspace volume is then mounted inside a Docker container using the specified builder image. Build logs are piped to the database in real-time, and exit statuses are evaluated to confirm compilation integrity.
+              The build executor supports two distinct pipelines depending on the artifact <code>type</code> declared in <code>build.yaml</code>. Both paths begin identically — a temporary workspace is created, the repository is shallow-cloned at the exact commit SHA, and <code>build.yaml</code> is parsed.
             </p>
+
+            {/* Binary / JAR path */}
+            <div className="space-y-2">
+              <h5 className="text-xs font-bold text-violet-700 uppercase tracking-wider">Path A — Binary / JAR Artifact</h5>
+              <ol className="text-xs text-gray-600 space-y-1.5 list-decimal list-inside leading-relaxed">
+                <li>An ephemeral builder container is started using the image specified in <code>build.image</code> (e.g. <code>golang:1.21</code>, <code>maven:3.9</code>).</li>
+                <li>The full workspace is mounted into the container at <code>/workspace</code>.</li>
+                <li>The <code>steps</code> commands are injected as a shell script and executed inside the container. All stdout/stderr is captured and persisted as the build log.</li>
+                <li>After the container exits cleanly, the workspace is extracted back from the container to retrieve compiled outputs.</li>
+                <li>The <code>pattern</code> glob (e.g. <code>dist/myapp</code>) is used to locate the output file(s). Multiple files are automatically bundled into a <code>.tar.gz</code> archive.</li>
+                <li>The <strong>actual binary bytes</strong> are uploaded and stored in the Artifact Registry. The artifact record points directly to the file content.</li>
+              </ol>
+            </div>
+
+            {/* Docker Image path */}
+            <div className="space-y-2">
+              <h5 className="text-xs font-bold text-indigo-700 uppercase tracking-wider">Path B — Docker Image Artifact</h5>
+              <ol className="text-xs text-gray-600 space-y-1.5 list-decimal list-inside leading-relaxed">
+                <li>A lightweight builder container still runs for any pre-build steps, but the Dockerfile owns the main compilation process.</li>
+                <li>After the builder container exits, <code>docker build</code> is invoked directly against the DinD (Docker-in-Docker) sidecar daemon using the <code>pattern</code> field as the path to the Dockerfile.</li>
+                <li>The image is tagged in the format <code>registry:5000/{'<name>'}:{'<commit-sha>'}</code>, making every build uniquely and immutably addressable.</li>
+                <li>The image is pushed to the <strong>private internal registry</strong> (<code>registry:5000</code>). Nothing is sent to Docker Hub or any external service.</li>
+                <li>A lightweight placeholder record (containing just the image tag string) is written to the Artifact Registry — the actual image layers live in the Docker registry.</li>
+                <li>Build output from both <code>docker build</code> and <code>docker push</code> is captured line-by-line and appended to the build log.</li>
+              </ol>
+            </div>
+
+            {/* Comparison table */}
+            <div className="space-y-2 pt-1">
+              <h5 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Pipeline Comparison</h5>
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="border-b border-gray-200 font-bold text-gray-400">
+                    <th className="pb-2">Stage</th>
+                    <th className="pb-2">Binary / JAR</th>
+                    <th className="pb-2">Docker Image</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 text-gray-600">
+                  <tr>
+                    <td className="py-2 font-semibold">Compilation</td>
+                    <td className="py-2">Inside builder container via <code>steps</code></td>
+                    <td className="py-2">Inside the Dockerfile itself</td>
+                  </tr>
+                  <tr>
+                    <td className="py-2 font-semibold">Artifact stored</td>
+                    <td className="py-2">Actual binary bytes in DB/registry</td>
+                    <td className="py-2">Image tag pointer; layers in Docker registry</td>
+                  </tr>
+                  <tr>
+                    <td className="py-2 font-semibold">Toolchain location</td>
+                    <td className="py-2"><code>build.image</code> container</td>
+                    <td className="py-2">Dockerfile <code>FROM</code> stages</td>
+                  </tr>
+                  <tr>
+                    <td className="py-2 font-semibold">Deployment pull</td>
+                    <td className="py-2">Download binary from artifact store</td>
+                    <td className="py-2"><code>docker pull registry:5000/...</code></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
 
           {/* Dependency DAG */}

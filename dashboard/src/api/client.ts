@@ -85,6 +85,7 @@ export interface ArtifactMetadataJson {
   checksums?: Record<string, string>;
   artifact_url?: string;
   download_url?: string;
+  primary_entrypoint?: string;
   dependencies?: { name: string; version_range: string; resolved_version?: string }[];
   tags?: string[];
 }

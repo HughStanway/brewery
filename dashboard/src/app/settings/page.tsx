@@ -30,9 +30,7 @@ export default function SettingsPage() {
   const queryClient = useQueryClient();
 
   // Active Tab state: profile, system, users
-  const [activeTab, setActiveTab] = useState<'profile' | 'system' | 'users'>(
-    currentUser?.role === 'ADMIN' ? 'users' : 'profile'
-  );
+  const [activeTab, setActiveTab] = useState<'profile' | 'system' | 'users'>('profile');
 
   // Modals state
   const [isCreateOpen, setIsCreateOpen] = useState(false);

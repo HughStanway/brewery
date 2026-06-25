@@ -20,7 +20,13 @@ import {
   ChevronRight,
   ShieldCheck,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  ExternalLink,
+  Clock,
+  Zap,
+  FileText,
+  Copy,
+  CheckCheck
 } from 'lucide-react';
 
 export default function ArtifactDetailsPage() {
@@ -33,11 +39,19 @@ export default function ArtifactDetailsPage() {
 
   const [newTag, setNewTag] = React.useState('');
   const [showRawJson, setShowRawJson] = React.useState(false);
+  const [copiedSha, setCopiedSha] = React.useState(false);
 
   // Fetch specific artifact metadata
   const { data: metadata, isLoading: isMetaLoading, error: metaError } = useQuery({
     queryKey: ['artifact', name, version],
     queryFn: () => apiClient.getArtifact(name, version),
+  });
+
+  // Fetch the linked build record for extra provenance data
+  const { data: linkedBuild } = useQuery({
+    queryKey: ['build', metadata?.build_id],
+    queryFn: () => apiClient.getBuild(metadata!.build_id),
+    enabled: !!metadata?.build_id,
   });
 
   // Fetch list of versions
@@ -76,6 +90,37 @@ export default function ArtifactDetailsPage() {
       return 0;
     });
   }, [versionsResponse]);
+
+  const copyCommitSha = (sha: string) => {
+    navigator.clipboard.writeText(sha).then(() => {
+      setCopiedSha(true);
+      setTimeout(() => setCopiedSha(false), 2000);
+    });
+  };
+
+  const formatDuration = (seconds?: number) => {
+    if (!seconds) return null;
+    if (seconds < 60) return `${seconds}s`;
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return s > 0 ? `${m}m ${s}s` : `${m}m`;
+  };
+
+  // Detect if the repository URL is a GitHub/GitLab URL and build useful links
+  const getRepoLinks = (repoUrl: string, branch?: string, commit?: string) => {
+    if (!repoUrl) return null;
+    const isGitHub = repoUrl.includes('github.com');
+    const isGitLab = repoUrl.includes('gitlab.com');
+    if (!isGitHub && !isGitLab) return null;
+    // Normalise: strip .git suffix
+    const base = repoUrl.replace(/\.git$/, '');
+    return {
+      repo: base,
+      tree: branch ? `${base}/tree/${branch}` : null,
+      commit: commit ? `${base}/commit/${commit}` : null,
+      compare: branch ? `${base}/commits/${branch}` : null,
+    };
+  };
 
   const renderBuildLink = (buildId: string, full: boolean = false) => {
     if (!buildId) return <span className="text-gray-500 italic">Manual or untracked build</span>;
@@ -378,36 +423,147 @@ export default function ArtifactDetailsPage() {
         {/* Right Column: Build Origin, Tags, Dependencies, Raw JSON */}
         <div className="lg:col-span-2 space-y-6">
           
-          {/* Build Origin (Git details) */}
-          <div className="p-6 bg-[var(--card)] border border-[var(--card-border)] rounded-2xl shadow-xl space-y-4">
+          {/* Source & Build Provenance */}
+          <div className="p-6 bg-[var(--card)] border border-[var(--card-border)] rounded-2xl shadow-xl space-y-5">
             <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider border-b border-[var(--card-border)] pb-3 flex items-center gap-2">
               <ShieldCheck className="w-4 h-4 text-emerald-500" />
-              Build Source Integrity
+              Source &amp; Build Provenance
             </h3>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-              <div className="space-y-1">
-                <span className="text-[10px] text-gray-500 font-semibold block uppercase">Git Repository</span>
-                <span className="font-mono text-gray-700 block break-all">{metadata.repository || 'N/A'}</span>
-              </div>
-              <div className="space-y-1">
-                <span className="text-[10px] text-gray-500 font-semibold block uppercase">Git Branch</span>
-                <span className="font-mono text-gray-700 block flex items-center gap-1">
-                  <GitBranch className="w-3.5 h-3.5 text-gray-500" />
-                  {metadata.branch || 'main'}
-                </span>
-              </div>
-              <div className="space-y-1 md:col-span-2">
-                <span className="text-[10px] text-gray-500 font-semibold block uppercase">Commit SHA</span>
-                <span className="font-mono text-gray-700 block break-all select-all">{metadata.commit || 'N/A'}</span>
-              </div>
-              <div className="space-y-1 md:col-span-2">
-                <span className="text-[10px] text-gray-500 font-semibold block uppercase">Build Pipeline Link</span>
-                <div className="block truncate">
-                  {renderBuildLink(metadata.build_id, true)}
+            {/* Repo + branch row */}
+            {(() => {
+              const links = getRepoLinks(metadata.repository, metadata.branch, metadata.commit);
+              return (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+
+                  {/* Repository */}
+                  <div className="space-y-1.5">
+                    <span className="text-[10px] text-gray-500 font-semibold block uppercase">Git Repository</span>
+                    {links ? (
+                      <a
+                        href={links.repo}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 font-mono text-[var(--primary)] hover:underline break-all"
+                      >
+                        {metadata.repository}
+                        <ExternalLink className="w-3 h-3 shrink-0" />
+                      </a>
+                    ) : (
+                      <span className="font-mono text-gray-700 break-all">{metadata.repository || 'N/A'}</span>
+                    )}
+                  </div>
+
+                  {/* Branch */}
+                  <div className="space-y-1.5">
+                    <span className="text-[10px] text-gray-500 font-semibold block uppercase">Branch</span>
+                    <div className="flex items-center gap-1.5">
+                      <GitBranch className="w-3.5 h-3.5 text-gray-400" />
+                      {links?.tree ? (
+                        <a
+                          href={links.tree}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-mono text-[var(--primary)] hover:underline"
+                        >
+                          {metadata.branch || 'main'}
+                        </a>
+                      ) : (
+                        <span className="font-mono text-gray-700">{metadata.branch || 'main'}</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Commit SHA */}
+                  <div className="space-y-1.5 md:col-span-2">
+                    <span className="text-[10px] text-gray-500 font-semibold block uppercase">Commit SHA</span>
+                    <div className="flex items-center gap-2">
+                      {links?.commit ? (
+                        <a
+                          href={links.commit}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-mono text-[var(--primary)] hover:underline break-all"
+                        >
+                          {metadata.commit}
+                        </a>
+                      ) : (
+                        <span className="font-mono text-gray-700 break-all select-all">{metadata.commit || 'N/A'}</span>
+                      )}
+                      {metadata.commit && (
+                        <button
+                          onClick={() => copyCommitSha(metadata.commit)}
+                          className="shrink-0 p-1 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-all"
+                          title="Copy full SHA"
+                        >
+                          {copiedSha ? <CheckCheck className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Artifact Type */}
+                  <div className="space-y-1.5">
+                    <span className="text-[10px] text-gray-500 font-semibold block uppercase">Artifact Type</span>
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-500/10 text-blue-600 border border-blue-500/20 text-[10px] font-bold uppercase tracking-wider rounded-full">
+                      <Package className="w-3 h-3" />
+                      {metadata.artifact_type || 'binary'}
+                    </span>
+                  </div>
+
+                  {/* Primary Entrypoint */}
+                  {metadata.primary_entrypoint && (
+                    <div className="space-y-1.5">
+                      <span className="text-[10px] text-gray-500 font-semibold block uppercase">Primary Entrypoint</span>
+                      <span className="flex items-center gap-1 font-mono text-gray-700">
+                        <FileText className="w-3.5 h-3.5 text-gray-400" />
+                        {metadata.primary_entrypoint}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Build Pipeline Link */}
+                  <div className="space-y-1.5 md:col-span-2">
+                    <span className="text-[10px] text-gray-500 font-semibold block uppercase">Build Pipeline</span>
+                    <div>{renderBuildLink(metadata.build_id, true)}</div>
+                  </div>
+
+                  {/* Build timing from linked build record */}
+                  {linkedBuild && (
+                    <>
+                      {linkedBuild.durationSeconds != null && (
+                        <div className="space-y-1.5">
+                          <span className="text-[10px] text-gray-500 font-semibold block uppercase">Build Duration</span>
+                          <span className="flex items-center gap-1.5 font-mono text-gray-700">
+                            <Zap className="w-3.5 h-3.5 text-amber-400" />
+                            {formatDuration(linkedBuild.durationSeconds)}
+                          </span>
+                        </div>
+                      )}
+                      {linkedBuild.startedAt && (
+                        <div className="space-y-1.5">
+                          <span className="text-[10px] text-gray-500 font-semibold block uppercase">Build Started</span>
+                          <span className="flex items-center gap-1.5 text-gray-700">
+                            <Clock className="w-3.5 h-3.5 text-gray-400" />
+                            {new Date(linkedBuild.startedAt).toLocaleString()}
+                          </span>
+                        </div>
+                      )}
+                      {linkedBuild.completedAt && (
+                        <div className="space-y-1.5">
+                          <span className="text-[10px] text-gray-500 font-semibold block uppercase">Build Completed</span>
+                          <span className="flex items-center gap-1.5 text-gray-700">
+                            <Clock className="w-3.5 h-3.5 text-gray-400" />
+                            {new Date(linkedBuild.completedAt).toLocaleString()}
+                          </span>
+                        </div>
+                      )}
+                    </>
+                  )}
+
                 </div>
-              </div>
-            </div>
+              );
+            })()}
           </div>
 
           {/* Tags Manager */}
