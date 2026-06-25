@@ -334,6 +334,17 @@ public class BuildExecutorImpl implements BuildExecutor {
                 }
             }
 
+            String deploymentYaml = null;
+            File deploymentFile = new File(workspaceDir, "deployment.yaml");
+            if (deploymentFile.exists()) {
+                try {
+                    deploymentYaml = Files.readString(deploymentFile.toPath(), StandardCharsets.UTF_8);
+                    log.info("Found deployment.yaml in workspace. Storing with artifact.");
+                } catch (IOException e) {
+                    log.warn("Failed to read deployment.yaml from workspace", e);
+                }
+            }
+
             if (config.getArtifacts() == null || config.getArtifacts().isEmpty()) {
                 throw new IllegalArgumentException("No artifacts configured under artifacts: list in build.yaml");
             }
@@ -411,7 +422,8 @@ public class BuildExecutorImpl implements BuildExecutor {
                             placeholderStream,
                             dependencies,
                             java.util.Collections.emptyList(),
-                            imageTag
+                            imageTag,
+                            deploymentYaml
                     );
                     log.info("Saved and registered docker image artifact. buildId={}, tag={}", build.getId(), imageTag);
                 } else {
@@ -458,7 +470,8 @@ public class BuildExecutorImpl implements BuildExecutor {
                                     is,
                                     dependencies,
                                     java.util.Collections.emptyList(),
-                                    primaryEntrypoint
+                                    primaryEntrypoint,
+                                    deploymentYaml
                             );
                         }
                         log.info("Saved and registered archived artifact. buildId={}, file={}, primaryEntrypoint={}", 
@@ -478,7 +491,8 @@ public class BuildExecutorImpl implements BuildExecutor {
                                     is,
                                     dependencies,
                                     java.util.Collections.emptyList(),
-                                    file.getName()
+                                    file.getName(),
+                                    deploymentYaml
                             );
                         }
                         log.info("Saved and registered artifact. buildId={}, file={}", build.getId(), file.getName());

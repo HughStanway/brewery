@@ -13,7 +13,8 @@ import {
   CheckCircle2,
   XCircle,
   Clock,
-  Activity
+  Activity,
+  X
 } from 'lucide-react';
 
 const BOILERPLATE_SPEC = `version: 1
@@ -35,12 +36,54 @@ export default function DeploymentsPage() {
   const [searchQuery, setSearchQuery] = React.useState('');
   const [isCreating, setIsCreating] = React.useState(false);
   const [yamlContent, setYamlContent] = React.useState(BOILERPLATE_SPEC);
+  const [showQuickDeployModal, setShowQuickDeployModal] = React.useState(false);
 
   const { data: deployments, isLoading } = useQuery({
     queryKey: ['deployments'],
     queryFn: apiClient.getDeployments,
     refetchInterval: 5000,
   });
+
+  const { data: artifacts, isLoading: isLoadingArtifacts } = useQuery({
+    queryKey: ['quickDeployArtifacts'],
+    queryFn: apiClient.getArtifacts,
+    enabled: showQuickDeployModal,
+  });
+
+  // Handle Mount URL Quick Deploy check
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const quickDeploy = params.get('quickDeploy');
+      const artifactName = params.get('artifactName');
+      const artifactVersion = params.get('artifactVersion');
+      if (quickDeploy === 'true' && artifactName && artifactVersion) {
+        apiClient.getArtifact(artifactName, artifactVersion)
+          .then((metadata) => {
+            if (metadata && metadata.deployment_yaml) {
+              setYamlContent(metadata.deployment_yaml);
+              setIsCreating(true);
+              // Clear query params so refreshing doesn't keep opening it
+              const newUrl = window.location.pathname;
+              window.history.replaceState({}, '', newUrl);
+              
+              // Scroll to form after rendering
+              setTimeout(() => {
+                const formElement = document.getElementById('create-stack-form');
+                if (formElement) {
+                  formElement.scrollIntoView({ behavior: 'smooth' });
+                }
+              }, 100);
+            } else {
+              alert(`No deployment configuration found for artifact ${artifactName}@${artifactVersion}`);
+            }
+          })
+          .catch((err) => {
+            console.error("Error fetching quick deploy metadata", err);
+          });
+      }
+    }
+  }, []);
 
   const createMutation = useMutation({
     mutationFn: (args: { name: string; yaml: string }) => 
@@ -63,6 +106,19 @@ export default function DeploymentsPage() {
     );
   }, [deployments, searchQuery]);
 
+  const artifactsWithConfig = React.useMemo(() => {
+    if (!artifacts) return [];
+    return artifacts.map(art => {
+      let parsedMeta = null;
+      try {
+        if (art.metadata) {
+          parsedMeta = JSON.parse(art.metadata);
+        }
+      } catch (e) {}
+      return { ...art, parsedMeta };
+    }).filter(art => art.parsedMeta && art.parsedMeta.deployment_yaml);
+  }, [artifacts]);
+
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[50vh] gap-4">
@@ -83,16 +139,25 @@ export default function DeploymentsPage() {
           </h2>
           <p className="text-sm text-gray-500">Configure, rollout, and rollback multi-container applications on your target environments.</p>
         </div>
-        <button
-          onClick={() => {
-            setIsCreating(true);
-            setYamlContent(BOILERPLATE_SPEC);
-          }}
-          className="flex items-center gap-2 bg-blue-600 hover:bg-[var(--primary)] text-white rounded-full px-4 py-2.5 text-sm font-semibold transition-colors shadow-lg shadow-blue-500/20 md:self-end"
-        >
-          <Plus className="w-4 h-4" />
-          Create Stack
-        </button>
+        <div className="flex items-center gap-3 self-start md:self-auto">
+          <button
+            onClick={() => setShowQuickDeployModal(true)}
+            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full px-4 py-2.5 text-sm font-semibold transition-colors shadow-lg shadow-emerald-500/20"
+          >
+            <Rocket className="w-4 h-4" />
+            Quick Deploy
+          </button>
+          <button
+            onClick={() => {
+              setIsCreating(true);
+              setYamlContent(BOILERPLATE_SPEC);
+            }}
+            className="flex items-center gap-2 bg-blue-600 hover:bg-[var(--primary)] text-white rounded-full px-4 py-2.5 text-sm font-semibold transition-colors shadow-lg shadow-blue-500/20"
+          >
+            <Plus className="w-4 h-4" />
+            Create Stack
+          </button>
+        </div>
       </div>
 
       {/* Toolbar */}
@@ -110,7 +175,7 @@ export default function DeploymentsPage() {
       </div>
 
       {isCreating && (
-        <div className="bg-[var(--card)] border border-[var(--card-border)] rounded-2xl p-6 shadow-xl space-y-6 mb-6">
+        <div id="create-stack-form" className="bg-[var(--card)] border border-[var(--card-border)] rounded-2xl p-6 shadow-xl space-y-6 mb-6">
           <div className="border-b border-[var(--card-border)] pb-4">
             <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
               <Plus className="w-5 h-5 text-[var(--primary)]" />
@@ -237,6 +302,87 @@ export default function DeploymentsPage() {
           </div>
         )}
       </div>
+
+      {/* QUICK DEPLOY MODAL */}
+      {showQuickDeployModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-fadeIn">
+          <div className="bg-[var(--card)] border border-[var(--card-border)] w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden animate-zoomIn flex flex-col max-h-[85vh]">
+            <div className="p-6 border-b border-[var(--card-border)] flex items-center justify-between">
+              <div>
+                <h3 className="font-bold text-gray-900 text-lg flex items-center gap-2">
+                  <Rocket className="w-5 h-5 text-emerald-600 animate-pulse" />
+                  Quick Deploy stack from Registry
+                </h3>
+                <p className="text-xs text-gray-500 mt-1">Select a build artifact containing a deployment.yaml configuration to auto-fill the stack creation form.</p>
+              </div>
+              <button 
+                onClick={() => setShowQuickDeployModal(false)} 
+                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-all"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto flex-1 space-y-4">
+              {isLoadingArtifacts ? (
+                <div className="flex flex-col items-center justify-center py-12 gap-3">
+                  <div className="w-8 h-8 border-3 border-emerald-600 border-t-transparent rounded-full animate-spin"></div>
+                  <p className="text-gray-500 text-xs font-mono">Loading registry packages...</p>
+                </div>
+              ) : artifactsWithConfig.length > 0 ? (
+                <div className="space-y-3">
+                  {artifactsWithConfig.map((art: any) => (
+                    <div 
+                      key={art.id}
+                      onClick={() => {
+                        setYamlContent(art.parsedMeta.deployment_yaml);
+                        setIsCreating(true);
+                        setShowQuickDeployModal(false);
+                        setTimeout(() => {
+                          const form = document.getElementById('create-stack-form');
+                          if (form) form.scrollIntoView({ behavior: 'smooth' });
+                        }, 100);
+                      }}
+                      className="p-4 border border-[var(--card-border)] rounded-2xl bg-[var(--background)] hover:border-emerald-500 hover:shadow-md cursor-pointer transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 group"
+                    >
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-sm text-gray-900 group-hover:text-emerald-600 transition-colors">{art.name}</span>
+                          <span className="text-[10px] font-bold px-2 py-0.5 bg-gray-100 border border-[var(--card-border)] rounded-lg text-gray-600">{art.version}</span>
+                        </div>
+                        <div className="text-[11px] text-gray-500 font-mono flex flex-wrap gap-x-4 gap-y-1">
+                          <span>branch: {art.parsedMeta.branch || 'unknown'}</span>
+                          <span>commit: {art.parsedMeta.commit ? art.parsedMeta.commit.substring(0, 7) : 'unknown'}</span>
+                          <span>built: {art.parsedMeta.built_at ? new Date(art.parsedMeta.built_at).toLocaleString() : 'unknown'}</span>
+                        </div>
+                      </div>
+                      <div className="shrink-0">
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold tracking-wide bg-emerald-50 border border-emerald-200 text-emerald-600 uppercase">
+                          <Rocket className="w-3 h-3" />
+                          Ready to Deploy
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-12 text-center text-gray-500 font-mono text-xs border border-dashed border-[var(--card-border)] rounded-2xl bg-[var(--background)]/30">
+                  No build artifacts in the registry contain a deployment.yaml configuration.
+                </div>
+              )}
+            </div>
+
+            <div className="p-6 border-t border-[var(--card-border)] bg-gray-50/50 flex justify-end">
+              <button
+                onClick={() => setShowQuickDeployModal(false)}
+                className="px-5 py-2.5 bg-white border border-[var(--card-border)] rounded-2xl text-xs font-semibold text-gray-600 hover:text-gray-800 transition-colors shadow-sm"
+              >
+                Close Window
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

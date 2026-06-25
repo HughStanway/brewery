@@ -25,7 +25,8 @@ public interface ArtifactRegistryService {
             InputStream artifactStream,
             List<ArtifactMetadataJson.DependencyInfo> dependencies,
             List<String> tags,
-            String primaryEntrypoint
+            String primaryEntrypoint,
+            String deploymentYaml
     );
 
     Optional<Artifact> findArtifact(String name, String version);

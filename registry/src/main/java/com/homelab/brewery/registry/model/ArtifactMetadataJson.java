@@ -25,6 +25,7 @@ public class ArtifactMetadataJson {
     private String primaryEntrypoint;
     private List<DependencyInfo> dependencies;
     private List<String> tags;
+    private String deploymentYaml;
 
     @Data
     @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)

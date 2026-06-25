@@ -71,7 +71,8 @@ public class ArtifactRegistryServiceImpl implements ArtifactRegistryService {
             InputStream artifactStream,
             List<ArtifactMetadataJson.DependencyInfo> dependencies,
             List<String> tags,
-            String primaryEntrypoint) {
+            String primaryEntrypoint,
+            String deploymentYaml) {
 
         log.info("Registering new artifact: {} version {}", name, version);
 
@@ -88,6 +89,7 @@ public class ArtifactRegistryServiceImpl implements ArtifactRegistryService {
         jsonMetadata.setDependencies(dependencies);
         jsonMetadata.setTags(tags);
         jsonMetadata.setPrimaryEntrypoint(primaryEntrypoint);
+        jsonMetadata.setDeploymentYaml(deploymentYaml);
 
         // Set URLs
         String downloadUrl = "/api/registry/artifacts/" + name + "/" + version + "/download";

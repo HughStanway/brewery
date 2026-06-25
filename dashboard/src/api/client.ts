@@ -88,6 +88,7 @@ export interface ArtifactMetadataJson {
   primary_entrypoint?: string;
   dependencies?: { name: string; version_range: string; resolved_version?: string }[];
   tags?: string[];
+  deployment_yaml?: string;
 }
 
 export interface Dependency {
