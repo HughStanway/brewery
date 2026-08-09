@@ -261,10 +261,12 @@ function updateYamlEnvironment(yamlStr: string, serviceName: string, env: Record
   return lines.join('\n');
 }
 
-function ServiceMetricsCard({ deploymentId, serviceName, serviceType, isSelected, onClick, healthInfo }: {
+function ServiceMetricsCard({ deploymentId, serviceName, serviceType, artifactSpec, deployedVersion, isSelected, onClick, healthInfo }: {
   deploymentId: string;
   serviceName: string;
   serviceType: string;
+  artifactSpec?: string;
+  deployedVersion?: string;
   isSelected: boolean;
   onClick: () => void;
   healthInfo: ServiceHealthCheck | null;
@@ -287,11 +289,18 @@ function ServiceMetricsCard({ deploymentId, serviceName, serviceType, isSelected
       }`}
     >
       <div className="flex items-center justify-between mb-3">
-        <div>
-          <h5 className="font-semibold text-sm text-gray-900 group-hover:text-[var(--primary)] transition-colors">{serviceName}</h5>
-          <span className="text-[10px] text-gray-500 font-mono uppercase">{serviceType}</span>
+        <div className="min-w-0 flex-1 pr-2">
+          <h5 className="font-semibold text-sm text-gray-900 group-hover:text-[var(--primary)] transition-colors truncate">{serviceName}</h5>
+          <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+            <span className="text-[10px] text-gray-500 font-mono uppercase shrink-0">{serviceType}</span>
+            {deployedVersion && (
+              <span className="text-[10px] font-mono font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200/80 truncate max-w-[170px]" title={`Deployed Version: ${deployedVersion}`}>
+                v{deployedVersion}
+              </span>
+            )}
+          </div>
         </div>
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 shrink-0">
           {healthInfo && (
             <span className={`text-[8px] font-extrabold px-1.5 py-0.5 rounded tracking-wider uppercase border ${
               healthInfo.status === 'healthy' 
@@ -337,6 +346,13 @@ function ServiceMetricsCard({ deploymentId, serviceName, serviceType, isSelected
         <div className="flex justify-between text-gray-500 text-[9px] font-mono pt-1">
           <span>NET I/O</span>
           <span>{stats?.network || '--'}</span>
+        </div>
+
+        <div className="flex justify-between items-center text-gray-500 text-[9px] font-mono pt-1 border-t border-[var(--card-border)]/40">
+          <span>DEPLOYED ARTIFACT</span>
+          <span className="font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200/60 truncate max-w-[170px]" title={deployedVersion || artifactSpec || 'latest'}>
+            {deployedVersion || artifactSpec || 'latest'}
+          </span>
         </div>
 
         {healthInfo && (
@@ -654,6 +670,20 @@ export default function DeploymentDetailsPage() {
     enabled: !!id,
     refetchInterval: activeTab === 'history' ? 5000 : false,
   });
+
+  const deployedArtifactVersions = React.useMemo(() => {
+    if (!currentVersions || currentVersions.length === 0) return {};
+    const activeVer = currentVersions.find(v => v.status === 'active') || currentVersions[0];
+    if (!activeVer || !activeVer.artifactVersions) return {};
+    try {
+      const parsed = typeof activeVer.artifactVersions === 'string'
+        ? JSON.parse(activeVer.artifactVersions)
+        : activeVer.artifactVersions;
+      return parsed || {};
+    } catch (e) {
+      return {};
+    }
+  }, [currentVersions]);
 
   const { data: currentEvents } = useQuery({
     queryKey: ['deploymentEvents', id],
@@ -1065,12 +1095,17 @@ export default function DeploymentDetailsPage() {
                             serviceNames.map((name) => {
                               const svc = parsedServices[name];
                               const health = currentHealth?.find(hc => hc.serviceName === name) || null;
+                              const artifactName = svc.artifact ? (svc.artifact.includes('@') ? svc.artifact.split('@')[0] : svc.artifact) : name;
+                              const deployedVer = deployedArtifactVersions[name] || deployedArtifactVersions[artifactName] || null;
+
                               return (
                                 <ServiceMetricsCard 
                                   key={name}
                                   deploymentId={selectedDeployment.id} 
                                   serviceName={name} 
                                   serviceType={svc.type} 
+                                  artifactSpec={svc.artifact}
+                                  deployedVersion={deployedVer}
                                   isSelected={name === selectedService} 
                                   onClick={() => setSelectedService(name)} 
                                   healthInfo={health}
