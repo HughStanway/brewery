@@ -49,6 +49,9 @@ logging:
     com.homelab.brewery: DEBUG
 
 brewery:
+  auth:
+    enabled: ${BREWERY_AUTH_ENABLED:true}
+
   build:
     timeout-seconds: 1800
     max-concurrent-builds: 2

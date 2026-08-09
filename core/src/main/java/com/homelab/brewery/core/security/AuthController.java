@@ -2,7 +2,9 @@ package com.homelab.brewery.core.security;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -16,11 +18,20 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/auth")
-@RequiredArgsConstructor
 public class AuthController {
 
     private final AuthenticationManager authenticationManager;
     private final UserRepository userRepository;
+    private final boolean authEnabled;
+
+    public AuthController(
+            AuthenticationManager authenticationManager,
+            UserRepository userRepository,
+            @org.springframework.beans.factory.annotation.Value("${brewery.auth.enabled:true}") boolean authEnabled) {
+        this.authenticationManager = authenticationManager;
+        this.userRepository = userRepository;
+        this.authEnabled = authEnabled;
+    }
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest request, HttpServletRequest httpRequest) {
@@ -50,6 +61,9 @@ public class AuthController {
 
     @GetMapping("/me")
     public ResponseEntity<?> me(Authentication authentication) {
+        if (!authEnabled) {
+            return ResponseEntity.ok(new UserResponse("proxy-admin", "ROLE_ADMIN"));
+        }
         if (authentication == null || !authentication.isAuthenticated()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ErrorResponse("Not authenticated"));
         }
@@ -61,12 +75,16 @@ public class AuthController {
     }
 
     @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class LoginRequest {
         private String username;
         private String password;
     }
 
     @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class UserResponse {
         private String username;
         private String role;
