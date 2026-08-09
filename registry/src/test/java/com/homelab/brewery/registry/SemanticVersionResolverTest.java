@@ -123,4 +123,19 @@ public class SemanticVersionResolverTest {
         assertEquals("1.3.0", resolver.resolveVersionRange("1.0.0 - 1.3.0", versions));
         assertEquals("2.1.0", resolver.resolveVersionRange("^1.0.0 || ^2.0.0", versions));
     }
+
+    @Test
+    public void testMonotonicBuildVersions() {
+        // Build 1 (older commit): 0.0.0-build.100.19fe162
+        // Build 2 (newer commit): 0.0.0-build.101.1ae63d7
+        List<String> unTaggedVersions = List.of("0.0.0-build.100.19fe162", "0.0.0-build.101.1ae63d7");
+        
+        // Newer monotonic build version (build.101) should resolve as highest version
+        assertEquals("0.0.0-build.101.1ae63d7", resolver.resolveVersionRange("*", unTaggedVersions));
+        assertEquals("0.0.0-build.101.1ae63d7", resolver.resolveVersionRange("latest", unTaggedVersions));
+
+        // Epoch timestamp based build versions
+        List<String> timestampVersions = List.of("0.0.0-build.1770548500000.19fe162", "0.0.0-build.1770548600000.1ae63d7");
+        assertEquals("0.0.0-build.1770548600000.1ae63d7", resolver.resolveVersionRange("*", timestampVersions));
+    }
 }

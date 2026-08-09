@@ -124,7 +124,7 @@ public class DeploymentServiceImpl implements DeploymentService {
             boolean usesArtifactStore = false;
 
             File deployDir = new File("/tmp/brewery-builds/deployments/deploy-" + deployment.getId());
-            deployDir.mkdirs();
+            Files.createDirectories(deployDir.toPath());
 
             for (Map.Entry<String, DeploymentSpec.ServiceSpec> entry : spec.getServices().entrySet()) {
                 String serviceName = entry.getKey();
@@ -565,6 +565,19 @@ public class DeploymentServiceImpl implements DeploymentService {
                 String artifactName = image.substring(0, image.indexOf("@"));
                 String range = image.substring(image.indexOf("@") + 1);
 
+                if (isLatestSpecifier(range)) {
+                    Optional<Artifact> latestOpt = artifactRepository.findByNameAndIsLatestTrue(artifactName);
+                    if (latestOpt.isPresent()) {
+                        resolved.put(artifactName, latestOpt.get().getVersion());
+                        continue;
+                    }
+                    List<Artifact> byDate = artifactRepository.findByNameOrderByCreatedAtDesc(artifactName);
+                    if (byDate != null && !byDate.isEmpty()) {
+                        resolved.put(artifactName, byDate.get(0).getVersion());
+                        continue;
+                    }
+                }
+
                 List<Artifact> artifacts = artifactRepository.findByName(artifactName);
                 if (artifacts == null || artifacts.isEmpty()) {
                     throw new IllegalArgumentException("No registered artifacts found for name: " + artifactName);
@@ -579,6 +592,12 @@ public class DeploymentServiceImpl implements DeploymentService {
             }
         }
         return resolved;
+    }
+
+    private boolean isLatestSpecifier(String range) {
+        if (range == null || range.isBlank()) return true;
+        String clean = range.trim().toLowerCase();
+        return clean.equals("latest") || clean.equals("@latest") || clean.equals("is_latest") || clean.equals("*") || clean.equals("any");
     }
 
     private String generateComposeYaml(Map<String, Object> composeMap) {
@@ -898,6 +917,9 @@ public class DeploymentServiceImpl implements DeploymentService {
             }
         }
 
+        if (scriptFile.getParentFile() != null) {
+            Files.createDirectories(scriptFile.getParentFile().toPath());
+        }
         Files.writeString(scriptFile.toPath(), script.toString(), StandardCharsets.UTF_8);
         try {
             scriptFile.setExecutable(true, false);

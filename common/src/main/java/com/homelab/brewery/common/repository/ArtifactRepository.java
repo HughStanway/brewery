@@ -12,4 +12,6 @@ import java.util.UUID;
 public interface ArtifactRepository extends JpaRepository<Artifact, UUID> {
     Optional<Artifact> findByNameAndVersion(String name, String version);
     List<Artifact> findByName(String name);
+    Optional<Artifact> findByNameAndIsLatestTrue(String name);
+    List<Artifact> findByNameOrderByCreatedAtDesc(String name);
 }

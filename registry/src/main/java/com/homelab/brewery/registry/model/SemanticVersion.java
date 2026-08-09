@@ -52,8 +52,53 @@ public class SemanticVersion implements Comparable<SemanticVersion> {
         if (this.prerelease == null && o.prerelease != null) return 1;
         if (this.prerelease != null && o.prerelease == null) return -1;
         if (this.prerelease != null && o.prerelease != null) {
-            return this.prerelease.compareTo(o.prerelease);
+            return comparePrereleases(this.prerelease, o.prerelease);
         }
         return 0;
+    }
+
+    private static int comparePrereleases(String p1, String p2) {
+        if (p1.equals(p2)) return 0;
+        String[] parts1 = p1.split("\\.");
+        String[] parts2 = p2.split("\\.");
+        int minLen = Math.min(parts1.length, parts2.length);
+
+        for (int i = 0; i < minLen; i++) {
+            String token1 = parts1[i];
+            String token2 = parts2[i];
+            if (token1.equals(token2)) continue;
+
+            boolean isNum1 = isNumeric(token1);
+            boolean isNum2 = isNumeric(token2);
+
+            if (isNum1 && isNum2) {
+                try {
+                    long n1 = Long.parseLong(token1);
+                    long n2 = Long.parseLong(token2);
+                    return Long.compare(n1, n2);
+                } catch (NumberFormatException e) {
+                    return token1.compareTo(token2);
+                }
+            } else if (isNum1 && !isNum2) {
+                // Numeric identifiers have lower precedence than non-numeric identifiers per SemVer 2.0.0
+                return -1;
+            } else if (!isNum1 && isNum2) {
+                return 1;
+            } else {
+                int c = token1.compareTo(token2);
+                if (c != 0) return c;
+            }
+        }
+        return Integer.compare(parts1.length, parts2.length);
+    }
+
+    private static boolean isNumeric(String str) {
+        if (str == null || str.isEmpty()) return false;
+        for (int i = 0; i < str.length(); i++) {
+            if (!Character.isDigit(str.charAt(i))) {
+                return false;
+            }
+        }
+        return true;
     }
 }

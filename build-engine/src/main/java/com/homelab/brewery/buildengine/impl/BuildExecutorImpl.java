@@ -304,7 +304,9 @@ public class BuildExecutorImpl implements BuildExecutor {
             }
 
             // 8. Extract Artifacts
-            String artifactVersion = "0.0.0-" + build.getCommit().substring(0, Math.min(build.getCommit().length(), 7));
+            long buildTimestamp = build.getCreatedAt() != null ? build.getCreatedAt().toEpochMilli() : System.currentTimeMillis();
+            String shortCommit = build.getCommit() != null ? build.getCommit().substring(0, Math.min(build.getCommit().length(), 7)) : "unknown";
+            String artifactVersion = "0.0.0-build." + buildTimestamp + "." + shortCommit;
             
             // If this build is triggered by a CascadeTask, use the original target version to maintain in-place rebuild consistency
             try {

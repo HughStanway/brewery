@@ -327,10 +327,26 @@ public class ArtifactRegistryServiceImpl implements ArtifactRegistryService {
 
     @Override
     public String resolveVersionRange(String name, String versionRange) {
+        if (isLatestSpecifier(versionRange)) {
+            Optional<Artifact> latestOpt = artifactRepository.findByNameAndIsLatestTrue(name);
+            if (latestOpt.isPresent()) {
+                return latestOpt.get().getVersion();
+            }
+            List<Artifact> sortedByDate = artifactRepository.findByNameOrderByCreatedAtDesc(name);
+            if (sortedByDate != null && !sortedByDate.isEmpty()) {
+                return sortedByDate.get(0).getVersion();
+            }
+        }
         List<String> versions = listVersions(name).stream()
                 .map(Artifact::getVersion)
                 .collect(Collectors.toList());
         return versionResolver.resolveVersionRange(versionRange, versions);
+    }
+
+    private boolean isLatestSpecifier(String range) {
+        if (range == null || range.isBlank()) return true;
+        String clean = range.trim().toLowerCase();
+        return clean.equals("latest") || clean.equals("@latest") || clean.equals("is_latest") || clean.equals("*") || clean.equals("any");
     }
 
     @Override
@@ -387,6 +403,7 @@ public class ArtifactRegistryServiceImpl implements ArtifactRegistryService {
         }
         Artifact artifact = artifactOpt.get();
         UUID artifactId = artifact.getId();
+        boolean wasLatest = Boolean.TRUE.equals(artifact.getIsLatest());
 
         // 1. Delete associated relational tag records
         tagRepository.deleteByArtifactId(artifactId);
@@ -410,6 +427,15 @@ public class ArtifactRegistryServiceImpl implements ArtifactRegistryService {
 
         // 7. Delete the artifact record itself
         artifactRepository.delete(artifact);
+
+        if (wasLatest) {
+            List<Artifact> remaining = artifactRepository.findByNameOrderByCreatedAtDesc(name);
+            if (remaining != null && !remaining.isEmpty()) {
+                Artifact newLatest = remaining.get(0);
+                newLatest.setIsLatest(true);
+                artifactRepository.save(newLatest);
+            }
+        }
 
         // 8. Delete the artifact directory from disk storage
         try {
