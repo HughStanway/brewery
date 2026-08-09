@@ -35,12 +35,6 @@ spring:
     serialization:
       write-dates-as-timestamps: false
     default-property-inclusion: non_null
-  
-  cloud:
-    gcp:
-      project-id: ${GCP_PROJECT_ID:brewery-homelab}
-      credentials:
-        location: ${GCP_CREDENTIALS_LOCATION:}
 
 server:
   port: 8080
@@ -71,7 +65,7 @@ brewery:
   
   github:
     webhook:
-      secret: ${BREWERY_GITHUB_WEBHOOK_SECRET:${GITHUB_WEBHOOK_SECRET:dev_secret}}
+      secret: ${BREWERY_GITHUB_WEBHOOK_SECRET:dev_secret}
       allowed-events:
         - push
         - pull_request

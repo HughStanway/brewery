@@ -30,7 +30,7 @@ public class GitHubWebhookController {
 
     public GitHubWebhookController(
             JobTriggerService jobTriggerService,
-            @Value("${brewery.github.webhook.secret:${BREWERY_GITHUB_WEBHOOK_SECRET:${GITHUB_WEBHOOK_SECRET:dev_secret}}}") String webhookSecret) {
+            @Value("${brewery.github.webhook.secret:${BREWERY_GITHUB_WEBHOOK_SECRET:dev_secret}}") String webhookSecret) {
         this.jobTriggerService = jobTriggerService;
         this.webhookSecret = webhookSecret;
     }

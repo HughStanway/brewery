@@ -56,10 +56,6 @@ services:
       - "127.0.0.1:${BREWERY_PORT:-8080}:8080"
     volumes:
       - artifact_store:/mnt/artifact-store
-      # Mount standard Google Application Default Credentials (ADC) from host
-      - ~/.config/gcloud:/root/.config/gcloud:ro
-      # Mount GCP service account credentials folder
-      - ${GCP_CREDENTIALS_HOST_PATH:-./gcp-keys}:${GCP_CREDENTIALS_CONTAINER_PATH:-/app/gcp-keys}:ro
       # Mount project directory for local repository git cloning (development tests)
       - .:${PWD:-/app/src}:ro
       # Mount temporary builds directory for sibling container builds (DooD/DinD)
