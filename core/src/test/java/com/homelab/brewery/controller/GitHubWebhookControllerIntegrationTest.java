@@ -27,7 +27,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(GitHubWebhookController.class)
 @Import(SecurityConfig.class)
-@TestPropertySource(properties = "brewery.github.webhook-secret=test-integration-secret")
+@TestPropertySource(properties = "brewery.github.webhook.secret=test-integration-secret")
 public class GitHubWebhookControllerIntegrationTest {
 
     @Autowired

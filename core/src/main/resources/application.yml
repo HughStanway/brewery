@@ -71,7 +71,7 @@ brewery:
   
   github:
     webhook:
-      secret: ${BREWERY_GITHUB_WEBHOOK_SECRET:${GITHUB_WEBHOOK_SECRET:}}
+      secret: ${BREWERY_GITHUB_WEBHOOK_SECRET:${GITHUB_WEBHOOK_SECRET:dev_secret}}
       allowed-events:
         - push
         - pull_request
