@@ -72,7 +72,7 @@ services:
       dind:
         condition: service_healthy
     networks:
-      - brewery_net`
+      - brewery_net
 
   registry:
     image: registry:2
