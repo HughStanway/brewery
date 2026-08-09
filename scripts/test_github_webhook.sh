@@ -2,7 +2,12 @@
 set -euo pipefail
 
 WEBHOOK_URL="http://localhost:8080/api/webhooks/github"
-SECRET="${BREWERY_GITHUB_WEBHOOK_SECRET:-dev_secret}"
+# Resolve secret from environment or local .env file
+ENV_SECRET=""
+if [ -f .env ]; then
+  ENV_SECRET=$(grep -E '^(BREWERY_GITHUB_WEBHOOK_SECRET|GITHUB_WEBHOOK_SECRET)=' .env | tail -n 1 | cut -d '=' -f2 | tr -d '"' | tr -d "'")
+fi
+SECRET="${BREWERY_GITHUB_WEBHOOK_SECRET:-${GITHUB_WEBHOOK_SECRET:-${ENV_SECRET:-dev_secret}}}"
 
 PASS="✓"
 FAIL="✗"
