@@ -45,7 +45,7 @@ public class DisabledAuthIntegrationTest {
         mockMvc.perform(get("/api/auth/me")
                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.username").value("proxy-admin"))
+                .andExpect(jsonPath("$.username").value("SSO-Authenticated"))
                 .andExpect(jsonPath("$.role").value("ROLE_ADMIN"));
     }
 

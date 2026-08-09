@@ -62,7 +62,7 @@ public class AuthController {
     @GetMapping("/me")
     public ResponseEntity<?> me(Authentication authentication) {
         if (!authEnabled) {
-            return ResponseEntity.ok(new UserResponse("proxy-admin", "ROLE_ADMIN"));
+            return ResponseEntity.ok(new UserResponse("SSO-Authenticated", "ROLE_ADMIN"));
         }
         if (authentication == null || !authentication.isAuthenticated()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ErrorResponse("Not authenticated"));
