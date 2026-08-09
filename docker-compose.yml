@@ -52,6 +52,7 @@ services:
       - DB_URL=jdbc:postgresql://postgres:5432/supply_chain
       - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-prod}
       - ARTIFACT_STORE_PATH=/mnt/artifact-store
+      - BREWERY_AUTH_ENABLED=${BREWERY_AUTH_ENABLED:-true}
     ports:
       - "127.0.0.1:${BREWERY_PORT:-8080}:8080"
     volumes:
