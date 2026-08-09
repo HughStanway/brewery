@@ -5,7 +5,6 @@ WORKDIR /app
 
 COPY pom.xml .
 COPY common ./common
-COPY pubsub ./pubsub
 COPY core ./core
 COPY build-engine ./build-engine
 COPY registry ./registry

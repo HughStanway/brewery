@@ -55,9 +55,6 @@ logging:
     com.homelab.brewery: DEBUG
 
 brewery:
-  pubsub:
-    subscription-id: ${BREWERY_JOBS_SUBSCRIPTION:brewery-jobs-sub}
-
   build:
     timeout-seconds: 1800
     max-concurrent-builds: 2
@@ -74,7 +71,7 @@ brewery:
   
   github:
     webhook:
-      secret: ${GITHUB_WEBHOOK_SECRET:dev_secret}
+      secret: ${BREWERY_GITHUB_WEBHOOK_SECRET:${GITHUB_WEBHOOK_SECRET:}}
       allowed-events:
         - push
         - pull_request

@@ -14,7 +14,6 @@
 
     <modules>
         <module>common</module>
-        <module>pubsub</module>
         <module>core</module>
         <module>build-engine</module>
         <module>registry</module>
@@ -74,11 +73,6 @@
             <dependency>
                 <groupId>com.homelab.brewery</groupId>
                 <artifactId>common</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.homelab.brewery</groupId>
-                <artifactId>pubsub</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>

@@ -22,10 +22,6 @@
         </dependency>
         <dependency>
             <groupId>com.homelab.brewery</groupId>
-            <artifactId>pubsub</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.homelab.brewery</groupId>
             <artifactId>build-engine</artifactId>
         </dependency>
         <dependency>

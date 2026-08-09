@@ -35,13 +35,9 @@ run: ## Run full stack in Docker Compose in production mode
 	SPRING_PROFILES_ACTIVE=prod $(DOCKER_COMPOSE) up -d --build
 	@echo "$(GREEN)✓ Application started in production mode$(NC)"
 
-run-local: ## Run full-stack in Docker Compose in development mode (using Pub/Sub emulator)
+run-local: ## Run full-stack in Docker Compose in development mode
 	@echo "$(BLUE)Building Docker images and starting all containers in development mode...$(NC)"
-	SPRING_PROFILES_ACTIVE=dev $(DOCKER_COMPOSE) --profile dev up -d --build
-	@echo "$(BLUE)Waiting for services to boot...$(NC)"
-	@sleep 5
-	@echo "$(BLUE)Initializing Pub/Sub emulator topics/subscriptions...$(NC)"
-	@./scripts/init-pubsub-emulator.sh
+	SPRING_PROFILES_ACTIVE=dev $(DOCKER_COMPOSE) up -d --build
 	@echo "$(GREEN)✓ Local development environment started in Docker (port 3000)$(NC)"
 
 run-ui: ## Run Next.js dashboard UI locally
