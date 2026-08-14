@@ -1,6 +1,7 @@
 services:
   postgres:
     image: postgres:15-alpine
+    restart: unless-stopped
     env_file:
       - .env
     volumes:
@@ -15,6 +16,7 @@ services:
 
   redis:
     image: redis:7-alpine
+    restart: unless-stopped
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -25,6 +27,7 @@ services:
 
   dind:
     image: docker:25-dind
+    restart: unless-stopped
     privileged: true
     command: ["--insecure-registry", "registry:5000"]
     environment:
@@ -45,6 +48,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    restart: unless-stopped
     env_file:
       - .env
     environment:
@@ -57,9 +61,7 @@ services:
       - "127.0.0.1:${BREWERY_PORT:-8080}:8080"
     volumes:
       - artifact_store:/mnt/artifact-store
-      # Mount project directory for local repository git cloning (development tests)
       - .:${PWD:-/app/src}:ro
-      # Mount temporary builds directory for sibling container builds (DooD/DinD)
       - brewery_builds:/tmp/brewery-builds
     depends_on:
       postgres:
@@ -83,6 +85,7 @@ services:
     build:
       context: ./dashboard
       dockerfile: Dockerfile
+    restart: unless-stopped
     env_file:
       - .env
     environment:
