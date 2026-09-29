@@ -938,4 +938,31 @@ databaseChangeLog:
             columns:
               - column: { name: username }
 
+  - changeSet:
+      id: "10-komodo-deployments-schema"
+      author: "brewery"
+      changes:
+        - addColumn:
+            tableName: deployments
+            columns:
+              - column:
+                  name: komodo_stack_name
+                  type: VARCHAR(255)
+              - column:
+                  name: artifact_name
+                  type: VARCHAR(255)
+              - column:
+                  name: deployed_version
+                  type: VARCHAR(255)
+              - column:
+                  name: komodo_url
+                  type: VARCHAR(512)
+        - dropNotNullConstraint:
+            tableName: deployments
+            columnName: deployment_spec
+            columnDataType: TEXT
+        - addDefaultValue:
+            tableName: deployments
+            columnName: deployment_spec
+            defaultValue: ""
 

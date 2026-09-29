@@ -1,6 +1,14 @@
-# Build stage using a pre-installed Maven image on top of Eclipse Temurin JDK 21
-FROM maven:3.9.6-eclipse-temurin-21 AS build
+# Stage 1: Build Next.js Dashboard static export
+FROM node:20-alpine AS dashboard-build
+WORKDIR /app/dashboard
+COPY dashboard/package*.json ./
+RUN npm ci
+COPY dashboard ./
+RUN rm -rf src/app/api
+RUN npm run build
 
+# Stage 2: Build Spring Boot Jar (including Dashboard static output)
+FROM maven:3.9.6-eclipse-temurin-21 AS build
 WORKDIR /app
 
 COPY pom.xml .
@@ -12,13 +20,16 @@ COPY dependency-resolver ./dependency-resolver
 COPY deployment-engine ./deployment-engine
 COPY cascade-rebuild ./cascade-rebuild
 
+# Copy Next.js static export directly into Spring Boot static resources
+COPY --from=dashboard-build /app/dashboard/out /app/core/src/main/resources/static
+
 # Build the application
 RUN mvn clean package -DskipTests -q
 
-# Runtime stage using standard glibc-based Eclipse Temurin JRE 21 (fixes netty ARM64 SIGSEGV on Alpine)
+# Stage 3: Runtime Stage
 FROM eclipse-temurin:21-jre
 
-# Install git and Docker CLI (which includes docker compose plugin)
+# Install git and Docker CLI
 RUN apt-get update && apt-get install -y git curl && \
     curl -fsSL https://get.docker.com | sh && \
     rm -rf /var/lib/apt/lists/*

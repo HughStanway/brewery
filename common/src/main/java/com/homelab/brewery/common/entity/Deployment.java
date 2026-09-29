@@ -4,6 +4,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -23,14 +24,26 @@ public class Deployment {
     @Column(nullable = false, unique = true)
     private String name;
 
+    @Column(name = "komodo_stack_name")
+    private String komodoStackName;
+
+    @Column(name = "artifact_name")
+    private String artifactName;
+
+    @Column(name = "deployed_version")
+    private String deployedVersion;
+
     @Column(columnDefinition = "TEXT")
     private String description;
 
     @Column(nullable = false)
     private String status;
 
-    @Column(name = "deployment_spec", nullable = false, columnDefinition = "TEXT")
+    @Column(name = "deployment_spec", columnDefinition = "TEXT")
     private String deploymentSpec;
+
+    @Column(name = "komodo_url")
+    private String komodoUrl;
 
     @Column(name = "deployed_at")
     private Instant deployedAt;
@@ -48,6 +61,7 @@ public class Deployment {
     private Instant updatedAt;
 
     @PrePersist
+    @PreUpdate
     public void prePersist() {
         if (id == null) {
             id = UUID.randomUUID();
@@ -55,11 +69,12 @@ public class Deployment {
         if (status == null) {
             status = "pending";
         }
+        if (deploymentSpec == null) {
+            deploymentSpec = "";
+        }
         if (createdAt == null) {
             createdAt = Instant.now();
         }
-        if (updatedAt == null) {
-            updatedAt = Instant.now();
-        }
+        updatedAt = Instant.now();
     }
 }

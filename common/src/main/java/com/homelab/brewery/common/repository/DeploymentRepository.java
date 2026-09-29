@@ -11,5 +11,6 @@ import java.util.UUID;
 @Repository
 public interface DeploymentRepository extends JpaRepository<Deployment, UUID> {
     Optional<Deployment> findByName(String name);
+    List<Deployment> findByArtifactName(String artifactName);
     List<Deployment> findByStatus(String status);
 }

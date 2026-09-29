@@ -72,3 +72,10 @@ brewery:
       allowed-events:
         - push
         - pull_request
+
+  deployment:
+    komodo:
+      base-url: ${KOMODO_BASE_URL:http://komodo:9120}
+      api-key: ${KOMODO_API_KEY:}
+      api-secret: ${KOMODO_API_SECRET:}
+

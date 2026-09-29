@@ -1,9 +1,6 @@
 package com.homelab.brewery.deploymentengine.controller;
 
 import com.homelab.brewery.common.entity.Deployment;
-import com.homelab.brewery.common.entity.DeploymentEvent;
-import com.homelab.brewery.common.entity.DeploymentVersion;
-import com.homelab.brewery.common.entity.ServiceHealthCheck;
 import com.homelab.brewery.deploymentengine.service.DeploymentService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -37,29 +34,21 @@ public class DeploymentController {
     }
 
     @PostMapping
-    public ResponseEntity<Deployment> createOrUpdateDeployment(@RequestBody Map<String, String> body) {
+    public ResponseEntity<Deployment> registerOrUpdateDeployment(@RequestBody Map<String, String> body) {
         String name = body.get("name");
-        String specYaml = body.get("specYaml");
+        String komodoStackName = body.get("komodoStackName");
+        String artifactName = body.get("artifactName");
+        String description = body.get("description");
         String username = body.get("username");
-        if (name == null || specYaml == null) {
-            return ResponseEntity.badRequest().build();
-        }
-        Deployment deployment = deploymentService.createOrUpdateDeployment(name, specYaml, username);
-        return ResponseEntity.ok(deployment);
-    }
 
-    @PostMapping("/plan")
-    public ResponseEntity<?> planDeployment(@RequestBody Map<String, String> body) {
-        String specYaml = body.get("specYaml");
-        if (specYaml == null) {
+        if (name == null || komodoStackName == null || artifactName == null) {
             return ResponseEntity.badRequest().build();
         }
-        try {
-            Map<String, Object> plan = deploymentService.planDeployment(specYaml);
-            return ResponseEntity.ok(plan);
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
+
+        Deployment deployment = deploymentService.registerOrUpdateDeployment(
+                name, komodoStackName, artifactName, description, username
+        );
+        return ResponseEntity.ok(deployment);
     }
 
     @PostMapping("/{id}/deploy")
@@ -68,92 +57,8 @@ public class DeploymentController {
             Deployment deployment = deploymentService.deploy(id);
             return ResponseEntity.ok(deployment);
         } catch (Exception e) {
-            log.error("Deployment failed for {}", id, e);
+            log.error("Komodo deployment failed for {}", id, e);
             return ResponseEntity.internalServerError().build();
-        }
-    }
-
-    @PostMapping("/{id}/rollback/{version}")
-    public ResponseEntity<?> rollback(@PathVariable("id") UUID id, @PathVariable("version") Integer version) {
-        try {
-            deploymentService.rollback(id, version);
-            return ResponseEntity.ok(Map.of("status", "success", "message", "Rolled back to version " + version));
-        } catch (Exception e) {
-            log.error("Rollback failed", e);
-            return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
-        }
-    }
-
-    @GetMapping("/{id}/versions")
-    public ResponseEntity<List<DeploymentVersion>> getDeploymentVersions(@PathVariable("id") UUID id) {
-        return ResponseEntity.ok(deploymentService.getDeploymentVersions(id));
-    }
-
-    @GetMapping("/{id}/events")
-    public ResponseEntity<List<DeploymentEvent>> getDeploymentEvents(@PathVariable("id") UUID id) {
-        return ResponseEntity.ok(deploymentService.getDeploymentEvents(id));
-    }
-
-    @GetMapping("/{id}/health")
-    public ResponseEntity<List<ServiceHealthCheck>> getServiceHealthChecks(@PathVariable("id") UUID id) {
-        return ResponseEntity.ok(deploymentService.getServiceHealthChecks(id));
-    }
-
-    @PostMapping("/{id}/health/check")
-    public ResponseEntity<?> triggerHealthCheck(@PathVariable("id") UUID id) {
-        try {
-            deploymentService.checkAndRemediateHealth(id);
-            return ResponseEntity.ok(Map.of("status", "success", "message", "Health check completed"));
-        } catch (Exception e) {
-            return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
-        }
-    }
-
-    @GetMapping("/{id}/logs/{serviceName}")
-    public ResponseEntity<Map<String, String>> getContainerLogs(
-            @PathVariable("id") UUID id,
-            @PathVariable("serviceName") String serviceName) {
-        String logs = deploymentService.getContainerLogs(id, serviceName);
-        return ResponseEntity.ok(Map.of("logs", logs));
-    }
-
-    @GetMapping("/{id}/stats/{serviceName}")
-    public ResponseEntity<Map<String, Object>> getContainerStats(
-            @PathVariable("id") UUID id,
-            @PathVariable("serviceName") String serviceName) {
-        return ResponseEntity.ok(deploymentService.getContainerStats(id, serviceName));
-    }
-
-    @PostMapping("/{id}/pause")
-    public ResponseEntity<?> pauseDeployment(@PathVariable("id") UUID id) {
-        try {
-            Deployment deployment = deploymentService.pauseDeployment(id);
-            return ResponseEntity.ok(deployment);
-        } catch (Exception e) {
-            log.error("Failed to pause deployment {}", id, e);
-            return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
-        }
-    }
-
-    @PostMapping("/{id}/resume")
-    public ResponseEntity<?> resumeDeployment(@PathVariable("id") UUID id) {
-        try {
-            Deployment deployment = deploymentService.resumeDeployment(id);
-            return ResponseEntity.ok(deployment);
-        } catch (Exception e) {
-            log.error("Failed to resume deployment {}", id, e);
-            return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
-        }
-    }
-
-    @PostMapping("/{id}/restart")
-    public ResponseEntity<?> restartDeployment(@PathVariable("id") UUID id) {
-        try {
-            Deployment deployment = deploymentService.restartDeployment(id);
-            return ResponseEntity.ok(deployment);
-        } catch (Exception e) {
-            log.error("Failed to restart deployment {}", id, e);
-            return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
         }
     }
 
@@ -161,7 +66,7 @@ public class DeploymentController {
     public ResponseEntity<?> deleteDeployment(@PathVariable("id") UUID id) {
         try {
             deploymentService.deleteDeployment(id);
-            return ResponseEntity.ok(Map.of("status", "success", "message", "Deployment deleted successfully"));
+            return ResponseEntity.ok(Map.of("status", "success", "message", "Deployment mapping deleted successfully"));
         } catch (Exception e) {
             log.error("Failed to delete deployment {}", id, e);
             return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));

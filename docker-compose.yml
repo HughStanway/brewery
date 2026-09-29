@@ -11,8 +11,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-    networks:
-      - brewery_net
 
   redis:
     image: redis:7-alpine
@@ -22,27 +20,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-    networks:
-      - brewery_net
-
-  dind:
-    image: docker:25-dind
-    restart: unless-stopped
-    privileged: true
-    command: ["--insecure-registry", "registry:5000"]
-    environment:
-      - DOCKER_TLS_CERTDIR=
-    volumes:
-      - brewery_builds:/tmp/brewery-builds
-      - artifact_store:/mnt/artifact-store
-    healthcheck:
-      test: ["CMD", "docker", "info"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-    networks:
-      brewery_net:
-        ipv4_address: 172.20.0.100
 
   brewery:
     build:
@@ -52,14 +29,18 @@ services:
     env_file:
       - .env
     environment:
-      - DOCKER_HOST=tcp://dind:2375
+      - DOCKER_HOST=${DOCKER_HOST:-unix:///var/run/docker.sock}
       - DB_URL=jdbc:postgresql://postgres:5432/supply_chain
       - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-prod}
       - ARTIFACT_STORE_PATH=/mnt/artifact-store
-      - BREWERY_AUTH_ENABLED=${BREWERY_AUTH_ENABLED:-true}
+      - BREWERY_AUTH_ENABLED=${BREWERY_AUTH_ENABLED:-false}
+      - KOMODO_BASE_URL=${KOMODO_BASE_URL:-http://komodo:9120}
+      - KOMODO_API_KEY=${KOMODO_API_KEY:-}
+      - KOMODO_API_SECRET=${KOMODO_API_SECRET:-}
     ports:
       - "127.0.0.1:${BREWERY_PORT:-8080}:8080"
     volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
       - artifact_store:/mnt/artifact-store
       - .:${PWD:-/app/src}:ro
       - brewery_builds:/tmp/brewery-builds
@@ -68,44 +49,42 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      dind:
-        condition: service_healthy
-    networks:
-      - brewery_net
+
+  mongo:
+    image: mongo:7.0
+    restart: unless-stopped
+    command: ["mongod", "--wiredTigerCacheSizeGB", "0.25"]
+    volumes:
+      - mongo_data:/data/db
+
+  komodo:
+    image: moghtech/komodo-core:latest
+    restart: unless-stopped
+    environment:
+      - KOMODO_HOST=${KOMODO_HOST_URL:-http://localhost:9120}
+      - KOMODO_DATABASE_ADDRESS=mongo:27017
+      - KOMODO_LOCAL_AUTH=true
+      - KOMODO_INIT_ADMIN_USERNAME=${KOMODO_ADMIN_USER:-admin}
+      - KOMODO_INIT_ADMIN_PASSWORD=${KOMODO_ADMIN_PASS:-admin}
+      - KOMODO_TRANSPARENT_MODE=${KOMODO_TRANSPARENT_MODE:-true}
+      - KOMODO_ENABLE_NEW_USERS=${KOMODO_ENABLE_NEW_USERS:-true}
+    ports:
+      - "127.0.0.1:${KOMODO_PORT:-9120}:9120"
+    volumes:
+      - komodo_data:/config
+    depends_on:
+      - mongo
 
   registry:
     image: registry:2
     restart: unless-stopped
     volumes:
       - registry_data:/var/lib/registry
-    networks:
-      - brewery_net
-
-  dashboard:
-    build:
-      context: ./dashboard
-      dockerfile: Dockerfile
-    restart: unless-stopped
-    env_file:
-      - .env
-    environment:
-      - BACKEND_URL=http://brewery:8080
-    ports:
-      - "127.0.0.1:${DASHBOARD_PORT:-3000}:3000"
-    depends_on:
-      - brewery
-    networks:
-      - brewery_net
 
 volumes:
   postgres_data:
   artifact_store:
   brewery_builds:
   registry_data:
-
-networks:
-  brewery_net:
-    ipam:
-      driver: default
-      config:
-        - subnet: 172.20.0.0/16
+  komodo_data:
+  mongo_data:

@@ -1,4 +1,4 @@
-.PHONY: help test rebuild logs logs-brewery run run-local stop clean
+.PHONY: help test rebuild logs logs-brewery run run-local run-ui stop clean
 
 # Variables
 DOCKER_COMPOSE := docker compose

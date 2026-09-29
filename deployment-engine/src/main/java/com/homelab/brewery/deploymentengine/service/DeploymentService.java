@@ -1,29 +1,15 @@
 package com.homelab.brewery.deploymentengine.service;
 
 import com.homelab.brewery.common.entity.Deployment;
-import com.homelab.brewery.common.entity.DeploymentEvent;
-import com.homelab.brewery.common.entity.DeploymentVersion;
-import com.homelab.brewery.common.entity.ServiceHealthCheck;
 
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 public interface DeploymentService {
-    Deployment createOrUpdateDeployment(String name, String specYaml, String username);
-    Map<String, Object> planDeployment(String specYaml);
+    Deployment registerOrUpdateDeployment(String name, String komodoStackName, String artifactName, String description, String username);
     Deployment deploy(UUID deploymentId);
-    void rollback(UUID deploymentId, Integer targetVersion);
+    void triggerDeploymentsForArtifact(String artifactName, String version);
     List<Deployment> getAllDeployments();
     Deployment getDeployment(UUID id);
-    List<DeploymentVersion> getDeploymentVersions(UUID deploymentId);
-    List<DeploymentEvent> getDeploymentEvents(UUID deploymentId);
-    List<ServiceHealthCheck> getServiceHealthChecks(UUID deploymentId);
-    void checkAndRemediateHealth(UUID deploymentId);
-    String getContainerLogs(UUID id, String serviceName);
-    Map<String, Object> getContainerStats(UUID id, String serviceName);
-    Deployment pauseDeployment(UUID id);
-    Deployment resumeDeployment(UUID id);
-    Deployment restartDeployment(UUID id);
     void deleteDeployment(UUID id);
 }

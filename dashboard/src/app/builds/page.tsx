@@ -214,7 +214,7 @@ export default function BuildsPage() {
                         )}
                         {/* View Logs */}
                         <Link 
-                          href={`/builds/${build.id}`}
+                          href={`/builds/details?id=${build.id}`}
                           className="p-2 bg-white hover:bg-blue-600 text-gray-500 hover:text-[var(--primary)] rounded-lg transition-all inline-flex items-center justify-center"
                           title="View Logs"
                         >

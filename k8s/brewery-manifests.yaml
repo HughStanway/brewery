@@ -1,0 +1,123 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+  namespace: brewery
+  labels:
+    app: postgres
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:15-alpine
+          env:
+            - name: POSTGRES_DB
+              value: supply_chain
+            - name: POSTGRES_USER
+              value: postgres
+            - name: POSTGRES_PASSWORD
+              value: brewery_secret_db_pass
+          ports:
+            - containerPort: 5432
+              name: postgres
+          volumeMounts:
+            - name: postgres-storage
+              mountPath: /var/lib/postgresql/data
+      volumes:
+        - name: postgres-storage
+          persistentVolumeClaim:
+            claimName: brewery-postgres-pvc
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: brewery-postgres-pvc
+  namespace: brewery
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: brewery
+spec:
+  selector:
+    app: postgres
+  ports:
+    - port: 5432
+      targetPort: 5432
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: brewery-orchestrator
+  namespace: brewery
+  labels:
+    app: brewery-orchestrator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: brewery-orchestrator
+  template:
+    metadata:
+      labels:
+        app: brewery-orchestrator
+    spec:
+      serviceAccountName: brewery-service-account
+      containers:
+        - name: brewery
+          image: brewery/software-supply-chain-platform:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: DB_URL
+              value: "jdbc:postgresql://postgres.brewery.svc.cluster.local:5432/supply_chain"
+            - name: DB_USERNAME
+              value: "postgres"
+            - name: DB_PASSWORD
+              value: "brewery_secret_db_pass"
+            - name: ARTIFACT_STORE_PATH
+              value: "/mnt/artifact-store"
+            - name: BREWERY_AUTH_ENABLED
+              value: "false"
+          ports:
+            - containerPort: 8080
+              name: http
+          volumeMounts:
+            - name: artifact-store
+              mountPath: /mnt/artifact-store
+            - name: docker-sock
+              mountPath: /var/run/docker.sock
+      volumes:
+        - name: artifact-store
+          persistentVolumeClaim:
+            claimName: brewery-artifact-store-pvc
+        - name: docker-sock
+          hostPath:
+            path: /var/run/docker.sock
+            type: Socket
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: brewery-orchestrator
+  namespace: brewery
+spec:
+  selector:
+    app: brewery-orchestrator
+  ports:
+    - port: 8080
+      targetPort: 8080

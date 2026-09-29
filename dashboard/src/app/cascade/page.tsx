@@ -73,7 +73,7 @@ export default function CascadePage() {
     if (isValid) {
       return (
         <Link 
-          href={`/builds/${buildId}`}
+          href={`/builds/details?id=${buildId}`}
           className="text-[var(--primary)] hover:text-[var(--primary)] hover:underline font-mono font-semibold text-[11px]"
           title={buildId}
         >
@@ -481,7 +481,7 @@ export default function CascadePage() {
                         </td>
                         <td className="py-4 px-4 text-right">
                           <Link 
-                            href={`/cascade/${chainIdVal}`}
+                            href={`/cascade/details?id=${chainIdVal}`}
                             className="p-2 bg-white hover:bg-blue-600 rounded-lg text-gray-500 hover:text-[var(--primary)] transition-all inline-flex items-center justify-center"
                             title="Audit Tasks"
                           >

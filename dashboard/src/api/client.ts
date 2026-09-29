@@ -182,9 +182,12 @@ export interface DashboardStats {
 export interface Deployment {
   id: string;
   name: string;
+  komodoStackName?: string;
+  artifactName?: string;
+  deployedVersion?: string;
   description?: string;
-  status: 'pending' | 'deploying' | 'healthy' | 'unhealthy' | 'failed' | 'rolled_back' | 'paused';
-  deploymentSpec: string;
+  status: string;
+  komodoUrl?: string;
   deployedAt?: string;
   completedAt?: string;
   deployedBy?: string;
@@ -280,28 +283,12 @@ export const apiClient = {
   // Deployments API
   getDeployments: () => request<Deployment[]>('/deployments'),
   getDeployment: (id: string) => request<Deployment>(`/deployments/${id}`),
-  createOrUpdateDeployment: (name: string, specYaml: string, username?: string) => 
+  registerOrUpdateDeployment: (data: { name: string; komodoStackName: string; artifactName: string; description?: string; username?: string }) => 
     request<Deployment>('/deployments', { 
       method: 'POST', 
-      body: JSON.stringify({ name, specYaml, username }) 
-    }),
-  planDeployment: (specYaml: string) => 
-    request<any>('/deployments/plan', { 
-      method: 'POST', 
-      body: JSON.stringify({ specYaml }) 
+      body: JSON.stringify(data) 
     }),
   deploy: (id: string) => request<Deployment>(`/deployments/${id}/deploy`, { method: 'POST' }),
-  rollback: (id: string, version: number) => 
-    request<any>(`/deployments/${id}/rollback/${version}`, { method: 'POST' }),
-  getDeploymentVersions: (id: string) => request<DeploymentVersion[]>(`/deployments/${id}/versions`),
-  getDeploymentEvents: (id: string) => request<DeploymentEvent[]>(`/deployments/${id}/events`),
-  getServiceHealthChecks: (id: string) => request<ServiceHealthCheck[]>(`/deployments/${id}/health`),
-  triggerHealthCheck: (id: string) => request<any>(`/deployments/${id}/health/check`, { method: 'POST' }),
-  getContainerLogs: (id: string, serviceName: string) => request<{ logs: string }>(`/deployments/${id}/logs/${serviceName}`),
-  getContainerStats: (id: string, serviceName: string) => request<ContainerStats>(`/deployments/${id}/stats/${serviceName}`),
-  pause: (id: string) => request<Deployment>(`/deployments/${id}/pause`, { method: 'POST' }),
-  resume: (id: string) => request<Deployment>(`/deployments/${id}/resume`, { method: 'POST' }),
-  restart: (id: string) => request<Deployment>(`/deployments/${id}/restart`, { method: 'POST' }),
   deleteDeployment: (id: string) => request<void>(`/deployments/${id}`, { method: 'DELETE' }),
 
   // System Settings API

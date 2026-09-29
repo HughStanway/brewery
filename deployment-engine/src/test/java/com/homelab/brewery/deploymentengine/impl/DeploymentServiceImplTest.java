@@ -1,124 +1,96 @@
 package com.homelab.brewery.deploymentengine.impl;
 
-import com.homelab.brewery.common.entity.Artifact;
 import com.homelab.brewery.common.entity.Deployment;
-import com.homelab.brewery.common.repository.ArtifactRepository;
-import com.homelab.brewery.common.repository.DeploymentEventRepository;
 import com.homelab.brewery.common.repository.DeploymentRepository;
-import com.homelab.brewery.common.repository.DeploymentVersionRepository;
-import com.homelab.brewery.common.repository.ServiceHealthCheckRepository;
-import com.homelab.brewery.registry.SemanticVersionResolver;
+import com.homelab.brewery.deploymentengine.client.KomodoApiClient;
+import com.homelab.brewery.deploymentengine.provider.K8sDeploymentProvider;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
-import java.io.File;
-import java.nio.file.Files;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.*;
 
 public class DeploymentServiceImplTest {
 
-    private com.homelab.brewery.common.repository.DeploymentRepository deploymentRepository;
-    private com.homelab.brewery.common.repository.DeploymentVersionRepository versionRepository;
-    private com.homelab.brewery.common.repository.DeploymentEventRepository eventRepository;
-    private com.homelab.brewery.common.repository.ServiceHealthCheckRepository healthCheckRepository;
-    private com.homelab.brewery.common.repository.ArtifactRepository artifactRepository;
-    private SemanticVersionResolver versionResolver;
-
+    private DeploymentRepository deploymentRepository;
+    private KomodoApiClient komodoApiClient;
+    private K8sDeploymentProvider k8sDeploymentProvider;
     private DeploymentServiceImpl deploymentService;
 
     @BeforeEach
     public void setUp() {
-        deploymentRepository = Mockito.mock(com.homelab.brewery.common.repository.DeploymentRepository.class);
-        versionRepository = Mockito.mock(com.homelab.brewery.common.repository.DeploymentVersionRepository.class);
-        eventRepository = Mockito.mock(com.homelab.brewery.common.repository.DeploymentEventRepository.class);
-        healthCheckRepository = Mockito.mock(com.homelab.brewery.common.repository.ServiceHealthCheckRepository.class);
-        artifactRepository = Mockito.mock(com.homelab.brewery.common.repository.ArtifactRepository.class);
-        versionResolver = Mockito.mock(SemanticVersionResolver.class);
+        deploymentRepository = Mockito.mock(DeploymentRepository.class);
+        komodoApiClient = Mockito.mock(KomodoApiClient.class);
+        k8sDeploymentProvider = Mockito.mock(K8sDeploymentProvider.class);
 
-        deploymentService = new DeploymentServiceImpl(
-                deploymentRepository,
-                versionRepository,
-                eventRepository,
-                healthCheckRepository,
-                artifactRepository,
-                versionResolver
-        );
+        when(komodoApiClient.buildKomodoStackUiUrl("my-stack"))
+                .thenReturn("http://localhost:9120/stacks/my-stack");
+
+        deploymentService = new DeploymentServiceImpl(deploymentRepository, komodoApiClient, k8sDeploymentProvider);
     }
 
     @Test
-    public void testDeployWithCustomImageInitAndTarGz() throws Exception {
-        UUID deploymentId = UUID.randomUUID();
+    public void testRegisterOrUpdateDeployment() {
+        when(deploymentRepository.findByName("production-api")).thenReturn(Optional.empty());
+        when(deploymentRepository.save(any(Deployment.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Deployment deployment = deploymentService.registerOrUpdateDeployment(
+                "production-api", "my-stack", "api-server", "Production stack", "admin"
+        );
+
+        assertNotNull(deployment);
+        assertEquals("production-api", deployment.getName());
+        assertEquals("my-stack", deployment.getKomodoStackName());
+        assertEquals("api-server", deployment.getArtifactName());
+        assertEquals("http://localhost:9120/stacks/my-stack", deployment.getKomodoUrl());
+        assertEquals("PENDING", deployment.getStatus());
+        verify(deploymentRepository).save(any(Deployment.class));
+    }
+
+    @Test
+    public void testDeploySuccess() {
+        UUID id = UUID.randomUUID();
         Deployment deployment = new Deployment();
-        deployment.setId(deploymentId);
-        deployment.setName("test-stack");
-        
-        String specYaml = "version: 1\n" +
-                "deployment:\n" +
-                "  name: \"test-stack\"\n" +
-                "  description: \"Testing deployments\"\n" +
-                "services:\n" +
-                "  my-binary:\n" +
-                "    artifact: \"my-binary-art@latest\"\n" +
-                "    type: \"binary\"\n" +
-                "    runtimeImage: \"custom-runner:latest\"\n" +
-                "    init:\n" +
-                "      - \"echo 'init 1'\"\n" +
-                "      - \"echo 'init 2'\"\n";
-        deployment.setDeploymentSpec(specYaml);
+        deployment.setId(id);
+        deployment.setName("production-api");
+        deployment.setKomodoStackName("my-stack");
+        deployment.setArtifactName("api-server");
+        deployment.setDeployedVersion("1.4.0");
 
-        when(deploymentRepository.findById(deploymentId)).thenReturn(Optional.of(deployment));
-        when(deploymentRepository.save(any(Deployment.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(deploymentRepository.findById(id)).thenReturn(Optional.of(deployment));
+        when(deploymentRepository.save(any(Deployment.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(komodoApiClient.triggerStackDeployment(eq("my-stack"), eq("api-server:1.4.0"))).thenReturn(true);
 
-        // Mock artifact resolution
-        Artifact artifact = new Artifact();
-        artifact.setId(UUID.randomUUID());
-        artifact.setName("my-binary-art");
-        artifact.setVersion("1.0.0");
-        artifact.setStoragePath("/mnt/artifact-store/my-binary-art/1.0.0/my-binary-art.tar.gz");
-        artifact.setMetadata("{\"primary_entrypoint\": \"my-executable\"}");
+        Deployment result = deploymentService.deploy(id);
 
-        when(artifactRepository.findByName("my-binary-art")).thenReturn(List.of(artifact));
-        when(versionResolver.resolveVersionRange(any(), any())).thenReturn("1.0.0");
-        when(artifactRepository.findByNameAndVersion("my-binary-art", "1.0.0")).thenReturn(Optional.of(artifact));
+        assertEquals("SUCCESS", result.getStatus());
+        assertNotNull(result.getCompletedAt());
+        verify(komodoApiClient).triggerStackDeployment("my-stack", "api-server:1.4.0");
+    }
 
-        // Trigger deploy. It will write files and then try to run docker compose (which will fail due to no docker command in test env, but that's expected).
-        try {
-            deploymentService.deploy(deploymentId);
-        } catch (Exception e) {
-            // expected to fail on docker compose execution
-        }
+    @Test
+    public void testTriggerDeploymentsForArtifact() {
+        Deployment d1 = new Deployment();
+        d1.setId(UUID.randomUUID());
+        d1.setName("prod-1");
+        d1.setKomodoStackName("stack-1");
+        d1.setArtifactName("core-service");
 
-        // Verify the written files on disk
-        File deployDir = new File("/tmp/brewery-builds/deployments/deploy-" + deploymentId);
-        assertTrue(deployDir.exists(), "Deployment directory should be created");
+        when(deploymentRepository.findByArtifactName("core-service")).thenReturn(List.of(d1));
+        when(deploymentRepository.save(any(Deployment.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(komodoApiClient.triggerStackDeployment(eq("stack-1"), eq("core-service:2.0.0"))).thenReturn(true);
 
-        File composeFile = new File(deployDir, "docker-compose.yml");
-        assertTrue(composeFile.exists(), "docker-compose.yml should be created");
+        deploymentService.triggerDeploymentsForArtifact("core-service", "2.0.0");
 
-        String composeContent = Files.readString(composeFile.toPath());
-        assertTrue(composeContent.contains("image: custom-runner:latest"), "Should use custom runtimeImage");
-        assertTrue(composeContent.contains("/entrypoint.sh"), "Should use entrypoint wrapper");
-        assertTrue(composeContent.contains("entrypoint-my-binary.sh:/entrypoint.sh:ro"), "Should mount entrypoint wrapper");
-
-        File entrypointFile = new File(deployDir, "entrypoint-my-binary.sh");
-        assertTrue(entrypointFile.exists(), "entrypoint script should be created");
-
-        String entrypointContent = Files.readString(entrypointFile.toPath());
-        assertTrue(entrypointContent.contains("tar -xzf /mnt/artifact-store/my-binary-art/1.0.0/my-binary-art.tar.gz -C /app"), "Should extract tarball");
-        assertTrue(entrypointContent.contains("echo 'init 1'"), "Should contain init command 1");
-        assertTrue(entrypointContent.contains("echo 'init 2'"), "Should contain init command 2");
-        assertTrue(entrypointContent.contains("exec \"/app/my-executable\" \"$@\""), "Should execute primaryEntrypoint");
-
-        // Clean up files written during the test
-        composeFile.delete();
-        entrypointFile.delete();
-        deployDir.delete();
+        assertEquals("2.0.0", d1.getDeployedVersion());
+        assertEquals("SUCCESS", d1.getStatus());
+        verify(komodoApiClient).triggerStackDeployment("stack-1", "core-service:2.0.0");
     }
 }

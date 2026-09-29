@@ -233,7 +233,7 @@ export default function ArtifactsPage() {
               {/* Action */}
               <div className="pt-6 mt-4 border-t border-[var(--card-border)]">
                 <Link 
-                  href={`/artifacts/${group.name}/${group.latestVersion}`}
+                  href={`/artifacts/details?name=${encodeURIComponent(group.name)}&version=${encodeURIComponent(group.latestVersion)}`}
                   className="flex items-center justify-center gap-2 w-full py-2.5 bg-[var(--background)] hover:bg-blue-600 border border-[var(--card-border)] hover:border-transparent rounded-2xl text-xs font-semibold text-gray-700 hover:text-[var(--primary)] transition-all shadow"
                 >
                   View Details
