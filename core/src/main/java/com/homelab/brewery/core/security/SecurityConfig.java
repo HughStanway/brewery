@@ -47,7 +47,8 @@ public class SecurityConfig {
                     .requestMatchers("/api/auth/login", "/api/auth/me", "/api/webhooks/**", "/api/health", "/actuator/**").permitAll()
                     .requestMatchers("/api/users/**").hasRole("ADMIN")
                     .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                    .anyRequest().authenticated()
+                    .requestMatchers("/api/**").authenticated()
+                    .anyRequest().permitAll()
                 )
                 .exceptionHandling(ex -> ex
                     .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED))
