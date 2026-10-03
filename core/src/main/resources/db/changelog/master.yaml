@@ -966,3 +966,26 @@ databaseChangeLog:
             columnName: deployment_spec
             defaultValue: ""
 
+  - changeSet:
+      id: "11-k3s-deployments-schema"
+      author: "brewery"
+      changes:
+        - addColumn:
+            tableName: deployments
+            columns:
+              - column:
+                  name: namespace
+                  type: VARCHAR(255)
+                  defaultValue: "default"
+              - column:
+                  name: k8s_deployment_name
+                  type: VARCHAR(255)
+              - column:
+                  name: k8s_container_name
+                  type: VARCHAR(255)
+                  defaultValue: "app"
+              - column:
+                  name: headlamp_url
+                  type: VARCHAR(512)
+
+

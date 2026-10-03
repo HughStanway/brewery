@@ -3,6 +3,8 @@ package com.homelab.brewery.deploymentengine.impl;
 import com.homelab.brewery.common.entity.Deployment;
 import com.homelab.brewery.common.repository.DeploymentRepository;
 import com.homelab.brewery.deploymentengine.client.KomodoApiClient;
+import com.homelab.brewery.deploymentengine.model.DeploymentStatusDto;
+import com.homelab.brewery.deploymentengine.provider.K8sDeploymentProvider;
 import com.homelab.brewery.deploymentengine.service.DeploymentService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -13,8 +15,6 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-
-import com.homelab.brewery.deploymentengine.provider.K8sDeploymentProvider;
 
 @Service
 @RequiredArgsConstructor
@@ -27,9 +27,21 @@ public class DeploymentServiceImpl implements DeploymentService {
 
     @Override
     @Transactional
-    public Deployment registerOrUpdateDeployment(String name, String komodoStackName, String artifactName, String description, String username) {
-        log.info("Registering or updating Komodo deployment mapping for name: {}, komodoStack: {}, artifactName: {}",
-                name, komodoStackName, artifactName);
+    public Deployment registerOrUpdateDeployment(
+            String name,
+            String namespace,
+            String k8sDeploymentName,
+            String containerName,
+            String artifactName,
+            String description,
+            String username) {
+
+        String targetNs = (namespace != null && !namespace.isBlank()) ? namespace : "default";
+        String targetK8sName = (k8sDeploymentName != null && !k8sDeploymentName.isBlank()) ? k8sDeploymentName : name;
+        String targetContainer = (containerName != null && !containerName.isBlank()) ? containerName : "app";
+
+        log.info("Registering/updating K3s deployment mapping: name={}, ns={}, k8sName={}, container={}, artifact={}",
+                name, targetNs, targetK8sName, targetContainer, artifactName);
 
         Optional<Deployment> existingOpt = deploymentRepository.findByName(name);
         Deployment deployment = existingOpt.orElseGet(() -> {
@@ -38,11 +50,15 @@ public class DeploymentServiceImpl implements DeploymentService {
             return d;
         });
 
-        deployment.setKomodoStackName(komodoStackName);
+        deployment.setNamespace(targetNs);
+        deployment.setK8sDeploymentName(targetK8sName);
+        deployment.setK8sContainerName(targetContainer);
+        deployment.setKomodoStackName(targetK8sName);
         deployment.setArtifactName(artifactName);
         deployment.setDescription(description);
         deployment.setDeployedBy(username != null ? username : "system");
-        deployment.setKomodoUrl(komodoApiClient.buildKomodoStackUiUrl(komodoStackName));
+        deployment.setHeadlampUrl("https://deployments.bigiron.dev/c/main/deployments/" + targetNs + "/" + targetK8sName);
+        deployment.setKomodoUrl(komodoApiClient.buildKomodoStackUiUrl(targetK8sName));
         deployment.setUpdatedAt(Instant.now());
 
         if (deployment.getStatus() == null) {
@@ -58,7 +74,11 @@ public class DeploymentServiceImpl implements DeploymentService {
         Deployment deployment = deploymentRepository.findById(deploymentId)
                 .orElseThrow(() -> new IllegalArgumentException("Deployment not found: " + deploymentId));
 
-        log.info("Triggering Komodo rollout for deployment: {}, stack: {}", deployment.getName(), deployment.getKomodoStackName());
+        String ns = deployment.getNamespace();
+        String k8sName = deployment.getK8sDeploymentName();
+        String container = deployment.getK8sContainerName();
+
+        log.info("Triggering K3s rollout for deployment: {}, k8s: {}/{}", deployment.getName(), ns, k8sName);
         deployment.setStatus("DEPLOYING");
         deployment.setDeployedAt(Instant.now());
         deploymentRepository.save(deployment);
@@ -67,31 +87,117 @@ public class DeploymentServiceImpl implements DeploymentService {
                 ? deployment.getArtifactName() + ":" + deployment.getDeployedVersion()
                 : null;
 
-        String stackOrDeployName = deployment.getKomodoStackName() != null ? deployment.getKomodoStackName() : deployment.getName();
         boolean success = false;
-
-        // 1. Try K3s Deployment Handoff
-        if (imageTag != null && stackOrDeployName != null) {
-            success = k8sDeploymentProvider.deployOrPatchImage("default", stackOrDeployName, "app", imageTag);
+        if (imageTag != null && k8sName != null) {
+            success = k8sDeploymentProvider.deployOrPatchImage(ns, k8sName, container, imageTag);
         }
 
-        // 2. Fallback to Komodo API if K3s deployment not matched
-        if (!success && stackOrDeployName != null) {
-            komodoApiClient.provisionStack(stackOrDeployName, deployment.getArtifactName(), deployment.getDeployedVersion());
-            success = komodoApiClient.triggerStackDeployment(stackOrDeployName, imageTag);
+        // Fallback to Komodo API if K3s deployment not matched
+        if (!success && k8sName != null) {
+            komodoApiClient.provisionStack(k8sName, deployment.getArtifactName(), deployment.getDeployedVersion());
+            success = komodoApiClient.triggerStackDeployment(k8sName, imageTag);
         }
 
         if (success) {
             deployment.setStatus("SUCCESS");
             deployment.setCompletedAt(Instant.now());
-            log.info("Successfully triggered deployment for {}", stackOrDeployName);
+            log.info("Successfully triggered deployment for {}/{}", ns, k8sName);
         } else {
             deployment.setStatus("FAILED");
             deployment.setCompletedAt(Instant.now());
-            log.error("Failed triggering deployment for {}", stackOrDeployName);
+            log.error("Failed triggering deployment for {}/{}", ns, k8sName);
         }
 
         return deploymentRepository.save(deployment);
+    }
+
+    @Override
+    @Transactional
+    public Deployment restartDeployment(UUID deploymentId) {
+        Deployment deployment = deploymentRepository.findById(deploymentId)
+                .orElseThrow(() -> new IllegalArgumentException("Deployment not found: " + deploymentId));
+
+        String ns = deployment.getNamespace();
+        String k8sName = deployment.getK8sDeploymentName();
+
+        log.info("Triggering restart for deployment {}/{}", ns, k8sName);
+        boolean success = k8sDeploymentProvider.restartDeployment(ns, k8sName);
+        if (success) {
+            deployment.setStatus("SUCCESS");
+            deployment.setUpdatedAt(Instant.now());
+        } else {
+            deployment.setStatus("FAILED");
+        }
+        return deploymentRepository.save(deployment);
+    }
+
+    @Override
+    @Transactional
+    public Deployment scaleDeployment(UUID deploymentId, int replicas) {
+        Deployment deployment = deploymentRepository.findById(deploymentId)
+                .orElseThrow(() -> new IllegalArgumentException("Deployment not found: " + deploymentId));
+
+        String ns = deployment.getNamespace();
+        String k8sName = deployment.getK8sDeploymentName();
+
+        log.info("Scaling deployment {}/{} to replicas={}", ns, k8sName, replicas);
+        boolean success = k8sDeploymentProvider.scaleDeployment(ns, k8sName, replicas);
+        if (success) {
+            deployment.setStatus(replicas == 0 ? "STOPPED" : "SUCCESS");
+            deployment.setUpdatedAt(Instant.now());
+        } else {
+            deployment.setStatus("FAILED");
+        }
+        return deploymentRepository.save(deployment);
+    }
+
+    @Override
+    @Transactional
+    public void deleteDeployment(UUID id, boolean deleteK8sResources) {
+        Deployment d = deploymentRepository.findById(id).orElse(null);
+        if (d != null) {
+            if (deleteK8sResources) {
+                log.info("Deleting underlying K3s resources for {}/{}", d.getNamespace(), d.getK8sDeploymentName());
+                k8sDeploymentProvider.deleteDeploymentResources(d.getNamespace(), d.getK8sDeploymentName());
+            }
+            log.info("Deleting deployment record: {}", id);
+            deploymentRepository.deleteById(id);
+        }
+    }
+
+    @Override
+    public DeploymentStatusDto getDeploymentStatus(UUID id) {
+        Deployment d = deploymentRepository.findById(id).orElse(null);
+        if (d == null) {
+            return DeploymentStatusDto.builder()
+                    .status("NOT_FOUND")
+                    .exists(false)
+                    .build();
+        }
+
+        DeploymentStatusDto liveStatus = k8sDeploymentProvider.getDeploymentStatusDetails(
+                d.getNamespace(),
+                d.getK8sDeploymentName(),
+                d.getK8sContainerName()
+        );
+
+        // Synchronize live K3s liveness status back to DB if appropriate
+        if ("STOPPED".equals(liveStatus.getStatus()) && !"STOPPED".equals(d.getStatus())) {
+            d.setStatus("STOPPED");
+            deploymentRepository.save(d);
+        } else if ("RUNNING".equals(liveStatus.getStatus()) && !"SUCCESS".equals(d.getStatus()) && !"DEPLOYING".equals(d.getStatus())) {
+            d.setStatus("SUCCESS");
+            deploymentRepository.save(d);
+        }
+
+        return liveStatus;
+    }
+
+    @Override
+    public String getDeploymentLogs(UUID id, int tailLines) {
+        Deployment d = deploymentRepository.findById(id).orElse(null);
+        if (d == null) return "Deployment mapping not found.";
+        return k8sDeploymentProvider.getPodLogs(d.getNamespace(), d.getK8sDeploymentName(), tailLines);
     }
 
     @Override
@@ -106,9 +212,12 @@ public class DeploymentServiceImpl implements DeploymentService {
         }
 
         for (Deployment deployment : deployments) {
-            String stackOrDeployName = deployment.getKomodoStackName() != null ? deployment.getKomodoStackName() : deployment.getName();
-            log.info("Triggering deployment for target: {} with artifact {}@{}",
-                    stackOrDeployName, artifactName, version);
+            String ns = deployment.getNamespace();
+            String k8sName = deployment.getK8sDeploymentName();
+            String container = deployment.getK8sContainerName();
+
+            log.info("Triggering deployment for target: {}/{} with artifact {}@{}",
+                    ns, k8sName, artifactName, version);
 
             deployment.setDeployedVersion(version);
             deployment.setStatus("DEPLOYING");
@@ -117,13 +226,11 @@ public class DeploymentServiceImpl implements DeploymentService {
 
             String imageTag = artifactName + ":" + version;
 
-            // 1. Try K3s Deployment Handoff
-            boolean success = k8sDeploymentProvider.deployOrPatchImage("default", stackOrDeployName, "app", imageTag);
+            boolean success = k8sDeploymentProvider.deployOrPatchImage(ns, k8sName, container, imageTag);
 
-            // 2. Fallback to Komodo API if K3s deployment not matched
             if (!success) {
-                komodoApiClient.provisionStack(stackOrDeployName, artifactName, version);
-                success = komodoApiClient.triggerStackDeployment(stackOrDeployName, imageTag);
+                komodoApiClient.provisionStack(k8sName, artifactName, version);
+                success = komodoApiClient.triggerStackDeployment(k8sName, imageTag);
             }
 
             deployment.setStatus(success ? "SUCCESS" : "FAILED");
@@ -140,12 +247,5 @@ public class DeploymentServiceImpl implements DeploymentService {
     @Override
     public Deployment getDeployment(UUID id) {
         return deploymentRepository.findById(id).orElse(null);
-    }
-
-    @Override
-    @Transactional
-    public void deleteDeployment(UUID id) {
-        log.info("Deleting deployment mapping with id: {}", id);
-        deploymentRepository.deleteById(id);
     }
 }

@@ -42,14 +42,14 @@ public class DeploymentServiceImplTest {
         when(deploymentRepository.save(any(Deployment.class))).thenAnswer(inv -> inv.getArgument(0));
 
         Deployment deployment = deploymentService.registerOrUpdateDeployment(
-                "production-api", "my-stack", "api-server", "Production stack", "admin"
+                "production-api", "default", "my-stack", "app", "api-server", "Production stack", "admin"
         );
 
         assertNotNull(deployment);
         assertEquals("production-api", deployment.getName());
-        assertEquals("my-stack", deployment.getKomodoStackName());
+        assertEquals("default", deployment.getNamespace());
+        assertEquals("my-stack", deployment.getK8sDeploymentName());
         assertEquals("api-server", deployment.getArtifactName());
-        assertEquals("http://localhost:9120/stacks/my-stack", deployment.getKomodoUrl());
         assertEquals("PENDING", deployment.getStatus());
         verify(deploymentRepository).save(any(Deployment.class));
     }
@@ -60,19 +60,21 @@ public class DeploymentServiceImplTest {
         Deployment deployment = new Deployment();
         deployment.setId(id);
         deployment.setName("production-api");
-        deployment.setKomodoStackName("my-stack");
+        deployment.setNamespace("default");
+        deployment.setK8sDeploymentName("my-stack");
+        deployment.setK8sContainerName("app");
         deployment.setArtifactName("api-server");
         deployment.setDeployedVersion("1.4.0");
 
         when(deploymentRepository.findById(id)).thenReturn(Optional.of(deployment));
         when(deploymentRepository.save(any(Deployment.class))).thenAnswer(inv -> inv.getArgument(0));
-        when(komodoApiClient.triggerStackDeployment(eq("my-stack"), eq("api-server:1.4.0"))).thenReturn(true);
+        when(k8sDeploymentProvider.deployOrPatchImage("default", "my-stack", "app", "api-server:1.4.0")).thenReturn(true);
 
         Deployment result = deploymentService.deploy(id);
 
         assertEquals("SUCCESS", result.getStatus());
         assertNotNull(result.getCompletedAt());
-        verify(komodoApiClient).triggerStackDeployment("my-stack", "api-server:1.4.0");
+        verify(k8sDeploymentProvider).deployOrPatchImage("default", "my-stack", "app", "api-server:1.4.0");
     }
 
     @Test
@@ -80,17 +82,19 @@ public class DeploymentServiceImplTest {
         Deployment d1 = new Deployment();
         d1.setId(UUID.randomUUID());
         d1.setName("prod-1");
-        d1.setKomodoStackName("stack-1");
+        d1.setNamespace("default");
+        d1.setK8sDeploymentName("stack-1");
+        d1.setK8sContainerName("app");
         d1.setArtifactName("core-service");
 
         when(deploymentRepository.findByArtifactName("core-service")).thenReturn(List.of(d1));
         when(deploymentRepository.save(any(Deployment.class))).thenAnswer(inv -> inv.getArgument(0));
-        when(komodoApiClient.triggerStackDeployment(eq("stack-1"), eq("core-service:2.0.0"))).thenReturn(true);
+        when(k8sDeploymentProvider.deployOrPatchImage("default", "stack-1", "app", "core-service:2.0.0")).thenReturn(true);
 
         deploymentService.triggerDeploymentsForArtifact("core-service", "2.0.0");
 
         assertEquals("2.0.0", d1.getDeployedVersion());
         assertEquals("SUCCESS", d1.getStatus());
-        verify(komodoApiClient).triggerStackDeployment("stack-1", "core-service:2.0.0");
+        verify(k8sDeploymentProvider).deployOrPatchImage("default", "stack-1", "app", "core-service:2.0.0");
     }
 }

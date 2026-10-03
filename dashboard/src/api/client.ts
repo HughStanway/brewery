@@ -182,17 +182,42 @@ export interface DashboardStats {
 export interface Deployment {
   id: string;
   name: string;
+  namespace?: string;
+  k8sDeploymentName?: string;
+  k8sContainerName?: string;
   komodoStackName?: string;
   artifactName?: string;
   deployedVersion?: string;
   description?: string;
   status: string;
+  headlampUrl?: string;
   komodoUrl?: string;
   deployedAt?: string;
   completedAt?: string;
   deployedBy?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface PodInfo {
+  name: string;
+  phase: string;
+  ready: boolean;
+  restartCount: number;
+}
+
+export interface DeploymentStatus {
+  namespace: string;
+  deploymentName: string;
+  containerName: string;
+  exists: boolean;
+  status: 'RUNNING' | 'DEGRADED' | 'STOPPED' | 'NOT_FOUND' | 'ERROR';
+  desiredReplicas: number;
+  readyReplicas: number;
+  updatedReplicas: number;
+  currentImage: string;
+  headlampUrl: string;
+  pods: PodInfo[];
 }
 
 export interface DeploymentVersion {
@@ -270,7 +295,7 @@ export const apiClient = {
   getConflicts: () => request<DependencyConflict[]>('/dependencies/conflicts'),
 
   // Cascade Rebuilds API
-  getCascadeChains: () => request<RebuildChain[]>('/cascade/chains'), // Note: backend trigger / chains list endpoint might vary, we can fetch all or handle no chains empty list gracefully
+  getCascadeChains: () => request<RebuildChain[]>('/cascade/chains'),
   getCascadeChain: (id: string) => request<RebuildChain>(`/cascade/chains/${id}`),
   triggerCascade: (name: string, version: string, reason: string, maxDepth = 5) => 
     request<any>(`/cascade/trigger/${name}/${version}`, { 
@@ -283,13 +308,25 @@ export const apiClient = {
   // Deployments API
   getDeployments: () => request<Deployment[]>('/deployments'),
   getDeployment: (id: string) => request<Deployment>(`/deployments/${id}`),
-  registerOrUpdateDeployment: (data: { name: string; komodoStackName: string; artifactName: string; description?: string; username?: string }) => 
+  getDeploymentStatus: (id: string) => request<DeploymentStatus>(`/deployments/${id}/status`),
+  getDeploymentLogs: (id: string, lines = 100) => request<{ logs: string }>(`/deployments/${id}/logs?lines=${lines}`),
+  registerOrUpdateDeployment: (data: {
+    name: string;
+    namespace?: string;
+    k8sDeploymentName?: string;
+    containerName?: string;
+    artifactName: string;
+    description?: string;
+    username?: string;
+  }) => 
     request<Deployment>('/deployments', { 
       method: 'POST', 
       body: JSON.stringify(data) 
     }),
   deploy: (id: string) => request<Deployment>(`/deployments/${id}/deploy`, { method: 'POST' }),
-  deleteDeployment: (id: string) => request<void>(`/deployments/${id}`, { method: 'DELETE' }),
+  restartDeployment: (id: string) => request<Deployment>(`/deployments/${id}/restart`, { method: 'POST' }),
+  scaleDeployment: (id: string, replicas: number) => request<Deployment>(`/deployments/${id}/scale`, { method: 'POST', body: JSON.stringify({ replicas }) }),
+  deleteDeployment: (id: string, deleteK8s = false) => request<void>(`/deployments/${id}?deleteK8s=${deleteK8s}`, { method: 'DELETE' }),
 
   // System Settings API
   getSystemConfig: () => request<any>('/system/config'),
