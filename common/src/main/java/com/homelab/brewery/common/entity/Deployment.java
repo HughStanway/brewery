@@ -57,6 +57,9 @@ public class Deployment {
     @Column(name = "headlamp_url")
     private String headlampUrl;
 
+    @Column(name = "public_domain")
+    private String publicDomain;
+
     public String getNamespace() {
         return (namespace != null && !namespace.isBlank()) ? namespace : "default";
     }

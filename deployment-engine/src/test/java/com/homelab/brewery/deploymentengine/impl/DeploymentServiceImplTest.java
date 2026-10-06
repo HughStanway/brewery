@@ -1,6 +1,7 @@
 package com.homelab.brewery.deploymentengine.impl;
 
 import com.homelab.brewery.common.entity.Deployment;
+import com.homelab.brewery.common.repository.ArtifactRepository;
 import com.homelab.brewery.common.repository.DeploymentRepository;
 import com.homelab.brewery.deploymentengine.client.KomodoApiClient;
 import com.homelab.brewery.deploymentengine.provider.K8sDeploymentProvider;
@@ -20,6 +21,7 @@ import static org.mockito.Mockito.*;
 public class DeploymentServiceImplTest {
 
     private DeploymentRepository deploymentRepository;
+    private ArtifactRepository artifactRepository;
     private KomodoApiClient komodoApiClient;
     private K8sDeploymentProvider k8sDeploymentProvider;
     private DeploymentServiceImpl deploymentService;
@@ -27,13 +29,14 @@ public class DeploymentServiceImplTest {
     @BeforeEach
     public void setUp() {
         deploymentRepository = Mockito.mock(DeploymentRepository.class);
+        artifactRepository = Mockito.mock(ArtifactRepository.class);
         komodoApiClient = Mockito.mock(KomodoApiClient.class);
         k8sDeploymentProvider = Mockito.mock(K8sDeploymentProvider.class);
 
         when(komodoApiClient.buildKomodoStackUiUrl("my-stack"))
                 .thenReturn("http://localhost:9120/stacks/my-stack");
 
-        deploymentService = new DeploymentServiceImpl(deploymentRepository, komodoApiClient, k8sDeploymentProvider);
+        deploymentService = new DeploymentServiceImpl(deploymentRepository, artifactRepository, komodoApiClient, k8sDeploymentProvider);
     }
 
     @Test
@@ -42,7 +45,7 @@ public class DeploymentServiceImplTest {
         when(deploymentRepository.save(any(Deployment.class))).thenAnswer(inv -> inv.getArgument(0));
 
         Deployment deployment = deploymentService.registerOrUpdateDeployment(
-                "production-api", "default", "my-stack", "app", "api-server", "Production stack", "admin"
+                "production-api", "default", "my-stack", "app", "api-server", "Production stack", null, "admin"
         );
 
         assertNotNull(deployment);

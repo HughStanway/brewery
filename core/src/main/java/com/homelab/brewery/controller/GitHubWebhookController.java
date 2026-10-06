@@ -30,7 +30,7 @@ public class GitHubWebhookController {
 
     public GitHubWebhookController(
             JobTriggerService jobTriggerService,
-            @Value("${brewery.github.webhook.secret:${BREWERY_GITHUB_WEBHOOK_SECRET:dev_secret}}") String webhookSecret) {
+            @Value("${brewery.github.webhook.secret:${BREWERY_GITHUB_WEBHOOK_SECRET:disabled}}") String webhookSecret) {
         this.jobTriggerService = jobTriggerService;
         this.webhookSecret = webhookSecret;
     }
@@ -48,11 +48,19 @@ public class GitHubWebhookController {
         }
 
         // Validate HMAC signature if secret is configured
-        if (webhookSecret != null && !webhookSecret.isBlank()) {
+        boolean isSecretConfigured = webhookSecret != null 
+                && !webhookSecret.isBlank() 
+                && !"disabled".equalsIgnoreCase(webhookSecret.trim()) 
+                && !"none".equalsIgnoreCase(webhookSecret.trim());
+
+        if (isSecretConfigured) {
             if (!verifySignature(rawPayload, signatureHeader)) {
-                log.warn("Signature verification failed for GitHub webhook event: {}", eventType);
+                log.warn("Signature verification failed for GitHub webhook event: {}. signatureHeader present: {}", 
+                        eventType, signatureHeader != null && !signatureHeader.isBlank());
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Signature verification failed"));
             }
+        } else {
+            log.info("Webhook HMAC signature verification is disabled/unconfigured. Processing event: {}", eventType);
         }
 
         // Handle ping event from GitHub

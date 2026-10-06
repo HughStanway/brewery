@@ -1,6 +1,8 @@
 package com.homelab.brewery.deploymentengine.impl;
 
+import com.homelab.brewery.common.entity.Artifact;
 import com.homelab.brewery.common.entity.Deployment;
+import com.homelab.brewery.common.repository.ArtifactRepository;
 import com.homelab.brewery.common.repository.DeploymentRepository;
 import com.homelab.brewery.deploymentengine.client.KomodoApiClient;
 import com.homelab.brewery.deploymentengine.model.DeploymentStatusDto;
@@ -22,6 +24,7 @@ import java.util.UUID;
 public class DeploymentServiceImpl implements DeploymentService {
 
     private final DeploymentRepository deploymentRepository;
+    private final ArtifactRepository artifactRepository;
     private final KomodoApiClient komodoApiClient;
     private final K8sDeploymentProvider k8sDeploymentProvider;
 
@@ -34,14 +37,15 @@ public class DeploymentServiceImpl implements DeploymentService {
             String containerName,
             String artifactName,
             String description,
+            String publicDomain,
             String username) {
 
         String targetNs = (namespace != null && !namespace.isBlank()) ? namespace : "default";
         String targetK8sName = (k8sDeploymentName != null && !k8sDeploymentName.isBlank()) ? k8sDeploymentName : name;
         String targetContainer = (containerName != null && !containerName.isBlank()) ? containerName : "app";
 
-        log.info("Registering/updating K3s deployment mapping: name={}, ns={}, k8sName={}, container={}, artifact={}",
-                name, targetNs, targetK8sName, targetContainer, artifactName);
+        log.info("Registering/updating K3s deployment mapping: name={}, ns={}, k8sName={}, container={}, artifact={}, publicDomain={}",
+                name, targetNs, targetK8sName, targetContainer, artifactName, publicDomain);
 
         Optional<Deployment> existingOpt = deploymentRepository.findByName(name);
         Deployment deployment = existingOpt.orElseGet(() -> {
@@ -56,6 +60,7 @@ public class DeploymentServiceImpl implements DeploymentService {
         deployment.setKomodoStackName(targetK8sName);
         deployment.setArtifactName(artifactName);
         deployment.setDescription(description);
+        deployment.setPublicDomain(publicDomain);
         deployment.setDeployedBy(username != null ? username : "system");
         deployment.setHeadlampUrl("https://deployments.bigiron.dev/c/main/deployments/" + targetNs + "/" + targetK8sName);
         deployment.setKomodoUrl(komodoApiClient.buildKomodoStackUiUrl(targetK8sName));
@@ -83,13 +88,33 @@ public class DeploymentServiceImpl implements DeploymentService {
         deployment.setDeployedAt(Instant.now());
         deploymentRepository.save(deployment);
 
-        String imageTag = deployment.getArtifactName() != null && deployment.getDeployedVersion() != null
-                ? deployment.getArtifactName() + ":" + deployment.getDeployedVersion()
-                : null;
+        if (deployment.getDeployedVersion() == null || deployment.getDeployedVersion().isBlank()) {
+            if (deployment.getArtifactName() != null) {
+                Optional<Artifact> latest = artifactRepository.findByNameAndIsLatestTrue(deployment.getArtifactName());
+                if (latest.isPresent()) {
+                    deployment.setDeployedVersion(latest.get().getVersion());
+                } else {
+                    List<Artifact> versions = artifactRepository.findByNameOrderByCreatedAtDesc(deployment.getArtifactName());
+                    if (!versions.isEmpty()) {
+                        deployment.setDeployedVersion(versions.get(0).getVersion());
+                    }
+                }
+            }
+        }
+
+        String registryPrefix = "registry:5000/";
+        String imageTag = null;
+        if (deployment.getArtifactName() != null && deployment.getDeployedVersion() != null) {
+            String art = deployment.getArtifactName();
+            imageTag = art.contains("/") ? art + ":" + deployment.getDeployedVersion() : registryPrefix + art + ":" + deployment.getDeployedVersion();
+        }
 
         boolean success = false;
         if (imageTag != null && k8sName != null) {
-            success = k8sDeploymentProvider.deployOrPatchImage(ns, k8sName, container, imageTag);
+            String domainHost = (deployment.getPublicDomain() != null && !deployment.getPublicDomain().isBlank()) 
+                    ? deployment.getPublicDomain() 
+                    : (("pubfinder-ui".equalsIgnoreCase(k8sName) || "beerdar".equalsIgnoreCase(k8sName)) ? "beerdar.bigiron.dev" : null);
+            success = k8sDeploymentProvider.deployOrPatchImage(ns, k8sName, container, imageTag, domainHost);
         }
 
         // Fallback to Komodo API if K3s deployment not matched
@@ -224,9 +249,13 @@ public class DeploymentServiceImpl implements DeploymentService {
             deployment.setDeployedAt(Instant.now());
             deploymentRepository.save(deployment);
 
-            String imageTag = artifactName + ":" + version;
+            String registryPrefix = "registry:5000/";
+            String imageTag = artifactName.contains("/") ? artifactName + ":" + version : registryPrefix + artifactName + ":" + version;
 
-            boolean success = k8sDeploymentProvider.deployOrPatchImage(ns, k8sName, container, imageTag);
+            String domainHost = (deployment.getPublicDomain() != null && !deployment.getPublicDomain().isBlank()) 
+                    ? deployment.getPublicDomain() 
+                    : (("pubfinder-ui".equalsIgnoreCase(k8sName) || "beerdar".equalsIgnoreCase(k8sName)) ? "beerdar.bigiron.dev" : null);
+            boolean success = k8sDeploymentProvider.deployOrPatchImage(ns, k8sName, container, imageTag, domainHost);
 
             if (!success) {
                 komodoApiClient.provisionStack(k8sName, artifactName, version);

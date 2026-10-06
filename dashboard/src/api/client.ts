@@ -189,6 +189,7 @@ export interface Deployment {
   artifactName?: string;
   deployedVersion?: string;
   description?: string;
+  publicDomain?: string;
   status: string;
   headlampUrl?: string;
   komodoUrl?: string;
@@ -317,6 +318,7 @@ export const apiClient = {
     containerName?: string;
     artifactName: string;
     description?: string;
+    publicDomain?: string;
     username?: string;
   }) => 
     request<Deployment>('/deployments', { 

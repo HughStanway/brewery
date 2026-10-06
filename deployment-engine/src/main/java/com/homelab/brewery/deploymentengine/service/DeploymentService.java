@@ -14,6 +14,7 @@ public interface DeploymentService {
             String containerName,
             String artifactName,
             String description,
+            String publicDomain,
             String username
     );
 

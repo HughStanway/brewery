@@ -988,4 +988,15 @@ databaseChangeLog:
                   name: headlamp_url
                   type: VARCHAR(512)
 
+  - changeSet:
+      id: "12-public-domain-deployments-schema"
+      author: "brewery"
+      changes:
+        - addColumn:
+            tableName: deployments
+            columns:
+              - column:
+                  name: public_domain
+                  type: VARCHAR(255)
+
 

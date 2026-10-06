@@ -35,7 +35,7 @@ public class K8sDeploymentProvider {
         this.k8sClient = client;
     }
 
-    public boolean deployOrPatchImage(String namespace, String deploymentName, String containerName, String fullImageTag) {
+    public boolean deployOrPatchImage(String namespace, String deploymentName, String containerName, String fullImageTag, String domainHost) {
         if (k8sClient == null) {
             log.warn("KubernetesClient is null. Skipping deployment for {}/{}.", namespace, deploymentName);
             return false;
@@ -44,16 +44,19 @@ public class K8sDeploymentProvider {
         String targetNs = (namespace != null && !namespace.isBlank()) ? namespace : "default";
         String targetContainer = (containerName != null && !containerName.isBlank()) ? containerName : "app";
 
-        log.info("Patching K3s Deployment [{}/{}] -> container '{}' image: {}", targetNs, deploymentName, targetContainer, fullImageTag);
+        log.info("Deploying/patching K3s Deployment [{}/{}] -> container '{}' image: {}", targetNs, deploymentName, targetContainer, fullImageTag);
         try {
+            ensureNamespaceExists(targetNs);
+
             Deployment existing = k8sClient.apps().deployments()
                     .inNamespace(targetNs)
                     .withName(deploymentName)
                     .get();
 
             if (existing == null) {
-                log.warn("Deployment {}/{} does not exist in K3s cluster. Skipping patch.", targetNs, deploymentName);
-                return false;
+                log.info("Deployment {}/{} does not exist in K3s. Creating new deployment...", targetNs, deploymentName);
+                createNewDeployment(targetNs, deploymentName, targetContainer, fullImageTag, domainHost);
+                return true;
             }
 
             k8sClient.apps().deployments()
@@ -73,10 +76,190 @@ public class K8sDeploymentProvider {
                     );
 
             log.info("Successfully patched K3s deployment {}/{} image to {}", targetNs, deploymentName, fullImageTag);
+
+            ensureServiceExists(targetNs, deploymentName, Map.of("app", deploymentName));
+
+            if (domainHost != null && !domainHost.isBlank()) {
+                ensureIngressExists(targetNs, deploymentName, domainHost);
+            }
+
             return true;
         } catch (Exception e) {
-            log.error("Failed patching K3s deployment {}/{}", targetNs, deploymentName, e);
+            log.error("Failed deploying/patching K3s deployment {}/{}", targetNs, deploymentName, e);
             return false;
+        }
+    }
+
+    public boolean deployOrPatchImage(String namespace, String deploymentName, String containerName, String fullImageTag) {
+        return deployOrPatchImage(namespace, deploymentName, containerName, fullImageTag, null);
+    }
+
+    private void ensureNamespaceExists(String namespace) {
+        try {
+            if (k8sClient.namespaces().withName(namespace).get() == null) {
+                log.info("Creating K3s namespace: {}", namespace);
+                k8sClient.namespaces().resource(new io.fabric8.kubernetes.api.model.NamespaceBuilder()
+                        .withNewMetadata()
+                          .withName(namespace)
+                        .endMetadata()
+                        .build()).create();
+            }
+        } catch (Exception e) {
+            log.warn("Could not check/create namespace {}: {}", namespace, e.getMessage());
+        }
+    }
+
+    private void createNewDeployment(String namespace, String deploymentName, String containerName, String fullImageTag, String domainHost) {
+        Map<String, String> labels = Map.of("app", deploymentName);
+
+        Deployment newDeployment = new DeploymentBuilder()
+                .withNewMetadata()
+                  .withName(deploymentName)
+                  .withNamespace(namespace)
+                  .withLabels(labels)
+                .endMetadata()
+                .withNewSpec()
+                  .withReplicas(1)
+                  .withNewSelector()
+                    .withMatchLabels(labels)
+                  .endSelector()
+                  .withNewTemplate()
+                    .withNewMetadata()
+                      .withLabels(labels)
+                    .endMetadata()
+                    .withNewSpec()
+                      .addNewContainer()
+                        .withName(containerName)
+                        .withImage(fullImageTag)
+                        .addNewPort()
+                          .withContainerPort(80)
+                        .endPort()
+                      .endContainer()
+                    .endSpec()
+                  .endTemplate()
+                .endSpec()
+                .build();
+
+        k8sClient.apps().deployments().inNamespace(namespace).resource(newDeployment).create();
+        log.info("Successfully created K3s deployment {}/{} with image {}", namespace, deploymentName, fullImageTag);
+
+        ensureServiceExists(namespace, deploymentName, labels);
+
+        // Only provision Traefik Ingress if domainHost is explicitly requested
+        if (domainHost != null && !domainHost.isBlank()) {
+            ensureIngressExists(namespace, deploymentName, domainHost);
+        }
+    }
+
+    private void ensureServiceExists(String namespace, String deploymentName, Map<String, String> labels) {
+        try {
+            var existingDep = k8sClient.apps().deployments().inNamespace(namespace).withName(deploymentName).get();
+            List<Integer> containerPorts = new ArrayList<>();
+            if (existingDep != null && existingDep.getSpec() != null && existingDep.getSpec().getTemplate() != null && existingDep.getSpec().getTemplate().getSpec() != null) {
+                var containers = existingDep.getSpec().getTemplate().getSpec().getContainers();
+                if (containers != null) {
+                    for (var c : containers) {
+                        if (c.getPorts() != null) {
+                            for (var p : c.getPorts()) {
+                                if (p.getContainerPort() != null && !containerPorts.contains(p.getContainerPort())) {
+                                    containerPorts.add(p.getContainerPort());
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            List<io.fabric8.kubernetes.api.model.ServicePort> ports = new ArrayList<>();
+            int primaryPort = containerPorts.isEmpty() ? 80 : containerPorts.get(0);
+
+            ports.add(new io.fabric8.kubernetes.api.model.ServicePortBuilder()
+                    .withName("http")
+                    .withPort(80)
+                    .withTargetPort(new io.fabric8.kubernetes.api.model.IntOrString(primaryPort))
+                    .build());
+
+            for (int cp : containerPorts) {
+                if (cp != 80) {
+                    ports.add(new io.fabric8.kubernetes.api.model.ServicePortBuilder()
+                            .withName("port-" + cp)
+                            .withPort(cp)
+                            .withTargetPort(new io.fabric8.kubernetes.api.model.IntOrString(cp))
+                            .build());
+                }
+            }
+
+            var existingService = k8sClient.services().inNamespace(namespace).withName(deploymentName).get();
+            if (existingService == null) {
+                io.fabric8.kubernetes.api.model.Service newService = new io.fabric8.kubernetes.api.model.ServiceBuilder()
+                        .withNewMetadata()
+                          .withName(deploymentName)
+                          .withNamespace(namespace)
+                        .endMetadata()
+                        .withNewSpec()
+                          .withSelector(labels)
+                          .withPorts(ports)
+                        .endSpec()
+                        .build();
+
+                k8sClient.services().inNamespace(namespace).resource(newService).create();
+                log.info("Created K3s service {}/{} with ports {}", namespace, deploymentName, ports);
+            } else {
+                k8sClient.services().inNamespace(namespace).withName(deploymentName)
+                        .edit(s -> new io.fabric8.kubernetes.api.model.ServiceBuilder(s)
+                                .editSpec()
+                                  .withPorts(ports)
+                                .endSpec()
+                                .build());
+                log.info("Updated K3s service {}/{} with ports {}", namespace, deploymentName, ports);
+            }
+        } catch (Exception se) {
+            log.warn("Could not create/update service for {}/{}: {}", namespace, deploymentName, se.getMessage());
+        }
+    }
+
+    private void ensureIngressExists(String namespace, String deploymentName, String domainHost) {
+        try {
+            if (k8sClient.network().v1().ingresses().inNamespace(namespace).withName(deploymentName).get() == null) {
+                log.info("Provisioning dynamic Traefik Ingress for {}/{} -> https://{}", namespace, deploymentName, domainHost);
+                io.fabric8.kubernetes.api.model.networking.v1.Ingress newIngress = new io.fabric8.kubernetes.api.model.networking.v1.IngressBuilder()
+                        .withNewMetadata()
+                          .withName(deploymentName)
+                          .withNamespace(namespace)
+                          .addToAnnotations("cert-manager.io/cluster-issuer", "letsencrypt-prod")
+                          .addToAnnotations("traefik.ingress.kubernetes.io/router.middlewares", "authelia-authelia-forwardauth@kubernetescrd")
+                        .endMetadata()
+                        .withNewSpec()
+                          .withIngressClassName("traefik")
+                          .addNewTl()
+                            .addToHosts(domainHost)
+                            .withSecretName(deploymentName + "-bigiron-dev-tls")
+                          .endTl()
+                          .addNewRule()
+                            .withHost(domainHost)
+                            .withNewHttp()
+                              .addNewPath()
+                                .withPath("/")
+                                .withPathType("Prefix")
+                                .withNewBackend()
+                                  .withNewService()
+                                    .withName(deploymentName)
+                                    .withNewPort()
+                                      .withNumber(80)
+                                    .endPort()
+                                  .endService()
+                                .endBackend()
+                              .endPath()
+                            .endHttp()
+                          .endRule()
+                        .endSpec()
+                        .build();
+
+                k8sClient.network().v1().ingresses().inNamespace(namespace).resource(newIngress).create();
+                log.info("Successfully provisioned K3s Ingress {}/{} -> https://{}", namespace, deploymentName, domainHost);
+            }
+        } catch (Exception ie) {
+            log.warn("Could not create ingress for {}/{}: {}", namespace, deploymentName, ie.getMessage());
         }
     }
 

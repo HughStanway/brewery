@@ -155,6 +155,26 @@ function DeploymentCard({ d, onSelect }: { d: Deployment; onSelect: () => void }
             </div>
 
             <div className="flex items-center justify-between pt-1">
+              <span className="font-semibold uppercase tracking-wider text-[10px]">Access Endpoint:</span>
+              {d.publicDomain ? (
+                <a
+                  href={`https://${d.publicDomain}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 hover:underline"
+                >
+                  🌐 {d.publicDomain}
+                  <ExternalLink className="w-3 h-3" />
+                </a>
+              ) : (
+                <span className="font-mono text-[10px] text-gray-500 bg-gray-100 px-2 py-0.5 rounded border border-gray-200 font-medium">
+                  🔒 Internal K3s Service ({k8sName}:80)
+                </span>
+              )}
+            </div>
+
+            <div className="flex items-center justify-between pt-1">
               <span className="font-semibold uppercase tracking-wider text-[10px]">Liveness & Health:</span>
               <div className="flex items-center gap-2">
                 {statusData && (
@@ -298,6 +318,7 @@ export default function DeploymentsPage() {
   const [containerName, setContainerName] = React.useState('app');
   const [artifactName, setArtifactName] = React.useState('');
   const [description, setDescription] = React.useState('');
+  const [publicDomain, setPublicDomain] = React.useState('');
 
   const { data: deployments, isLoading } = useQuery({
     queryKey: ['deployments'],
@@ -313,6 +334,7 @@ export default function DeploymentsPage() {
       containerName: string;
       artifactName: string;
       description?: string;
+      publicDomain?: string;
     }) => apiClient.registerOrUpdateDeployment({ ...data, username: 'dashboard-user' }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['deployments'] });
@@ -323,6 +345,7 @@ export default function DeploymentsPage() {
       setContainerName('app');
       setArtifactName('');
       setDescription('');
+      setPublicDomain('');
     },
     onError: (err: any) => {
       alert('Error registering deployment: ' + err.message);
@@ -456,6 +479,18 @@ export default function DeploymentsPage() {
             </div>
             <div>
               <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+                Public Ingress Domain (Optional)
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. beerdar.bigiron.dev"
+                value={publicDomain}
+                onChange={(e) => setPublicDomain(e.target.value)}
+                className="w-full bg-[var(--background)] border border-[var(--card-border)] rounded-xl px-4 py-2 text-sm text-gray-800 focus:outline-none focus:border-blue-500"
+              />
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
                 Description
               </label>
               <input
@@ -487,7 +522,8 @@ export default function DeploymentsPage() {
                   k8sDeploymentName: k8sDeploymentName || name,
                   containerName: containerName || 'app',
                   artifactName,
-                  description
+                  description,
+                  publicDomain: publicDomain.trim() || undefined
                 });
               }}
               disabled={createMutation.isPending}

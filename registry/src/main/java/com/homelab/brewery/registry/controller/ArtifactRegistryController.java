@@ -6,6 +6,7 @@ import com.homelab.brewery.common.entity.Artifact;
 import com.homelab.brewery.registry.ArtifactRegistryService;
 import com.homelab.brewery.registry.ArtifactStorageManager;
 import com.homelab.brewery.registry.model.ArtifactMetadataJson;
+import jakarta.annotation.PostConstruct;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -34,7 +35,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/registry")
@@ -45,6 +45,11 @@ public class ArtifactRegistryController {
     private final ArtifactRegistryService registryService;
     private final ArtifactStorageManager storageManager;
     private final ObjectMapper objectMapper = new ObjectMapper();
+
+    @PostConstruct
+    public void init() {
+        log.info("=== ArtifactRegistryController initialized successfully! ===");
+    }
 
     @PostMapping(value = "/artifacts", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<?> uploadArtifact(
@@ -58,7 +63,6 @@ public class ArtifactRegistryController {
             @RequestParam(value = "commit", required = false) String commit,
             @RequestParam(value = "dependencies", required = false) String dependenciesJson,
             @RequestParam(value = "tags", required = false) List<String> tags) {
-
 
         log.info("Received artifact upload request: {} version {}", name, version);
 
@@ -108,6 +112,7 @@ public class ArtifactRegistryController {
 
     @GetMapping("/artifacts")
     public ResponseEntity<?> listAllArtifacts() {
+        log.info("listAllArtifacts called");
         try {
             List<Artifact> results = registryService.search(null, null, null);
             return ResponseEntity.ok(results);
@@ -118,8 +123,128 @@ public class ArtifactRegistryController {
         }
     }
 
-    @GetMapping("/artifacts/{name}")
-    public ResponseEntity<?> listVersions(@PathVariable("name") String name) {
+    @GetMapping("/artifacts/{p1}")
+    public ResponseEntity<?> get1Segment(@PathVariable("p1") String p1, HttpServletRequest request) {
+        log.info("get1Segment called: p1='{}'", p1);
+        return processGetPath(p1, request);
+    }
+
+    @GetMapping("/artifacts/{p1}/{p2}")
+    public ResponseEntity<?> get2Segments(@PathVariable("p1") String p1, @PathVariable("p2") String p2, HttpServletRequest request) {
+        log.info("get2Segments called: p1='{}', p2='{}'", p1, p2);
+        return processGetPath(p1 + "/" + p2, request);
+    }
+
+    @GetMapping("/artifacts/{p1}/{p2}/{p3}")
+    public ResponseEntity<?> get3Segments(@PathVariable("p1") String p1, @PathVariable("p2") String p2, @PathVariable("p3") String p3, HttpServletRequest request) {
+        log.info("get3Segments called: p1='{}', p2='{}', p3='{}'", p1, p2, p3);
+        return processGetPath(p1 + "/" + p2 + "/" + p3, request);
+    }
+
+    @GetMapping("/artifacts/{p1}/{p2}/{p3}/{p4}")
+    public ResponseEntity<?> get4Segments(@PathVariable("p1") String p1, @PathVariable("p2") String p2, @PathVariable("p3") String p3, @PathVariable("p4") String p4, HttpServletRequest request) {
+        log.info("get4Segments called: p1='{}', p2='{}', p3='{}', p4='{}'", p1, p2, p3, p4);
+        return processGetPath(p1 + "/" + p2 + "/" + p3 + "/" + p4, request);
+    }
+
+    @GetMapping("/artifacts/{p1}/{p2}/{p3}/{p4}/{p5}")
+    public ResponseEntity<?> get5Segments(@PathVariable("p1") String p1, @PathVariable("p2") String p2, @PathVariable("p3") String p3, @PathVariable("p4") String p4, @PathVariable("p5") String p5, HttpServletRequest request) {
+        log.info("get5Segments called");
+        return processGetPath(p1 + "/" + p2 + "/" + p3 + "/" + p4 + "/" + p5, request);
+    }
+
+    @PostMapping("/artifacts/{p1}/{p2}/tags")
+    public ResponseEntity<?> postTags2(@PathVariable("p1") String p1, @PathVariable("p2") String p2, @RequestBody(required = false) Map<String, List<String>> body) {
+        return addTagsInternal(p1, p2, body != null ? body : Collections.emptyMap());
+    }
+
+    @PostMapping("/artifacts/{p1}/{p2}/{p3}/tags")
+    public ResponseEntity<?> postTags3(@PathVariable("p1") String p1, @PathVariable("p2") String p2, @PathVariable("p3") String p3, @RequestBody(required = false) Map<String, List<String>> body) {
+        return addTagsInternal(p1 + "/" + p2, p3, body != null ? body : Collections.emptyMap());
+    }
+
+    @PostMapping("/artifacts/{p1}/{p2}/{p3}/{p4}/tags")
+    public ResponseEntity<?> postTags4(@PathVariable("p1") String p1, @PathVariable("p2") String p2, @PathVariable("p3") String p3, @PathVariable("p4") String p4, @RequestBody(required = false) Map<String, List<String>> body) {
+        return addTagsInternal(p1 + "/" + p2 + "/" + p3, p4, body != null ? body : Collections.emptyMap());
+    }
+
+    @DeleteMapping("/artifacts/{p1}/{p2}")
+    public ResponseEntity<?> delete2(@PathVariable("p1") String p1, @PathVariable("p2") String p2) {
+        return deleteArtifactInternal(p1, p2);
+    }
+
+    @DeleteMapping("/artifacts/{p1}/{p2}/{p3}")
+    public ResponseEntity<?> delete3(@PathVariable("p1") String p1, @PathVariable("p2") String p2, @PathVariable("p3") String p3) {
+        return deleteArtifactInternal(p1 + "/" + p2, p3);
+    }
+
+    @DeleteMapping("/artifacts/{p1}/{p2}/{p3}/{p4}")
+    public ResponseEntity<?> delete4(@PathVariable("p1") String p1, @PathVariable("p2") String p2, @PathVariable("p3") String p3, @PathVariable("p4") String p4) {
+        return deleteArtifactInternal(p1 + "/" + p2 + "/" + p3, p4);
+    }
+
+    @DeleteMapping("/artifacts/{p1}/{p2}/tags/{tag}")
+    public ResponseEntity<?> deleteTag2(@PathVariable("p1") String p1, @PathVariable("p2") String p2, @PathVariable("tag") String tag) {
+        return removeTagInternal(p1, p2, tag);
+    }
+
+    @DeleteMapping("/artifacts/{p1}/{p2}/{p3}/tags/{tag}")
+    public ResponseEntity<?> deleteTag3(@PathVariable("p1") String p1, @PathVariable("p2") String p2, @PathVariable("p3") String p3, @PathVariable("tag") String tag) {
+        return removeTagInternal(p1 + "/" + p2, p3, tag);
+    }
+
+    private ResponseEntity<?> processGetPath(String subPath, HttpServletRequest request) {
+        log.info("processGetPath called with subPath='{}'", subPath);
+        if (subPath.isBlank()) {
+            return listAllArtifacts();
+        }
+
+        if (subPath.endsWith("/download")) {
+            String targetPath = subPath.substring(0, subPath.length() - "/download".length());
+            int lastSlash = targetPath.lastIndexOf('/');
+            if (lastSlash != -1) {
+                String name = targetPath.substring(0, lastSlash);
+                String version = targetPath.substring(lastSlash + 1);
+                return downloadArtifactInternal(name, version, request);
+            }
+            return ResponseEntity.notFound().build();
+        }
+
+        if (subPath.contains("/")) {
+            int lastSlash = subPath.lastIndexOf('/');
+            String candidateName = subPath.substring(0, lastSlash);
+            String candidateVersion = subPath.substring(lastSlash + 1);
+
+            String targetVersion = resolveAliasOrRange(candidateName, candidateVersion);
+            log.info("Checking metadata for candidateName='{}', candidateVersion='{}', targetVersion='{}'", candidateName, candidateVersion, targetVersion);
+            Optional<Artifact> artifactOpt = registryService.findArtifact(candidateName, targetVersion);
+            if (artifactOpt.isPresent()) {
+                log.info("Found artifact metadata for candidateName='{}', targetVersion='{}'", candidateName, targetVersion);
+                return getArtifactMetadataInternal(candidateName, candidateVersion);
+            }
+
+            // Check if subPath itself is an artifact name for listing versions
+            log.info("Metadata not found. Checking if subPath='{}' is an artifact name for listing versions", subPath);
+            List<Artifact> versions = registryService.listVersions(subPath);
+            if (!versions.isEmpty()) {
+                return listVersionsInternal(subPath);
+            }
+
+            // Check if candidateName is a valid artifact name (meaning version wasn't found)
+            List<Artifact> candVersions = registryService.listVersions(candidateName);
+            if (!candVersions.isEmpty()) {
+                log.warn("Artifact name='{}' exists, but version='{}' was not found", candidateName, targetVersion);
+                return ResponseEntity.notFound().build();
+            }
+
+            log.warn("Neither artifact metadata nor version list found for subPath='{}'", subPath);
+            return ResponseEntity.notFound().build();
+        } else {
+            return listVersionsInternal(subPath);
+        }
+    }
+
+    private ResponseEntity<?> listVersionsInternal(String name) {
         List<Artifact> versions = registryService.listVersions(name);
         if (versions.isEmpty()) {
             return ResponseEntity.notFound().build();
@@ -155,14 +280,9 @@ public class ArtifactRegistryController {
         return ResponseEntity.ok(response);
     }
 
-    @GetMapping("/artifacts/{name}/{version}")
-    public ResponseEntity<?> getArtifactMetadata(
-            @PathVariable("name") String name,
-            @PathVariable("version") String version) {
-
-        // Resolve version range or alias
+    private ResponseEntity<?> getArtifactMetadataInternal(String name, String version) {
         String targetVersion = resolveAliasOrRange(name, version);
-        
+
         Optional<Artifact> artifactOpt = registryService.findArtifact(name, targetVersion);
         if (artifactOpt.isEmpty()) {
             return ResponseEntity.notFound().build();
@@ -178,12 +298,7 @@ public class ArtifactRegistryController {
         }
     }
 
-    @GetMapping("/artifacts/{name}/{version}/download")
-    public ResponseEntity<?> downloadArtifact(
-            @PathVariable("name") String name,
-            @PathVariable("version") String version,
-            HttpServletRequest request) {
-
+    private ResponseEntity<?> downloadArtifactInternal(String name, String version, HttpServletRequest request) {
         String targetVersion = resolveAliasOrRange(name, version);
 
         Optional<Artifact> artifactOpt = registryService.findArtifact(name, targetVersion);
@@ -197,7 +312,7 @@ public class ArtifactRegistryController {
 
         try {
             InputStream is = storageManager.getArtifact(name, targetVersion, filename);
-            
+
             // Record download count
             registryService.recordDownload(name, targetVersion, request.getHeader("User-Agent"));
 
@@ -213,45 +328,7 @@ public class ArtifactRegistryController {
         }
     }
 
-    @GetMapping("/search")
-    public ResponseEntity<?> search(
-            @RequestParam(value = "q", required = false) String query,
-            @RequestParam(value = "type", required = false) String type,
-            @RequestParam(value = "tag", required = false) String tag) {
-
-        List<Artifact> results = registryService.search(query, type, tag);
-
-        List<Map<String, Object>> responseResults = new ArrayList<>();
-        for (Artifact art : results) {
-            Map<String, Object> details = new HashMap<>();
-            details.put("name", art.getName());
-            details.put("version", art.getVersion());
-            details.put("artifact_type", art.getArtifactType());
-            details.put("tags", art.getTags());
-            details.put("last_updated", art.getCreatedAt());
-            
-            try {
-                ArtifactMetadataJson meta = objectMapper.readValue(art.getMetadata(), ArtifactMetadataJson.class);
-                details.put("repository", meta.getRepository());
-            } catch (Exception e) {
-                // ignore
-            }
-            responseResults.add(details);
-        }
-
-        Map<String, Object> response = new HashMap<>();
-        response.put("total", responseResults.size());
-        response.put("results", responseResults);
-
-        return ResponseEntity.ok(response);
-    }
-
-    @PostMapping("/artifacts/{name}/{version}/tags")
-    public ResponseEntity<?> addTags(
-            @PathVariable("name") String name,
-            @PathVariable("version") String version,
-            @RequestBody Map<String, List<String>> requestBody) {
-
+    private ResponseEntity<?> addTagsInternal(String name, String version, Map<String, List<String>> requestBody) {
         List<String> tags = requestBody.get("tags");
         if (tags != null) {
             for (String tag : tags) {
@@ -273,12 +350,7 @@ public class ArtifactRegistryController {
         return ResponseEntity.ok(response);
     }
 
-    @DeleteMapping("/artifacts/{name}/{version}/tags/{tag}")
-    public ResponseEntity<?> removeTag(
-            @PathVariable("name") String name,
-            @PathVariable("version") String version,
-            @PathVariable("tag") String tag) {
-
+    private ResponseEntity<?> removeTagInternal(String name, String version, String tag) {
         try {
             registryService.removeTag(name, version, tag);
             return ResponseEntity.noContent().build();
@@ -287,10 +359,7 @@ public class ArtifactRegistryController {
         }
     }
 
-    @DeleteMapping("/artifacts/{name}/{version}")
-    public ResponseEntity<?> deleteArtifact(
-            @PathVariable("name") String name,
-            @PathVariable("version") String version) {
+    private ResponseEntity<?> deleteArtifactInternal(String name, String version) {
         log.info("Received request to delete artifact: {} version {}", name, version);
         try {
             registryService.deleteArtifact(name, version);
@@ -303,6 +372,39 @@ public class ArtifactRegistryController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("Failed to delete artifact: " + e.getMessage());
         }
+    }
+
+    @GetMapping("/search")
+    public ResponseEntity<?> search(
+            @RequestParam(value = "q", required = false) String query,
+            @RequestParam(value = "type", required = false) String type,
+            @RequestParam(value = "tag", required = false) String tag) {
+
+        List<Artifact> results = registryService.search(query, type, tag);
+
+        List<Map<String, Object>> responseResults = new ArrayList<>();
+        for (Artifact art : results) {
+            Map<String, Object> details = new HashMap<>();
+            details.put("name", art.getName());
+            details.put("version", art.getVersion());
+            details.put("artifact_type", art.getArtifactType());
+            details.put("tags", art.getTags());
+            details.put("last_updated", art.getCreatedAt());
+
+            try {
+                ArtifactMetadataJson meta = objectMapper.readValue(art.getMetadata(), ArtifactMetadataJson.class);
+                details.put("repository", meta.getRepository());
+            } catch (Exception e) {
+                // ignore
+            }
+            responseResults.add(details);
+        }
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("total", responseResults.size());
+        response.put("results", responseResults);
+
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping("/aliases")
@@ -326,11 +428,17 @@ public class ArtifactRegistryController {
         return ResponseEntity.ok(response);
     }
 
-    @GetMapping("/aliases/{name}/{alias}")
-    public ResponseEntity<?> getAlias(
-            @PathVariable("name") String name,
-            @PathVariable("alias") String alias) {
+    @GetMapping("/aliases/{p1}/{alias}")
+    public ResponseEntity<?> getAlias1(@PathVariable("p1") String p1, @PathVariable("alias") String alias) {
+        return getAliasInternal(p1, alias);
+    }
 
+    @GetMapping("/aliases/{p1}/{p2}/{alias}")
+    public ResponseEntity<?> getAlias2(@PathVariable("p1") String p1, @PathVariable("p2") String p2, @PathVariable("alias") String alias) {
+        return getAliasInternal(p1 + "/" + p2, alias);
+    }
+
+    private ResponseEntity<?> getAliasInternal(String name, String alias) {
         Optional<String> targetVersion = registryService.resolveVersionAlias(name, alias);
         if (targetVersion.isEmpty()) {
             return ResponseEntity.notFound().build();
@@ -350,12 +458,12 @@ public class ArtifactRegistryController {
         if (aliased.isPresent()) {
             return aliased.get();
         }
-        
+
         // 2. Resolve range (e.g. "^1.2.0")
         if (version.startsWith("^") || version.startsWith("~") || version.equals("*") || version.startsWith(">") || version.startsWith("<")) {
             return registryService.resolveVersionRange(name, version);
         }
-        
+
         return version;
     }
 }

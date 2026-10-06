@@ -56,6 +56,7 @@ public class DeploymentController {
         String containerName = body.getOrDefault("containerName", body.getOrDefault("k8sContainerName", "app"));
         String artifactName = body.get("artifactName");
         String description = body.get("description");
+        String publicDomain = body.getOrDefault("publicDomain", body.get("domainHost"));
         String username = body.get("username");
 
         if (name == null || artifactName == null) {
@@ -63,7 +64,7 @@ public class DeploymentController {
         }
 
         Deployment deployment = deploymentService.registerOrUpdateDeployment(
-                name, namespace, k8sDeploymentName, containerName, artifactName, description, username
+                name, namespace, k8sDeploymentName, containerName, artifactName, description, publicDomain, username
         );
         return ResponseEntity.ok(deployment);
     }
