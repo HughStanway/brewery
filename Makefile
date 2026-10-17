@@ -1,10 +1,13 @@
-.PHONY: help test rebuild logs logs-brewery run run-local run-ui stop clean
+.PHONY: help test build import deploy restart apply status logs run-ui clean
 
 # Variables
-DOCKER_COMPOSE := docker compose
+IMAGE_NAME := brewery/software-supply-chain-platform:latest
+NAMESPACE := brewery
+DEPLOYMENT := brewery-orchestrator
+KUBECTL := sudo k3s kubectl
+CTR := sudo k3s ctr
 JAVA_HOME_21 := $(shell /usr/libexec/java_home -v 21 2>/dev/null || echo "")
 MAVEN := $(if $(JAVA_HOME_21),JAVA_HOME="$(JAVA_HOME_21)" mvn,mvn)
-PROFILE := dev
 
 # Colors for output
 BLUE := \033[0;34m
@@ -13,51 +16,58 @@ YELLOW := \033[0;33m
 NC := \033[0m # No Color
 
 help: ## Show this help message
-	@echo "$(BLUE)Brewery - Software Supply Chain Platform$(NC)"
-	@echo "$(BLUE)=========================================$(NC)"
+	@echo "$(BLUE)Brewery - Software Supply Chain Platform (K3s)$(NC)"
+	@echo "$(BLUE)==============================================$(NC)"
 	@echo ""
 	@echo "$(GREEN)Available targets:$(NC)"
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  $(YELLOW)%-15s$(NC) %s\n", $$1, $$2}'
+	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  $(YELLOW)%-15s$(NC) %s\n", $$1, $$2}'
 	@echo ""
 
 test: ## Run unit and integration tests
 	@echo "$(BLUE)Running tests...$(NC)"
 	$(MAVEN) test
 
-logs: ## Follow logs from all docker compose services
-	$(DOCKER_COMPOSE) logs -f
+build: ## Build Brewery Docker image (Next.js UI + Spring Boot JAR)
+	@echo "$(BLUE)Building Docker image $(IMAGE_NAME)...$(NC)"
+	docker build -t $(IMAGE_NAME) .
+	@echo "$(GREEN)✓ Built $(IMAGE_NAME)$(NC)"
 
-logs-brewery: ## Follow logs from brewery service container
-	$(DOCKER_COMPOSE) logs -f brewery
+import: ## Import built Docker image into K3s containerd
+	@echo "$(BLUE)Importing $(IMAGE_NAME) into K3s containerd...$(NC)"
+	docker save $(IMAGE_NAME) | $(CTR) images import -
+	@echo "$(GREEN)✓ Imported image into K3s$(NC)"
 
-run: ## Run full stack in Docker Compose in production mode
-	@echo "$(BLUE)Building Docker image and starting containers in production mode...$(NC)"
-	SPRING_PROFILES_ACTIVE=prod $(DOCKER_COMPOSE) up -d --build
-	@echo "$(GREEN)✓ Application started in production mode$(NC)"
+restart: ## Rolling restart Brewery orchestrator deployment in K3s
+	@echo "$(BLUE)Restarting deployment/$(DEPLOYMENT) in namespace $(NAMESPACE)...$(NC)"
+	$(KUBECTL) rollout restart deployment/$(DEPLOYMENT) -n $(NAMESPACE)
+	$(KUBECTL) rollout status deployment/$(DEPLOYMENT) -n $(NAMESPACE)
+	@echo "$(GREEN)✓ Rollout complete$(NC)"
 
-run-local: ## Run full-stack in Docker Compose in development mode
-	@echo "$(BLUE)Building Docker images and starting all containers in development mode...$(NC)"
-	SPRING_PROFILES_ACTIVE=dev $(DOCKER_COMPOSE) up -d --build
-	@echo "$(GREEN)✓ Local development environment started in Docker (port 3000)$(NC)"
+deploy: build import restart ## Build image, import into K3s, and roll out update
+	@echo "$(GREEN)✓ Brewery deployed to K3s$(NC)"
+
+apply: ## Apply K8s manifests and ingresses to K3s
+	@echo "$(BLUE)Applying K3s manifests...$(NC)"
+	$(KUBECTL) apply -f k8s/brewery-manifests.yaml
+	$(KUBECTL) apply -f k8s/ingresses.yaml
+	@echo "$(GREEN)✓ Manifests applied$(NC)"
+
+status: ## Show K3s pod, service, ingress, and PVC status for Brewery
+	@echo "$(BLUE)Brewery K3s status (namespace: $(NAMESPACE)):$(NC)"
+	$(KUBECTL) get pods,svc,ingress,pvc -n $(NAMESPACE)
+
+logs: ## Follow logs from the Brewery orchestrator pod in K3s
+	$(KUBECTL) logs -f deployment/$(DEPLOYMENT) -n $(NAMESPACE)
 
 run-ui: ## Run Next.js dashboard UI locally
 	@echo "$(BLUE)Starting Next.js dashboard UI...$(NC)"
 	cd dashboard && ( [ -d node_modules ] || npm install ) && npm run dev
 
-rebuild: ## Rebuild and reload the brewery app container
-	@echo "$(BLUE)Rebuilding brewery image and restarting app container...$(NC)"
-	$(DOCKER_COMPOSE) up -d --build brewery
-	@echo "$(GREEN)✓ Brewery container reloaded$(NC)"
-
-stop: ## Stop all Docker services
-	@echo "$(BLUE)Stopping application and services...$(NC)"
-	$(DOCKER_COMPOSE) --profile dev down
-	@echo "$(GREEN)✓ Stopped$(NC)"
-
-clean: ## Clean build and Docker artifacts
-	@echo "$(BLUE)Cleaning build artifacts and Docker artifacts...$(NC)"
+clean: ## Clean Maven and Next.js build artifacts
+	@echo "$(BLUE)Cleaning build artifacts...$(NC)"
 	$(MAVEN) clean
-	$(DOCKER_COMPOSE) --profile dev down -v --rmi all
+	rm -rf dashboard/.next dashboard/out
 	@echo "$(GREEN)✓ Cleaned$(NC)"
 
 .DEFAULT_GOAL := help
+
