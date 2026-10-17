@@ -25,7 +25,7 @@ public class DeploymentEventListener {
             try {
                 deploymentService.triggerDeploymentsForArtifact(event.getArtifactName(), event.getArtifactVersion());
             } catch (Exception e) {
-                log.error("Error processing Komodo deployment for registered artifact {}@{}",
+                log.error("Error processing K3s deployment for registered artifact {}@{}",
                         event.getArtifactName(), event.getArtifactVersion(), e);
             }
         });

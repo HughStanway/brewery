@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiClient, Deployment, DeploymentStatus } from '@/api/client';
+import { apiClient, Deployment } from '@/api/client';
 import { useRouter } from 'next/navigation';
 import { 
   Rocket, 
@@ -15,6 +15,7 @@ import {
   ExternalLink,
   Trash2,
   RotateCw,
+  RotateCcw,
   PauseCircle,
   PlayCircle,
   Terminal,
@@ -48,6 +49,15 @@ function DeploymentCard({ d, onSelect }: { d: Deployment; onSelect: () => void }
     onError: (err: any) => alert('Error deploying: ' + err.message)
   });
 
+  const rollbackMutation = useMutation({
+    mutationFn: () => apiClient.rollbackDeployment(d.id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['deployments'] });
+      queryClient.invalidateQueries({ queryKey: ['deployment-status', d.id] });
+    },
+    onError: (err: any) => alert('Error rolling back: ' + err.message)
+  });
+
   const restartMutation = useMutation({
     mutationFn: () => apiClient.restartDeployment(d.id),
     onSuccess: () => {
@@ -75,7 +85,8 @@ function DeploymentCard({ d, onSelect }: { d: Deployment; onSelect: () => void }
   });
 
   const ns = d.namespace || statusData?.namespace || 'default';
-  const k8sName = d.k8sDeploymentName || d.komodoStackName || d.name;
+  const k8sName = d.k8sDeploymentName || d.name;
+  const port = d.containerPort || 80;
 
   const currentStatus = statusData?.status || d.status;
   let statusColor = 'text-gray-500 bg-gray-100 border-gray-200';
@@ -118,7 +129,7 @@ function DeploymentCard({ d, onSelect }: { d: Deployment; onSelect: () => void }
                 </h3>
                 <div className="flex items-center gap-2 text-[11px] text-gray-500 font-mono">
                   <span className="bg-gray-100 px-1.5 py-0.5 rounded text-gray-700">ns: {ns}</span>
-                  <span className="truncate">k8s: {k8sName}</span>
+                  <span className="truncate">k8s: {k8sName}:{port}</span>
                 </div>
               </div>
             </div>
@@ -149,9 +160,16 @@ function DeploymentCard({ d, onSelect }: { d: Deployment; onSelect: () => void }
 
             <div className="flex items-center justify-between">
               <span className="font-semibold uppercase tracking-wider text-[10px]">Active Version:</span>
-              <span className="font-mono text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200 font-bold">
-                {d.deployedVersion || 'None'}
-              </span>
+              <div className="flex items-center gap-1.5">
+                {d.previousDeployedVersion && (
+                  <span className="font-mono text-[10px] text-gray-400">
+                    prev: {d.previousDeployedVersion}
+                  </span>
+                )}
+                <span className="font-mono text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200 font-bold">
+                  {d.deployedVersion || 'None'}
+                </span>
+              </div>
             </div>
 
             <div className="flex items-center justify-between pt-1">
@@ -169,10 +187,19 @@ function DeploymentCard({ d, onSelect }: { d: Deployment; onSelect: () => void }
                 </a>
               ) : (
                 <span className="font-mono text-[10px] text-gray-500 bg-gray-100 px-2 py-0.5 rounded border border-gray-200 font-medium">
-                  🔒 Internal K3s Service ({k8sName}:80)
+                  🔒 Internal K3s Service ({k8sName}:{port})
                 </span>
               )}
             </div>
+
+            {(d.cpuLimit || d.memoryLimit) && (
+              <div className="flex items-center justify-between pt-1">
+                <span className="font-semibold uppercase tracking-wider text-[10px]">Resource Limits:</span>
+                <span className="font-mono text-[10px] text-gray-600 bg-gray-100 px-2 py-0.5 rounded border border-gray-200">
+                  {d.cpuLimit ? `CPU: ${d.cpuLimit}` : ''}{d.cpuLimit && d.memoryLimit ? ' · ' : ''}{d.memoryLimit ? `Mem: ${d.memoryLimit}` : ''}
+                </span>
+              </div>
+            )}
 
             <div className="flex items-center justify-between pt-1">
               <span className="font-semibold uppercase tracking-wider text-[10px]">Liveness & Health:</span>
@@ -193,7 +220,7 @@ function DeploymentCard({ d, onSelect }: { d: Deployment; onSelect: () => void }
 
         {/* Action Toolbar */}
         <div className="mt-6 pt-3 border-t border-[var(--card-border)] flex flex-wrap items-center justify-between gap-2 text-xs">
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 flex-wrap">
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -206,6 +233,23 @@ function DeploymentCard({ d, onSelect }: { d: Deployment; onSelect: () => void }
               <Rocket className="w-3.5 h-3.5" />
               Deploy
             </button>
+
+            {d.previousDeployedVersion && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (confirm(`Roll back ${d.name} to previous version ${d.previousDeployedVersion}?`)) {
+                    rollbackMutation.mutate();
+                  }
+                }}
+                disabled={rollbackMutation.isPending}
+                className="flex items-center gap-1 px-2.5 py-1.5 bg-purple-100 hover:bg-purple-200 text-purple-800 rounded-lg font-semibold transition-colors disabled:opacity-50"
+                title={`Roll back to ${d.previousDeployedVersion}`}
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                Rollback
+              </button>
+            )}
 
             <button
               onClick={(e) => {
@@ -319,6 +363,10 @@ export default function DeploymentsPage() {
   const [artifactName, setArtifactName] = React.useState('');
   const [description, setDescription] = React.useState('');
   const [publicDomain, setPublicDomain] = React.useState('');
+  const [containerPort, setContainerPort] = React.useState('80');
+  const [cpuLimit, setCpuLimit] = React.useState('');
+  const [memoryLimit, setMemoryLimit] = React.useState('');
+  const [envVars, setEnvVars] = React.useState('');
 
   const { data: deployments, isLoading } = useQuery({
     queryKey: ['deployments'],
@@ -335,6 +383,10 @@ export default function DeploymentsPage() {
       artifactName: string;
       description?: string;
       publicDomain?: string;
+      containerPort?: number;
+      envVars?: string;
+      memoryLimit?: string;
+      cpuLimit?: string;
     }) => apiClient.registerOrUpdateDeployment({ ...data, username: 'dashboard-user' }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['deployments'] });
@@ -346,6 +398,10 @@ export default function DeploymentsPage() {
       setArtifactName('');
       setDescription('');
       setPublicDomain('');
+      setContainerPort('80');
+      setCpuLimit('');
+      setMemoryLimit('');
+      setEnvVars('');
     },
     onError: (err: any) => {
       alert('Error registering deployment: ' + err.message);
@@ -356,7 +412,7 @@ export default function DeploymentsPage() {
     if (!deployments) return [];
     return deployments.filter(d => 
       d.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      ((d.k8sDeploymentName || d.komodoStackName) && (d.k8sDeploymentName || d.komodoStackName)!.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (d.k8sDeploymentName && d.k8sDeploymentName.toLowerCase().includes(searchQuery.toLowerCase())) ||
       (d.artifactName && d.artifactName.toLowerCase().includes(searchQuery.toLowerCase()))
     );
   }, [deployments, searchQuery]);
@@ -413,7 +469,7 @@ export default function DeploymentsPage() {
               <Plus className="w-5 h-5 text-[var(--primary)]" />
               Register K3s Deployment Mapping
             </h3>
-            <p className="text-xs text-gray-500">Link a Brewery artifact to a K3s Kubernetes workload deployment.</p>
+            <p className="text-xs text-gray-500">Link a Brewery artifact to a K3s Kubernetes workload deployment with custom port, env vars, and resource limits.</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -483,10 +539,60 @@ export default function DeploymentsPage() {
               </label>
               <input
                 type="text"
-                placeholder="e.g. beerdar.bigiron.dev"
+                placeholder="e.g. app.bigiron.dev"
                 value={publicDomain}
                 onChange={(e) => setPublicDomain(e.target.value)}
                 className="w-full bg-[var(--background)] border border-[var(--card-border)] rounded-xl px-4 py-2 text-sm text-gray-800 focus:outline-none focus:border-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+                Container Port
+              </label>
+              <input
+                type="number"
+                placeholder="80 (or 3000, 8080)"
+                value={containerPort}
+                onChange={(e) => setContainerPort(e.target.value)}
+                className="w-full bg-[var(--background)] border border-[var(--card-border)] rounded-xl px-4 py-2 text-sm text-gray-800 focus:outline-none focus:border-blue-500"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+                  CPU Limit (Optional)
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. 500m or 1"
+                  value={cpuLimit}
+                  onChange={(e) => setCpuLimit(e.target.value)}
+                  className="w-full bg-[var(--background)] border border-[var(--card-border)] rounded-xl px-4 py-2 text-sm text-gray-800 focus:outline-none focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+                  Memory Limit (Optional)
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. 512Mi or 1Gi"
+                  value={memoryLimit}
+                  onChange={(e) => setMemoryLimit(e.target.value)}
+                  className="w-full bg-[var(--background)] border border-[var(--card-border)] rounded-xl px-4 py-2 text-sm text-gray-800 focus:outline-none focus:border-blue-500"
+                />
+              </div>
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+                Environment Variables (KEY=VALUE per line or JSON)
+              </label>
+              <textarea
+                rows={3}
+                placeholder={'NODE_ENV=production\nPORT=8080'}
+                value={envVars}
+                onChange={(e) => setEnvVars(e.target.value)}
+                className="w-full bg-[var(--background)] border border-[var(--card-border)] rounded-xl px-4 py-2 text-xs font-mono text-gray-800 focus:outline-none focus:border-blue-500"
               />
             </div>
             <div className="md:col-span-2">
@@ -516,6 +622,7 @@ export default function DeploymentsPage() {
                   alert('Please fill out Display Name and Target Artifact Name.');
                   return;
                 }
+                const parsedPort = parseInt(containerPort, 10);
                 createMutation.mutate({
                   name,
                   namespace,
@@ -523,7 +630,11 @@ export default function DeploymentsPage() {
                   containerName: containerName || 'app',
                   artifactName,
                   description,
-                  publicDomain: publicDomain.trim() || undefined
+                  publicDomain: publicDomain.trim() || undefined,
+                  containerPort: !isNaN(parsedPort) && parsedPort > 0 ? parsedPort : undefined,
+                  envVars: envVars.trim() || undefined,
+                  memoryLimit: memoryLimit.trim() || undefined,
+                  cpuLimit: cpuLimit.trim() || undefined,
                 });
               }}
               disabled={createMutation.isPending}

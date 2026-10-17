@@ -2,19 +2,30 @@ package com.homelab.brewery.deploymentengine.provider;
 
 import com.homelab.brewery.deploymentengine.model.DeploymentStatusDto;
 import io.fabric8.kubernetes.api.model.Container;
+import io.fabric8.kubernetes.api.model.ContainerPort;
+import io.fabric8.kubernetes.api.model.ContainerPortBuilder;
+import io.fabric8.kubernetes.api.model.ContainerStatus;
+import io.fabric8.kubernetes.api.model.EnvVar;
+import io.fabric8.kubernetes.api.model.EnvVarBuilder;
 import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.PodList;
-
+import io.fabric8.kubernetes.api.model.Quantity;
+import io.fabric8.kubernetes.api.model.ResourceRequirements;
+import io.fabric8.kubernetes.api.model.ResourceRequirementsBuilder;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
 import io.fabric8.kubernetes.api.model.apps.DeploymentBuilder;
+import io.fabric8.kubernetes.api.model.networking.v1.Ingress;
+import io.fabric8.kubernetes.api.model.networking.v1.IngressBuilder;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientBuilder;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -22,8 +33,11 @@ import java.util.Map;
 @Slf4j
 public class K8sDeploymentProvider {
 
+    private static final long DEFAULT_ROLLOUT_TIMEOUT_SECONDS = 60L;
+
     private final KubernetesClient k8sClient;
 
+    @Autowired
     public K8sDeploymentProvider() {
         KubernetesClient client = null;
         try {
@@ -35,7 +49,20 @@ public class K8sDeploymentProvider {
         this.k8sClient = client;
     }
 
-    public boolean deployOrPatchImage(String namespace, String deploymentName, String containerName, String fullImageTag, String domainHost) {
+    public K8sDeploymentProvider(KubernetesClient k8sClient) {
+        this.k8sClient = k8sClient;
+    }
+
+    public boolean deployOrPatchImage(
+            String namespace,
+            String deploymentName,
+            String containerName,
+            String fullImageTag,
+            String domainHost,
+            Integer containerPort,
+            Map<String, String> envVars,
+            String memoryLimit,
+            String cpuLimit) {
         if (k8sClient == null) {
             log.warn("KubernetesClient is null. Skipping deployment for {}/{}.", namespace, deploymentName);
             return false;
@@ -43,10 +70,18 @@ public class K8sDeploymentProvider {
 
         String targetNs = (namespace != null && !namespace.isBlank()) ? namespace : "default";
         String targetContainer = (containerName != null && !containerName.isBlank()) ? containerName : "app";
+        int effectivePort = (containerPort != null && containerPort > 0) ? containerPort : 80;
 
-        log.info("Deploying/patching K3s Deployment [{}/{}] -> container '{}' image: {}", targetNs, deploymentName, targetContainer, fullImageTag);
+        log.info("Deploying/patching K3s Deployment [{}/{}] -> container '{}' image: {}, port: {}, domain: {}",
+                targetNs, deploymentName, targetContainer, fullImageTag, effectivePort, domainHost);
         try {
             ensureNamespaceExists(targetNs);
+
+            List<ContainerPort> k8sPorts = List.of(
+                    new ContainerPortBuilder().withContainerPort(effectivePort).build()
+            );
+            List<EnvVar> k8sEnvVars = buildEnvVars(envVars);
+            ResourceRequirements resources = buildResourceRequirements(memoryLimit, cpuLimit);
 
             Deployment existing = k8sClient.apps().deployments()
                     .inNamespace(targetNs)
@@ -55,43 +90,85 @@ public class K8sDeploymentProvider {
 
             if (existing == null) {
                 log.info("Deployment {}/{} does not exist in K3s. Creating new deployment...", targetNs, deploymentName);
-                createNewDeployment(targetNs, deploymentName, targetContainer, fullImageTag, domainHost);
-                return true;
+                createNewDeployment(targetNs, deploymentName, targetContainer, fullImageTag, domainHost, effectivePort, k8sEnvVars, resources);
+                return verifyRollout(targetNs, deploymentName, DEFAULT_ROLLOUT_TIMEOUT_SECONDS);
             }
 
             k8sClient.apps().deployments()
                     .inNamespace(targetNs)
                     .withName(deploymentName)
-                    .edit(d -> new DeploymentBuilder(d)
-                        .editSpec()
-                          .editTemplate()
-                            .editSpec()
-                              .editMatchingContainer(c -> c.getName().equalsIgnoreCase(targetContainer) || c.getName().equalsIgnoreCase(deploymentName))
-                                .withImage(fullImageTag)
-                              .endContainer()
-                            .endSpec()
-                          .endTemplate()
-                        .endSpec()
-                        .build()
-                    );
+                    .edit(d -> {
+                        var containerEditor = new DeploymentBuilder(d)
+                                .editSpec()
+                                  .editTemplate()
+                                    .editSpec()
+                                      .editMatchingContainer(c -> c.getName().equalsIgnoreCase(targetContainer) || c.getName().equalsIgnoreCase(deploymentName))
+                                        .withImage(fullImageTag)
+                                        .withPorts(k8sPorts);
+                        if (envVars != null) {
+                            containerEditor.withEnv(k8sEnvVars);
+                        }
+                        if (resources != null) {
+                            containerEditor.withResources(resources);
+                        }
+                        return containerEditor
+                                      .endContainer()
+                                    .endSpec()
+                                  .endTemplate()
+                                .endSpec()
+                                .build();
+                    });
 
             log.info("Successfully patched K3s deployment {}/{} image to {}", targetNs, deploymentName, fullImageTag);
 
-            ensureServiceExists(targetNs, deploymentName, Map.of("app", deploymentName));
+            ensureServiceExists(targetNs, deploymentName, Map.of("app", deploymentName), effectivePort);
+            ensureIngressExists(targetNs, deploymentName, domainHost);
 
-            if (domainHost != null && !domainHost.isBlank()) {
-                ensureIngressExists(targetNs, deploymentName, domainHost);
-            }
-
-            return true;
+            return verifyRollout(targetNs, deploymentName, DEFAULT_ROLLOUT_TIMEOUT_SECONDS);
         } catch (Exception e) {
             log.error("Failed deploying/patching K3s deployment {}/{}", targetNs, deploymentName, e);
             return false;
         }
     }
 
+    public boolean deployOrPatchImage(String namespace, String deploymentName, String containerName, String fullImageTag, String domainHost) {
+        return deployOrPatchImage(namespace, deploymentName, containerName, fullImageTag, domainHost, null, null, null, null);
+    }
+
     public boolean deployOrPatchImage(String namespace, String deploymentName, String containerName, String fullImageTag) {
-        return deployOrPatchImage(namespace, deploymentName, containerName, fullImageTag, null);
+        return deployOrPatchImage(namespace, deploymentName, containerName, fullImageTag, null, null, null, null, null);
+    }
+
+    private List<EnvVar> buildEnvVars(Map<String, String> envVars) {
+        if (envVars == null || envVars.isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<EnvVar> list = new ArrayList<>();
+        for (Map.Entry<String, String> entry : envVars.entrySet()) {
+            if (entry.getKey() != null && !entry.getKey().isBlank()) {
+                list.add(new EnvVarBuilder()
+                        .withName(entry.getKey().trim())
+                        .withValue(entry.getValue() != null ? entry.getValue() : "")
+                        .build());
+            }
+        }
+        return list;
+    }
+
+    private ResourceRequirements buildResourceRequirements(String memoryLimit, String cpuLimit) {
+        Map<String, Quantity> limits = new HashMap<>();
+        if (memoryLimit != null && !memoryLimit.isBlank()) {
+            limits.put("memory", new Quantity(memoryLimit.trim()));
+        }
+        if (cpuLimit != null && !cpuLimit.isBlank()) {
+            limits.put("cpu", new Quantity(cpuLimit.trim()));
+        }
+        if (limits.isEmpty()) {
+            return null;
+        }
+        return new ResourceRequirementsBuilder()
+                .withLimits(limits)
+                .build();
     }
 
     private void ensureNamespaceExists(String namespace) {
@@ -109,10 +186,18 @@ public class K8sDeploymentProvider {
         }
     }
 
-    private void createNewDeployment(String namespace, String deploymentName, String containerName, String fullImageTag, String domainHost) {
+    private void createNewDeployment(
+            String namespace,
+            String deploymentName,
+            String containerName,
+            String fullImageTag,
+            String domainHost,
+            int containerPort,
+            List<EnvVar> envVars,
+            ResourceRequirements resources) {
         Map<String, String> labels = Map.of("app", deploymentName);
 
-        Deployment newDeployment = new DeploymentBuilder()
+        var containerBuilder = new DeploymentBuilder()
                 .withNewMetadata()
                   .withName(deploymentName)
                   .withNamespace(namespace)
@@ -132,8 +217,17 @@ public class K8sDeploymentProvider {
                         .withName(containerName)
                         .withImage(fullImageTag)
                         .addNewPort()
-                          .withContainerPort(80)
-                        .endPort()
+                          .withContainerPort(containerPort)
+                        .endPort();
+
+        if (envVars != null && !envVars.isEmpty()) {
+            containerBuilder.withEnv(envVars);
+        }
+        if (resources != null) {
+            containerBuilder.withResources(resources);
+        }
+
+        Deployment newDeployment = containerBuilder
                       .endContainer()
                     .endSpec()
                   .endTemplate()
@@ -143,18 +237,18 @@ public class K8sDeploymentProvider {
         k8sClient.apps().deployments().inNamespace(namespace).resource(newDeployment).create();
         log.info("Successfully created K3s deployment {}/{} with image {}", namespace, deploymentName, fullImageTag);
 
-        ensureServiceExists(namespace, deploymentName, labels);
-
-        // Only provision Traefik Ingress if domainHost is explicitly requested
-        if (domainHost != null && !domainHost.isBlank()) {
-            ensureIngressExists(namespace, deploymentName, domainHost);
-        }
+        ensureServiceExists(namespace, deploymentName, labels, containerPort);
+        ensureIngressExists(namespace, deploymentName, domainHost);
     }
 
-    private void ensureServiceExists(String namespace, String deploymentName, Map<String, String> labels) {
+    private void ensureServiceExists(String namespace, String deploymentName, Map<String, String> labels, Integer configuredContainerPort) {
         try {
-            var existingDep = k8sClient.apps().deployments().inNamespace(namespace).withName(deploymentName).get();
             List<Integer> containerPorts = new ArrayList<>();
+            if (configuredContainerPort != null && configuredContainerPort > 0) {
+                containerPorts.add(configuredContainerPort);
+            }
+
+            var existingDep = k8sClient.apps().deployments().inNamespace(namespace).withName(deploymentName).get();
             if (existingDep != null && existingDep.getSpec() != null && existingDep.getSpec().getTemplate() != null && existingDep.getSpec().getTemplate().getSpec() != null) {
                 var containers = existingDep.getSpec().getTemplate().getSpec().getContainers();
                 if (containers != null) {
@@ -218,11 +312,35 @@ public class K8sDeploymentProvider {
         }
     }
 
-    private void ensureIngressExists(String namespace, String deploymentName, String domainHost) {
+    public void reconcileIngress(String namespace, String deploymentName, String domainHost) {
+        ensureIngressExists(namespace, deploymentName, domainHost);
+    }
+
+    public void ensureIngressExists(String namespace, String deploymentName, String domainHost) {
+        if (k8sClient == null) return;
         try {
-            if (k8sClient.network().v1().ingresses().inNamespace(namespace).withName(deploymentName).get() == null) {
-                log.info("Provisioning dynamic Traefik Ingress for {}/{} -> https://{}", namespace, deploymentName, domainHost);
-                io.fabric8.kubernetes.api.model.networking.v1.Ingress newIngress = new io.fabric8.kubernetes.api.model.networking.v1.IngressBuilder()
+            Ingress existingIngress = k8sClient.network().v1().ingresses()
+                    .inNamespace(namespace)
+                    .withName(deploymentName)
+                    .get();
+
+            if (domainHost == null || domainHost.isBlank()) {
+                if (existingIngress != null) {
+                    log.info("Deleting stale Traefik Ingress {}/{} as domainHost is empty", namespace, deploymentName);
+                    k8sClient.network().v1().ingresses()
+                            .inNamespace(namespace)
+                            .withName(deploymentName)
+                            .delete();
+                }
+                return;
+            }
+
+            String cleanDomain = domainHost.trim();
+            String tlsSecretName = deploymentName + "-bigiron-dev-tls";
+
+            if (existingIngress == null) {
+                log.info("Provisioning dynamic Traefik Ingress for {}/{} -> https://{}", namespace, deploymentName, cleanDomain);
+                Ingress newIngress = new IngressBuilder()
                         .withNewMetadata()
                           .withName(deploymentName)
                           .withNamespace(namespace)
@@ -232,11 +350,11 @@ public class K8sDeploymentProvider {
                         .withNewSpec()
                           .withIngressClassName("traefik")
                           .addNewTl()
-                            .addToHosts(domainHost)
-                            .withSecretName(deploymentName + "-bigiron-dev-tls")
+                            .addToHosts(cleanDomain)
+                            .withSecretName(tlsSecretName)
                           .endTl()
                           .addNewRule()
-                            .withHost(domainHost)
+                            .withHost(cleanDomain)
                             .withNewHttp()
                               .addNewPath()
                                 .withPath("/")
@@ -256,11 +374,141 @@ public class K8sDeploymentProvider {
                         .build();
 
                 k8sClient.network().v1().ingresses().inNamespace(namespace).resource(newIngress).create();
-                log.info("Successfully provisioned K3s Ingress {}/{} -> https://{}", namespace, deploymentName, domainHost);
+                log.info("Successfully provisioned K3s Ingress {}/{} -> https://{}", namespace, deploymentName, cleanDomain);
+            } else {
+                boolean hostMatches = existingIngress.getSpec() != null
+                        && existingIngress.getSpec().getRules() != null
+                        && existingIngress.getSpec().getRules().size() == 1
+                        && cleanDomain.equals(existingIngress.getSpec().getRules().get(0).getHost());
+                boolean tlsMatches = existingIngress.getSpec() != null
+                        && existingIngress.getSpec().getTls() != null
+                        && existingIngress.getSpec().getTls().size() == 1
+                        && existingIngress.getSpec().getTls().get(0).getHosts() != null
+                        && existingIngress.getSpec().getTls().get(0).getHosts().contains(cleanDomain)
+                        && tlsSecretName.equals(existingIngress.getSpec().getTls().get(0).getSecretName());
+
+                if (!hostMatches || !tlsMatches) {
+                    log.info("Updating existing Traefik Ingress for {}/{} to host https://{}", namespace, deploymentName, cleanDomain);
+                    k8sClient.network().v1().ingresses()
+                            .inNamespace(namespace)
+                            .withName(deploymentName)
+                            .edit(ing -> new IngressBuilder(ing)
+                                    .editOrNewMetadata()
+                                      .addToAnnotations("cert-manager.io/cluster-issuer", "letsencrypt-prod")
+                                      .addToAnnotations("traefik.ingress.kubernetes.io/router.middlewares", "authelia-authelia-forwardauth@kubernetescrd")
+                                    .endMetadata()
+                                    .withNewSpec()
+                                      .withIngressClassName("traefik")
+                                      .addNewTl()
+                                        .addToHosts(cleanDomain)
+                                        .withSecretName(tlsSecretName)
+                                      .endTl()
+                                      .addNewRule()
+                                        .withHost(cleanDomain)
+                                        .withNewHttp()
+                                          .addNewPath()
+                                            .withPath("/")
+                                            .withPathType("Prefix")
+                                            .withNewBackend()
+                                              .withNewService()
+                                                .withName(deploymentName)
+                                                .withNewPort()
+                                                  .withNumber(80)
+                                                .endPort()
+                                              .endService()
+                                            .endBackend()
+                                          .endPath()
+                                        .endHttp()
+                                      .endRule()
+                                    .endSpec()
+                                    .build());
+                    log.info("Successfully updated K3s Ingress {}/{} -> https://{}", namespace, deploymentName, cleanDomain);
+                }
             }
         } catch (Exception ie) {
-            log.warn("Could not create ingress for {}/{}: {}", namespace, deploymentName, ie.getMessage());
+            log.warn("Could not reconcile ingress for {}/{}: {}", namespace, deploymentName, ie.getMessage());
         }
+    }
+
+    public boolean verifyRollout(String namespace, String deploymentName, long timeoutSeconds) {
+        if (k8sClient == null) return false;
+        String targetNs = (namespace != null && !namespace.isBlank()) ? namespace : "default";
+        long effectiveTimeout = timeoutSeconds > 0 ? timeoutSeconds : DEFAULT_ROLLOUT_TIMEOUT_SECONDS;
+        long deadline = System.currentTimeMillis() + (effectiveTimeout * 1000L);
+
+        log.info("Verifying rollout for K3s deployment {}/{} (timeout={}s)...", targetNs, deploymentName, effectiveTimeout);
+        while (System.currentTimeMillis() <= deadline) {
+            try {
+                Deployment d = k8sClient.apps().deployments().inNamespace(targetNs).withName(deploymentName).get();
+                if (d == null) {
+                    log.warn("Deployment {}/{} not found during rollout verification", targetNs, deploymentName);
+                    return false;
+                }
+
+                Map<String, String> matchLabels = d.getSpec() != null && d.getSpec().getSelector() != null
+                        ? d.getSpec().getSelector().getMatchLabels()
+                        : Map.of("app", deploymentName);
+
+                PodList podList = k8sClient.pods().inNamespace(targetNs).withLabels(matchLabels).list();
+                if (podList != null && podList.getItems() != null) {
+                    for (Pod p : podList.getItems()) {
+                        if (p.getMetadata() != null && p.getMetadata().getDeletionTimestamp() != null) {
+                            continue;
+                        }
+                        if (p.getStatus() != null && p.getStatus().getContainerStatuses() != null) {
+                            for (ContainerStatus cs : p.getStatus().getContainerStatuses()) {
+                                if (cs.getState() != null && cs.getState().getWaiting() != null) {
+                                    String reason = cs.getState().getWaiting().getReason();
+                                    if ("CrashLoopBackOff".equalsIgnoreCase(reason)
+                                            || "ImagePullBackOff".equalsIgnoreCase(reason)
+                                            || "ErrImagePull".equalsIgnoreCase(reason)
+                                            || "InvalidImageName".equalsIgnoreCase(reason)) {
+                                        log.error("Rollout failed for {}/{}: pod {} entered {}",
+                                                targetNs, deploymentName,
+                                                p.getMetadata() != null ? p.getMetadata().getName() : "unknown",
+                                                reason);
+                                        return false;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Long metadataGen = d.getMetadata() != null ? d.getMetadata().getGeneration() : null;
+                Long observedGen = d.getStatus() != null ? d.getStatus().getObservedGeneration() : null;
+                int desired = d.getSpec() != null && d.getSpec().getReplicas() != null ? d.getSpec().getReplicas() : 1;
+                int ready = d.getStatus() != null && d.getStatus().getReadyReplicas() != null ? d.getStatus().getReadyReplicas() : 0;
+                int updated = d.getStatus() != null && d.getStatus().getUpdatedReplicas() != null ? d.getStatus().getUpdatedReplicas() : 0;
+
+                if (desired == 0) {
+                    return true;
+                }
+
+                boolean generationObserved = (metadataGen == null) || (observedGen != null && observedGen >= metadataGen);
+                if (generationObserved && updated >= desired && ready >= 1) {
+                    log.info("Rollout verified for {}/{}: readyReplicas={}/{}, updatedReplicas={}",
+                            targetNs, deploymentName, ready, desired, updated);
+                    return true;
+                }
+            } catch (Exception e) {
+                log.debug("Error polling rollout status for {}/{}: {}", targetNs, deploymentName, e.getMessage());
+            }
+
+            long remaining = deadline - System.currentTimeMillis();
+            if (remaining <= 0) {
+                break;
+            }
+            try {
+                Thread.sleep(Math.min(1000L, remaining));
+            } catch (InterruptedException ie) {
+                Thread.currentThread().interrupt();
+                return false;
+            }
+        }
+
+        log.warn("Rollout verification timed out after {}s for {}/{}", effectiveTimeout, targetNs, deploymentName);
+        return false;
     }
 
     public boolean restartDeployment(String namespace, String deploymentName) {
@@ -315,13 +563,18 @@ public class K8sDeploymentProvider {
                     .inNamespace(targetNs)
                     .withName(deploymentName)
                     .delete();
-            
+
             k8sClient.services()
                     .inNamespace(targetNs)
                     .withName(deploymentName)
                     .delete();
 
-            log.info("Successfully deleted deployment and service for {}/{}", targetNs, deploymentName);
+            k8sClient.network().v1().ingresses()
+                    .inNamespace(targetNs)
+                    .withName(deploymentName)
+                    .delete();
+
+            log.info("Successfully deleted deployment, service, and ingress for {}/{}", targetNs, deploymentName);
             return true;
         } catch (Exception e) {
             log.error("Failed deleting K3s deployment resources {}/{}", targetNs, deploymentName, e);
@@ -382,19 +635,9 @@ public class K8sDeploymentProvider {
                 }
             }
 
-            String livenessStatus;
-            if (desired == 0) {
-                livenessStatus = "STOPPED";
-            } else if (ready.equals(desired) && ready > 0) {
-                livenessStatus = "RUNNING";
-            } else if (ready > 0) {
-                livenessStatus = "DEGRADED";
-            } else {
-                livenessStatus = "FAILED";
-            }
-
             // Fetch pods for detailed liveness
             List<DeploymentStatusDto.PodInfo> podInfos = new ArrayList<>();
+            boolean hasCrashOrPullError = false;
             try {
                 Map<String, String> matchLabels = d.getSpec() != null && d.getSpec().getSelector() != null
                         ? d.getSpec().getSelector().getMatchLabels()
@@ -409,9 +652,22 @@ public class K8sDeploymentProvider {
                                 p.getStatus().getConditions().stream().anyMatch(c -> "Ready".equals(c.getType()) && "True".equals(c.getStatus()));
                         int restarts = 0;
                         if (p.getStatus() != null && p.getStatus().getContainerStatuses() != null) {
-                            restarts = p.getStatus().getContainerStatuses().stream()
-                                    .mapToInt(cs -> cs.getRestartCount() != null ? cs.getRestartCount() : 0)
-                                    .sum();
+                            for (ContainerStatus cs : p.getStatus().getContainerStatuses()) {
+                                if (cs.getRestartCount() != null) {
+                                    restarts += cs.getRestartCount();
+                                }
+                                if (cs.getState() != null && cs.getState().getWaiting() != null) {
+                                    String reason = cs.getState().getWaiting().getReason();
+                                    if (reason != null && !reason.isBlank()) {
+                                        phase = reason;
+                                        if ("CrashLoopBackOff".equalsIgnoreCase(reason)
+                                                || "ImagePullBackOff".equalsIgnoreCase(reason)
+                                                || "ErrImagePull".equalsIgnoreCase(reason)) {
+                                            hasCrashOrPullError = true;
+                                        }
+                                    }
+                                }
+                            }
                         }
                         podInfos.add(DeploymentStatusDto.PodInfo.builder()
                                 .name(podName)
@@ -423,6 +679,19 @@ public class K8sDeploymentProvider {
                 }
             } catch (Exception pe) {
                 log.debug("Failed reading pods for {}/{}: {}", targetNs, deploymentName, pe.getMessage());
+            }
+
+            String livenessStatus;
+            if (desired == 0) {
+                livenessStatus = "STOPPED";
+            } else if (hasCrashOrPullError && ready == 0) {
+                livenessStatus = "FAILED";
+            } else if (ready.equals(desired) && ready > 0 && !hasCrashOrPullError) {
+                livenessStatus = "RUNNING";
+            } else if (ready > 0) {
+                livenessStatus = "DEGRADED";
+            } else {
+                livenessStatus = "FAILED";
             }
 
             return DeploymentStatusDto.builder()

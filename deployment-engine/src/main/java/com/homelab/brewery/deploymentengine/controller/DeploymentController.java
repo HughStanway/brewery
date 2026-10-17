@@ -1,8 +1,10 @@
 package com.homelab.brewery.deploymentengine.controller;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.homelab.brewery.common.entity.Deployment;
 import com.homelab.brewery.deploymentengine.model.DeploymentStatusDto;
 import com.homelab.brewery.deploymentengine.service.DeploymentService;
+import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -19,6 +21,26 @@ import java.util.UUID;
 public class DeploymentController {
 
     private final DeploymentService deploymentService;
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
+    @Data
+    public static class RegisterDeploymentRequest {
+        private String name;
+        private String namespace;
+        private String ns;
+        private String k8sDeploymentName;
+        private String containerName;
+        private String k8sContainerName;
+        private String artifactName;
+        private String description;
+        private String publicDomain;
+        private String domainHost;
+        private Integer containerPort;
+        private Object envVars;
+        private String memoryLimit;
+        private String cpuLimit;
+        private String username;
+    }
 
     @GetMapping
     public ResponseEntity<List<Deployment>> getAllDeployments() {
@@ -49,34 +71,123 @@ public class DeploymentController {
     }
 
     @PostMapping
-    public ResponseEntity<Deployment> registerOrUpdateDeployment(@RequestBody Map<String, String> body) {
-        String name = body.get("name");
-        String namespace = body.getOrDefault("namespace", body.getOrDefault("ns", "default"));
-        String k8sDeploymentName = body.getOrDefault("k8sDeploymentName", body.getOrDefault("komodoStackName", name));
-        String containerName = body.getOrDefault("containerName", body.getOrDefault("k8sContainerName", "app"));
-        String artifactName = body.get("artifactName");
-        String description = body.get("description");
-        String publicDomain = body.getOrDefault("publicDomain", body.get("domainHost"));
-        String username = body.get("username");
+    public ResponseEntity<Deployment> registerOrUpdateDeployment(@RequestBody RegisterDeploymentRequest req) {
+        String name = req.getName();
+        String namespace = req.getNamespace() != null ? req.getNamespace() : (req.getNs() != null ? req.getNs() : "default");
+        String k8sDeploymentName = req.getK8sDeploymentName() != null && !req.getK8sDeploymentName().isBlank()
+                ? req.getK8sDeploymentName()
+                : name;
+        String containerName = req.getContainerName() != null && !req.getContainerName().isBlank()
+                ? req.getContainerName()
+                : (req.getK8sContainerName() != null && !req.getK8sContainerName().isBlank() ? req.getK8sContainerName() : "app");
+        String artifactName = req.getArtifactName();
+        String description = req.getDescription();
+        String publicDomain = req.getPublicDomain() != null ? req.getPublicDomain() : req.getDomainHost();
+        String envVarsStr = serializeEnvVars(req.getEnvVars());
 
-        if (name == null || artifactName == null) {
+        if (name == null || name.isBlank() || artifactName == null || artifactName.isBlank()) {
             return ResponseEntity.badRequest().build();
         }
 
         Deployment deployment = deploymentService.registerOrUpdateDeployment(
-                name, namespace, k8sDeploymentName, containerName, artifactName, description, publicDomain, username
+                name,
+                namespace,
+                k8sDeploymentName,
+                containerName,
+                artifactName,
+                description,
+                publicDomain,
+                req.getContainerPort(),
+                envVarsStr,
+                req.getMemoryLimit(),
+                req.getCpuLimit(),
+                req.getUsername()
         );
         return ResponseEntity.ok(deployment);
     }
 
-    @PostMapping("/{id}/deploy")
-    public ResponseEntity<Deployment> deploy(@PathVariable("id") UUID id) {
+    @PutMapping("/{id}")
+    public ResponseEntity<Deployment> updateDeployment(
+            @PathVariable("id") UUID id,
+            @RequestBody RegisterDeploymentRequest req) {
         try {
-            Deployment deployment = deploymentService.deploy(id);
+            String namespace = req.getNamespace() != null ? req.getNamespace() : (req.getNs() != null ? req.getNs() : "default");
+            String k8sDeploymentName = req.getK8sDeploymentName();
+            String containerName = req.getContainerName() != null ? req.getContainerName() : req.getK8sContainerName();
+            String publicDomain = req.getPublicDomain() != null ? req.getPublicDomain() : req.getDomainHost();
+            String envVarsStr = serializeEnvVars(req.getEnvVars());
+
+            Deployment deployment = deploymentService.updateDeployment(
+                    id,
+                    req.getName(),
+                    namespace,
+                    k8sDeploymentName,
+                    containerName,
+                    req.getArtifactName(),
+                    req.getDescription(),
+                    publicDomain,
+                    req.getContainerPort(),
+                    envVarsStr,
+                    req.getMemoryLimit(),
+                    req.getCpuLimit(),
+                    req.getUsername()
+            );
+            return ResponseEntity.ok(deployment);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    private String serializeEnvVars(Object envVarsObj) {
+        if (envVarsObj == null) {
+            return null;
+        }
+        if (envVarsObj instanceof String s) {
+            return s;
+        }
+        try {
+            return objectMapper.writeValueAsString(envVarsObj);
+        } catch (Exception e) {
+            return String.valueOf(envVarsObj);
+        }
+    }
+
+    @PostMapping("/{id}/deploy")
+    public ResponseEntity<Deployment> deploy(
+            @PathVariable("id") UUID id,
+            @RequestParam(value = "version", required = false) String versionParam,
+            @RequestBody(required = false) Map<String, String> body) {
+        try {
+            String targetVersion = versionParam;
+            if ((targetVersion == null || targetVersion.isBlank()) && body != null) {
+                targetVersion = body.get("version");
+            }
+            Deployment deployment = deploymentService.deploy(id, targetVersion);
             return ResponseEntity.ok(deployment);
         } catch (Exception e) {
             log.error("K3s deployment rollout failed for {}", id, e);
             return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    @PostMapping("/{id}/rollback")
+    public ResponseEntity<?> rollback(
+            @PathVariable("id") UUID id,
+            @RequestParam(value = "version", required = false) String versionParam,
+            @RequestBody(required = false) Map<String, String> body) {
+        try {
+            String targetVersion = versionParam;
+            if ((targetVersion == null || targetVersion.isBlank()) && body != null) {
+                targetVersion = body.get("version");
+            }
+            Deployment deployment = deploymentService.rollbackDeployment(id, targetVersion);
+            return ResponseEntity.ok(deployment);
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            log.warn("Rollback rejected for {}: {}", id, e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        } catch (Exception e) {
+            log.error("K3s deployment rollback failed for {}", id, e);
+            return ResponseEntity.internalServerError().body(Map.of("message", e.getMessage()));
         }
     }
 

@@ -999,4 +999,31 @@ databaseChangeLog:
                   name: public_domain
                   type: VARCHAR(255)
 
-
+  - changeSet:
+      id: "13-deployment-config-and-rollback-schema"
+      author: "brewery"
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: deployments
+                columnName: container_port
+      changes:
+        - addColumn:
+            tableName: deployments
+            columns:
+              - column:
+                  name: container_port
+                  type: INT
+              - column:
+                  name: env_vars
+                  type: TEXT
+              - column:
+                  name: memory_limit
+                  type: VARCHAR(255)
+              - column:
+                  name: cpu_limit
+                  type: VARCHAR(255)
+              - column:
+                  name: previous_deployed_version
+                  type: VARCHAR(255)

@@ -24,9 +24,6 @@ public class Deployment {
     @Column(nullable = false, unique = true)
     private String name;
 
-    @Column(name = "komodo_stack_name")
-    private String komodoStackName;
-
     @Column(name = "namespace")
     private String namespace;
 
@@ -42,6 +39,9 @@ public class Deployment {
     @Column(name = "deployed_version")
     private String deployedVersion;
 
+    @Column(name = "previous_deployed_version")
+    private String previousDeployedVersion;
+
     @Column(columnDefinition = "TEXT")
     private String description;
 
@@ -51,14 +51,23 @@ public class Deployment {
     @Column(name = "deployment_spec", columnDefinition = "TEXT")
     private String deploymentSpec;
 
-    @Column(name = "komodo_url")
-    private String komodoUrl;
-
     @Column(name = "headlamp_url")
     private String headlampUrl;
 
     @Column(name = "public_domain")
     private String publicDomain;
+
+    @Column(name = "container_port")
+    private Integer containerPort;
+
+    @Column(name = "env_vars", columnDefinition = "TEXT")
+    private String envVars;
+
+    @Column(name = "memory_limit")
+    private String memoryLimit;
+
+    @Column(name = "cpu_limit")
+    private String cpuLimit;
 
     public String getNamespace() {
         return (namespace != null && !namespace.isBlank()) ? namespace : "default";
@@ -71,9 +80,6 @@ public class Deployment {
     public String getK8sDeploymentName() {
         if (k8sDeploymentName != null && !k8sDeploymentName.isBlank()) {
             return k8sDeploymentName;
-        }
-        if (komodoStackName != null && !komodoStackName.isBlank()) {
-            return komodoStackName;
         }
         return name;
     }
@@ -120,3 +126,4 @@ public class Deployment {
         updatedAt = Instant.now();
     }
 }
+

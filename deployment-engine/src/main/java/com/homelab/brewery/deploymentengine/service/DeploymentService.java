@@ -18,7 +18,40 @@ public interface DeploymentService {
             String username
     );
 
+    Deployment registerOrUpdateDeployment(
+            String name,
+            String namespace,
+            String k8sDeploymentName,
+            String containerName,
+            String artifactName,
+            String description,
+            String publicDomain,
+            Integer containerPort,
+            String envVars,
+            String memoryLimit,
+            String cpuLimit,
+            String username
+    );
+
+    Deployment updateDeployment(
+            UUID deploymentId,
+            String name,
+            String namespace,
+            String k8sDeploymentName,
+            String containerName,
+            String artifactName,
+            String description,
+            String publicDomain,
+            Integer containerPort,
+            String envVars,
+            String memoryLimit,
+            String cpuLimit,
+            String username
+    );
+
     Deployment deploy(UUID deploymentId);
+    Deployment deploy(UUID deploymentId, String targetVersion);
+    Deployment rollbackDeployment(UUID deploymentId, String targetVersion);
     Deployment restartDeployment(UUID deploymentId);
     Deployment scaleDeployment(UUID deploymentId, int replicas);
     void deleteDeployment(UUID deploymentId, boolean deleteK8sResources);

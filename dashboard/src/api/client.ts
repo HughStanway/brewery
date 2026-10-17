@@ -185,14 +185,17 @@ export interface Deployment {
   namespace?: string;
   k8sDeploymentName?: string;
   k8sContainerName?: string;
-  komodoStackName?: string;
   artifactName?: string;
   deployedVersion?: string;
+  previousDeployedVersion?: string;
   description?: string;
   publicDomain?: string;
+  containerPort?: number;
+  envVars?: string;
+  memoryLimit?: string;
+  cpuLimit?: string;
   status: string;
   headlampUrl?: string;
-  komodoUrl?: string;
   deployedAt?: string;
   completedAt?: string;
   deployedBy?: string;
@@ -319,13 +322,44 @@ export const apiClient = {
     artifactName: string;
     description?: string;
     publicDomain?: string;
+    containerPort?: number;
+    envVars?: string;
+    memoryLimit?: string;
+    cpuLimit?: string;
     username?: string;
   }) => 
     request<Deployment>('/deployments', { 
       method: 'POST', 
       body: JSON.stringify(data) 
     }),
-  deploy: (id: string) => request<Deployment>(`/deployments/${id}/deploy`, { method: 'POST' }),
+  updateDeployment: (id: string, data: {
+    name?: string;
+    namespace?: string;
+    k8sDeploymentName?: string;
+    containerName?: string;
+    artifactName?: string;
+    description?: string;
+    publicDomain?: string;
+    containerPort?: number;
+    envVars?: string;
+    memoryLimit?: string;
+    cpuLimit?: string;
+    username?: string;
+  }) =>
+    request<Deployment>(`/deployments/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    }),
+  deploy: (id: string, version?: string) =>
+    request<Deployment>(`/deployments/${id}/deploy`, {
+      method: 'POST',
+      body: version ? JSON.stringify({ version }) : undefined
+    }),
+  rollbackDeployment: (id: string, version?: string) =>
+    request<Deployment>(`/deployments/${id}/rollback`, {
+      method: 'POST',
+      body: version ? JSON.stringify({ version }) : undefined
+    }),
   restartDeployment: (id: string) => request<Deployment>(`/deployments/${id}/restart`, { method: 'POST' }),
   scaleDeployment: (id: string, replicas: number) => request<Deployment>(`/deployments/${id}/scale`, { method: 'POST', body: JSON.stringify({ replicas }) }),
   deleteDeployment: (id: string, deleteK8s = false) => request<void>(`/deployments/${id}?deleteK8s=${deleteK8s}`, { method: 'DELETE' }),
