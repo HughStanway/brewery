@@ -13,7 +13,6 @@ import {
   Settings,
   Activity,
   Terminal,
-  BookOpen,
   Rocket
 } from 'lucide-react';
 
@@ -36,7 +35,6 @@ export default function LayoutWrapper({ children }: LayoutWrapperProps) {
     { name: 'Dependencies', href: '/dependencies', icon: GitFork },
     { name: 'Cascade Rebuilds', href: '/cascade', icon: RefreshCw },
     { name: 'Deployments', href: '/deployments', icon: Rocket },
-    { name: 'Documentation', href: '/docs', icon: BookOpen },
     { name: 'Settings', href: '/settings', icon: Settings },
   ];
 
