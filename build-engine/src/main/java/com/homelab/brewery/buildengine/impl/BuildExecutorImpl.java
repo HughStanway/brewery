@@ -160,8 +160,22 @@ public class BuildExecutorImpl implements BuildExecutor {
                     originUrl = "https://github.com/" + build.getRepository() + ".git";
                 }
                 executeGitCommand(workspaceDir, "remote", "add", "origin", originUrl);
-                executeGitCommand(workspaceDir, "fetch", "--depth", "1", "origin", build.getCommit());
+                String fetchTarget = build.getCommit();
+                if (fetchTarget == null || fetchTarget.isBlank() || "HEAD".equalsIgnoreCase(fetchTarget.trim())) {
+                    fetchTarget = (build.getBranch() != null && !build.getBranch().isBlank())
+                            ? build.getBranch().trim()
+                            : "HEAD";
+                }
+                executeGitCommand(workspaceDir, "fetch", "--depth", "1", "origin", fetchTarget);
                 executeGitCommand(workspaceDir, "checkout", "FETCH_HEAD");
+                try {
+                    String resolvedSha = executeGitCommand(workspaceDir, "rev-parse", "HEAD").trim();
+                    if (resolvedSha.matches("^[0-9a-fA-F]{40}$") && !resolvedSha.equalsIgnoreCase(build.getCommit())) {
+                        build.setCommit(resolvedSha);
+                        buildRepository.save(build);
+                    }
+                } catch (Exception ignored) {
+                }
             }
 
             // 3. Read and Parse build.yaml
@@ -536,18 +550,20 @@ public class BuildExecutorImpl implements BuildExecutor {
         }
     }
 
-    private void executeGitCommand(File dir, String... command) throws IOException, InterruptedException {
+    private String executeGitCommand(File dir, String... command) throws IOException, InterruptedException {
         List<String> fullCommand = new ArrayList<>();
         fullCommand.add("git");
         fullCommand.addAll(List.of(command));
         ProcessBuilder pb = new ProcessBuilder(fullCommand);
         pb.directory(dir);
         Process p = pb.start();
+        String output = new String(p.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
         boolean success = p.waitFor(60, TimeUnit.SECONDS);
         if (!success || p.exitValue() != 0) {
             String error = new String(p.getErrorStream().readAllBytes(), StandardCharsets.UTF_8);
             throw new IOException("Git command failed: " + String.join(" ", fullCommand) + ". Error: " + error);
         }
+        return output;
     }
 
     private List<File> findFiles(File root, String pattern) throws IOException {

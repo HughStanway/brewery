@@ -74,7 +74,10 @@ export default function DashboardPage() {
 
   const activeDeploymentsCount = React.useMemo(() => {
     if (!deployments) return 0;
-    return deployments.filter(d => ['healthy', 'deploying', 'paused', 'unhealthy'].includes(d.status)).length;
+    return deployments.filter(d => {
+      const s = (d.status || '').toUpperCase();
+      return ['SUCCESS', 'RUNNING', 'DEPLOYING', 'DEGRADED', 'HEALTHY', 'PAUSED', 'UNHEALTHY'].includes(s);
+    }).length;
   }, [deployments]);
 
   const sortedBuilds = React.useMemo(() => {
@@ -150,7 +153,7 @@ export default function DashboardPage() {
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
         {/* Total Builds */}
-        <div className="p-6 bg-[var(--card)] border border-[var(--card-border)] rounded-2xl flex items-center justify-between shadow-xl transition-all duration-300 hover:border-blue-500/30 group">
+        <Link href="/builds" className="p-6 bg-[var(--card)] border border-[var(--card-border)] rounded-2xl flex items-center justify-between shadow-xl transition-all duration-300 hover:border-blue-500/30 group">
           <div className="space-y-1">
             <span className="text-xs font-semibold text-gray-500 tracking-wider uppercase">Total Builds</span>
             <div className="text-2xl font-bold text-gray-900 font-mono">{stats?.totalBuilds ?? 0}</div>
@@ -158,10 +161,10 @@ export default function DashboardPage() {
           <div className="w-12 h-12 rounded-2xl bg-blue-500/10 flex items-center justify-center text-[var(--primary)] group-hover:scale-110 transition-transform">
             <Hammer className="w-6 h-6" />
           </div>
-        </div>
+        </Link>
 
         {/* Total Artifacts */}
-        <div className="p-6 bg-[var(--card)] border border-[var(--card-border)] rounded-2xl flex items-center justify-between shadow-xl transition-all duration-300 hover:border-blue-500/30 group">
+        <Link href="/artifacts" className="p-6 bg-[var(--card)] border border-[var(--card-border)] rounded-2xl flex items-center justify-between shadow-xl transition-all duration-300 hover:border-blue-500/30 group">
           <div className="space-y-1">
             <span className="text-xs font-semibold text-gray-500 tracking-wider uppercase">Artifact Registry</span>
             <div className="text-2xl font-bold text-gray-900 font-mono">{stats?.totalArtifacts ?? 0}</div>
@@ -169,7 +172,7 @@ export default function DashboardPage() {
           <div className="w-12 h-12 rounded-2xl bg-violet-500/10 flex items-center justify-center text-violet-400 group-hover:scale-110 transition-transform">
             <Package className="w-6 h-6" />
           </div>
-        </div>
+        </Link>
 
         {/* Success Rate */}
         <div className="p-6 bg-[var(--card)] border border-[var(--card-border)] rounded-2xl flex items-center justify-between shadow-xl transition-all duration-300 hover:border-emerald-500/30 group">
@@ -202,7 +205,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Active Deployments */}
-        <div className="p-6 bg-[var(--card)] border border-[var(--card-border)] rounded-2xl flex items-center justify-between shadow-xl transition-all duration-300 hover:border-indigo-500/30 group">
+        <Link href="/deployments" className="p-6 bg-[var(--card)] border border-[var(--card-border)] rounded-2xl flex items-center justify-between shadow-xl transition-all duration-300 hover:border-indigo-500/30 group">
           <div className="space-y-1">
             <span className="text-xs font-semibold text-gray-500 tracking-wider uppercase">Active Deployments</span>
             <div className="text-2xl font-bold text-gray-900 font-mono">{activeDeploymentsCount}</div>
@@ -210,7 +213,7 @@ export default function DashboardPage() {
           <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 flex items-center justify-center text-indigo-500 group-hover:scale-110 transition-transform">
             <Rocket className="w-6 h-6" />
           </div>
-        </div>
+        </Link>
       </div>
 
       {/* Main Grid: Chart & Build History */}
@@ -379,6 +382,74 @@ export default function DashboardPage() {
             </tbody>
           </table>
         </div>
+      </div>
+
+      {/* Active K3s Deployments Summary */}
+      <div className="p-6 bg-[var(--card)] border border-[var(--card-border)] rounded-2xl shadow-xl space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
+            <Rocket className="w-5 h-5 text-indigo-500" />
+            Kubernetes Workload Deployments
+          </h3>
+          <Link 
+            href="/deployments"
+            className="text-xs text-[var(--primary)] hover:text-[var(--primary)] font-semibold flex items-center gap-1 hover:underline"
+          >
+            Manage Deployments
+            <ArrowRight className="w-4 h-4" />
+          </Link>
+        </div>
+
+        {deployments && deployments.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {deployments.map((d) => {
+              const s = (d.status || '').toUpperCase();
+              const isHealthy = s === 'SUCCESS' || s === 'RUNNING' || s === 'HEALTHY';
+              const isDeploying = s === 'DEPLOYING';
+              const statusBadge = isHealthy
+                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                : isDeploying
+                ? 'bg-blue-50 text-blue-700 border-blue-200 animate-pulse'
+                : s === 'FAILED'
+                ? 'bg-red-50 text-red-700 border-red-200'
+                : 'bg-gray-100 text-gray-600 border-gray-200';
+
+              return (
+                <Link
+                  key={d.id}
+                  href={`/deployments/details?id=${d.id}`}
+                  className="p-4 bg-gray-50/70 hover:bg-white border border-[var(--card-border)] hover:border-indigo-400 rounded-2xl transition-all flex flex-col justify-between gap-3 group"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="font-bold text-gray-900 text-sm group-hover:text-[var(--primary)] transition-colors truncate">
+                        {d.name}
+                      </div>
+                      <div className="text-[11px] font-mono text-gray-500 truncate mt-0.5">
+                        {d.namespace || 'default'}/{d.k8sDeploymentName || d.name}:{d.containerPort || 80}
+                      </div>
+                    </div>
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase border shrink-0 ${statusBadge}`}>
+                      {d.status || 'UNKNOWN'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-[11px] pt-2 border-t border-gray-200/70">
+                    <span className="font-mono text-gray-600 truncate">
+                      {d.artifactName || 'unlinked'} <span className="text-blue-600 font-bold">@{d.deployedVersion || 'none'}</span>
+                    </span>
+                    <span className="text-[10px] font-semibold text-indigo-600 shrink-0">
+                      {d.publicDomain ? `🌐 ${d.publicDomain}` : '🔒 Internal K3s'}
+                    </span>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="py-6 text-center text-gray-500 font-mono text-xs bg-gray-50 rounded-xl border border-gray-200">
+            No K3s workload deployments registered yet.
+          </div>
+        )}
       </div>
     </div>
   );

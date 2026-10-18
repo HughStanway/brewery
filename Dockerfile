@@ -11,7 +11,17 @@ RUN npm run build
 FROM maven:3.9.6-eclipse-temurin-21 AS build
 WORKDIR /app
 
+# Cache Maven dependencies before copying source code or frontend assets
 COPY pom.xml .
+COPY common/pom.xml ./common/pom.xml
+COPY core/pom.xml ./core/pom.xml
+COPY build-engine/pom.xml ./build-engine/pom.xml
+COPY registry/pom.xml ./registry/pom.xml
+COPY dependency-resolver/pom.xml ./dependency-resolver/pom.xml
+COPY deployment-engine/pom.xml ./deployment-engine/pom.xml
+COPY cascade-rebuild/pom.xml ./cascade-rebuild/pom.xml
+RUN mvn dependency:go-offline -B -q || true
+
 COPY common ./common
 COPY core ./core
 COPY build-engine ./build-engine

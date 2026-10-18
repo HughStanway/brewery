@@ -79,16 +79,25 @@ export default function LayoutWrapper({ children }: LayoutWrapperProps) {
         <div className="flex items-center gap-4">
           {user && (
             <div className="flex items-center gap-3">
-              <span className="text-[11px] font-bold text-gray-700 bg-gray-100 border border-gray-200 px-3 py-1.5 rounded-full flex items-center gap-1.5 shadow-sm">
-                <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>
-                {user.username} ({user.role})
-              </span>
-              <button
-                onClick={logout}
-                className="text-[11px] font-bold text-red-700 bg-red-50 border border-red-200 hover:bg-red-100 hover:border-red-300 px-3 py-1.5 rounded-full transition-all duration-200 shadow-sm active:scale-95"
-              >
-                Logout
-              </button>
+              {user.username === 'SSO-Authenticated' ? (
+                <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-full flex items-center gap-1.5 shadow-sm">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                  SSO Authenticated (Authelia)
+                </span>
+              ) : (
+                <>
+                  <span className="text-[11px] font-bold text-gray-700 bg-gray-100 border border-gray-200 px-3 py-1.5 rounded-full flex items-center gap-1.5 shadow-sm">
+                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>
+                    {user.username} ({user.role})
+                  </span>
+                  <button
+                    onClick={logout}
+                    className="text-[11px] font-bold text-red-700 bg-red-50 border border-red-200 hover:bg-red-100 hover:border-red-300 px-3 py-1.5 rounded-full transition-all duration-200 shadow-sm active:scale-95"
+                  >
+                    Logout
+                  </button>
+                </>
+              )}
             </div>
           )}
         </div>

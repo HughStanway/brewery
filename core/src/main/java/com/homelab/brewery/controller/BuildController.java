@@ -11,10 +11,12 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -34,6 +36,41 @@ public class BuildController {
         } catch (Exception e) {
             log.error("Failed to retrieve all builds", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @PostMapping
+    public ResponseEntity<?> triggerBuild(@RequestBody Map<String, String> request) {
+        String repository = request != null ? request.get("repository") : null;
+        if (repository == null || repository.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Repository is required (e.g. owner/repo)"));
+        }
+        String branch = request.get("branch");
+        if (branch == null || branch.isBlank()) {
+            branch = "main";
+        }
+        String commit = request.get("commit");
+        if (commit == null || commit.isBlank()) {
+            commit = "HEAD";
+        }
+
+        try {
+            Build build = new Build();
+            build.setId(UUID.randomUUID());
+            build.setRepository(repository.trim());
+            build.setBranch(branch.trim());
+            build.setCommit(commit.trim());
+            build.setStatus("pending");
+
+            Build savedBuild = buildRepository.save(build);
+            buildQueueManager.enqueue(savedBuild);
+            log.info("Manually triggered build. id={}, repo={}, branch={}, commit={}",
+                    savedBuild.getId(), savedBuild.getRepository(), savedBuild.getBranch(), savedBuild.getCommit());
+            return ResponseEntity.status(HttpStatus.CREATED).body(savedBuild);
+        } catch (Exception e) {
+            log.error("Failed to trigger manual build for repo={}", repository, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("message", "Failed to trigger build: " + e.getMessage()));
         }
     }
 

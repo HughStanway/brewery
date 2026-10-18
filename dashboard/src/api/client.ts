@@ -272,6 +272,11 @@ export const apiClient = {
   // Builds API
   getBuilds: () => request<Build[]>('/builds'),
   getBuild: (id: string) => request<Build>(`/builds/${id}`),
+  triggerBuild: (data: { repository: string; branch?: string; commit?: string }) =>
+    request<Build>('/builds', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
   retryBuild: (id: string) => request<Build>(`/builds/${id}/retry`, { method: 'POST' }),
   cancelBuild: (id: string) => request<Build>(`/builds/${id}/cancel`, { method: 'POST' }),
 

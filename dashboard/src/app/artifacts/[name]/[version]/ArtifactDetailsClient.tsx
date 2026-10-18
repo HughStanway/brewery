@@ -294,13 +294,13 @@ export default function ArtifactDetailsClient() {
         
         {/* Action Buttons */}
         <div className="flex items-center gap-3 self-start md:self-auto">
-          {metadata.deployment_yaml && (
+          {(metadata.artifact_type === 'docker-image' || metadata.deployment_yaml) && (
             <Link
-              href={`/deployments?quickDeploy=true&artifactName=${name}&artifactVersion=${version}`}
+              href={`/deployments?quickDeploy=true&artifactName=${encodeURIComponent(name)}&artifactVersion=${encodeURIComponent(version)}`}
               className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl text-xs font-semibold transition-all shadow-lg shadow-emerald-500/20"
             >
               <Rocket className="w-4 h-4" />
-              Quick Deploy
+              Deploy This Version
             </Link>
           )}
           <a 

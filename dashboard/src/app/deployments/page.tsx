@@ -3,7 +3,7 @@
 import React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient, Deployment } from '@/api/client';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { 
   Rocket, 
   Search, 
@@ -351,11 +351,18 @@ function DeploymentCard({ d, onSelect }: { d: Deployment; onSelect: () => void }
   );
 }
 
-export default function DeploymentsPage() {
+function DeploymentsPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const queryClient = useQueryClient();
+
+  const quickDeploy = searchParams?.get('quickDeploy') === 'true';
+  const quickArtifactName = searchParams?.get('artifactName') || '';
+  const quickArtifactVersion = searchParams?.get('artifactVersion') || '';
+
   const [searchQuery, setSearchQuery] = React.useState('');
   const [isCreating, setIsCreating] = React.useState(false);
+  const [quickDeployHandled, setQuickDeployHandled] = React.useState(false);
   const [name, setName] = React.useState('');
   const [namespace, setNamespace] = React.useState('default');
   const [k8sDeploymentName, setK8sDeploymentName] = React.useState('');
@@ -374,6 +381,42 @@ export default function DeploymentsPage() {
     refetchInterval: 5000,
   });
 
+  const existingQuickDeployment = React.useMemo(() => {
+    if (!quickDeploy || !quickArtifactName || !deployments) return undefined;
+    return deployments.find(
+      (d) => d.artifactName === quickArtifactName || d.name === quickArtifactName
+    );
+  }, [quickDeploy, quickArtifactName, deployments]);
+
+  React.useEffect(() => {
+    if (quickDeploy && quickArtifactName && deployments && !quickDeployHandled) {
+      setQuickDeployHandled(true);
+      if (!existingQuickDeployment) {
+        setIsCreating(true);
+        setName(quickArtifactName);
+        setK8sDeploymentName(quickArtifactName);
+        setArtifactName(quickArtifactName);
+        setDescription(
+          quickArtifactVersion
+            ? `Registered from artifact ${quickArtifactName}@${quickArtifactVersion}`
+            : `Registered from artifact ${quickArtifactName}`
+        );
+      }
+    }
+  }, [quickDeploy, quickArtifactName, quickArtifactVersion, deployments, existingQuickDeployment, quickDeployHandled]);
+
+  const quickDeployMutation = useMutation({
+    mutationFn: ({ id, version }: { id: string; version?: string }) =>
+      apiClient.deploy(id, version),
+    onSuccess: (deployed) => {
+      queryClient.invalidateQueries({ queryKey: ['deployments'] });
+      router.push(`/deployments/details?id=${deployed.id}`);
+    },
+    onError: (err: any) => {
+      alert('Error deploying version: ' + err.message);
+    },
+  });
+
   const createMutation = useMutation({
     mutationFn: (data: {
       name: string;
@@ -388,7 +431,7 @@ export default function DeploymentsPage() {
       memoryLimit?: string;
       cpuLimit?: string;
     }) => apiClient.registerOrUpdateDeployment({ ...data, username: 'dashboard-user' }),
-    onSuccess: () => {
+    onSuccess: (created) => {
       queryClient.invalidateQueries({ queryKey: ['deployments'] });
       setIsCreating(false);
       setName('');
@@ -402,6 +445,9 @@ export default function DeploymentsPage() {
       setCpuLimit('');
       setMemoryLimit('');
       setEnvVars('');
+      if (quickDeploy && quickArtifactVersion && created?.id) {
+        quickDeployMutation.mutate({ id: created.id, version: quickArtifactVersion });
+      }
     },
     onError: (err: any) => {
       alert('Error registering deployment: ' + err.message);
@@ -448,6 +494,44 @@ export default function DeploymentsPage() {
         </div>
       </div>
 
+      {/* Quick Deploy Banner when existing deployment matches artifactName */}
+      {quickDeploy && quickArtifactName && existingQuickDeployment && (
+        <div className="p-5 bg-emerald-50 border border-emerald-200 rounded-2xl shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 text-emerald-900 font-bold text-sm">
+              <Rocket className="w-4 h-4 text-emerald-600" />
+              Ready to Deploy {quickArtifactName} {quickArtifactVersion ? `@ ${quickArtifactVersion}` : ''}
+            </div>
+            <p className="text-xs text-emerald-700">
+              Matched existing K3s deployment <span className="font-mono font-bold">{existingQuickDeployment.name}</span> ({existingQuickDeployment.namespace || 'default'}/{existingQuickDeployment.k8sDeploymentName || existingQuickDeployment.name}). Currently running version: <span className="font-mono font-bold">{existingQuickDeployment.deployedVersion || 'None'}</span>.
+            </p>
+          </div>
+          <div className="flex items-center gap-2.5 shrink-0">
+            <button
+              onClick={() =>
+                quickDeployMutation.mutate({
+                  id: existingQuickDeployment.id,
+                  version: quickArtifactVersion || undefined,
+                })
+              }
+              disabled={quickDeployMutation.isPending}
+              className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-colors shadow-sm disabled:opacity-50"
+            >
+              <Rocket className="w-3.5 h-3.5" />
+              {quickDeployMutation.isPending
+                ? 'Deploying...'
+                : `Deploy ${quickArtifactVersion || 'Latest'} Now`}
+            </button>
+            <button
+              onClick={() => router.push(`/deployments/details?id=${existingQuickDeployment.id}`)}
+              className="px-3.5 py-2 bg-white hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-semibold transition-colors"
+            >
+              Inspect Workload
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Search Toolbar */}
       <div className="flex flex-col md:flex-row gap-4 items-center justify-between p-4 bg-[var(--card)] border border-[var(--card-border)] rounded-2xl">
         <div className="relative w-full md:w-96">
@@ -469,7 +553,11 @@ export default function DeploymentsPage() {
               <Plus className="w-5 h-5 text-[var(--primary)]" />
               Register K3s Deployment Mapping
             </h3>
-            <p className="text-xs text-gray-500">Link a Brewery artifact to a K3s Kubernetes workload deployment with custom port, env vars, and resource limits.</p>
+            <p className="text-xs text-gray-500">
+              {quickDeploy && quickArtifactVersion
+                ? `Registering K3s deployment for ${quickArtifactName} — will automatically deploy version ${quickArtifactVersion} on save.`
+                : 'Link a Brewery artifact to a K3s Kubernetes workload deployment with custom port, env vars, and resource limits.'}
+            </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -637,10 +725,14 @@ export default function DeploymentsPage() {
                   cpuLimit: cpuLimit.trim() || undefined,
                 });
               }}
-              disabled={createMutation.isPending}
+              disabled={createMutation.isPending || quickDeployMutation.isPending}
               className="bg-blue-600 hover:bg-[var(--primary)] text-white px-6 py-2 rounded-2xl text-sm font-bold transition-colors disabled:opacity-50 shadow-sm"
             >
-              {createMutation.isPending ? 'Registering...' : 'Save Deployment'}
+              {createMutation.isPending
+                ? 'Registering...'
+                : quickDeploy && quickArtifactVersion
+                ? `Save & Deploy ${quickArtifactVersion}`
+                : 'Save Deployment'}
             </button>
           </div>
         </div>
@@ -659,5 +751,20 @@ export default function DeploymentsPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function DeploymentsPage() {
+  return (
+    <React.Suspense
+      fallback={
+        <div className="flex flex-col items-center justify-center min-h-[50vh] gap-4">
+          <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-gray-500 font-mono text-sm animate-pulse">Loading K3s deployments...</p>
+        </div>
+      }
+    >
+      <DeploymentsPageContent />
+    </React.Suspense>
   );
 }

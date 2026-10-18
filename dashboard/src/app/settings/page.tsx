@@ -28,9 +28,10 @@ import {
 export default function SettingsPage() {
   const { user: currentUser, logout } = useAuth();
   const queryClient = useQueryClient();
+  const isSso = currentUser?.username === 'SSO-Authenticated';
 
   // Active Tab state: profile, system, users
-  const [activeTab, setActiveTab] = useState<'profile' | 'system' | 'users'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'system' | 'users'>('system');
 
   // Modals state
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -53,7 +54,7 @@ export default function SettingsPage() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-  // Fetch users (enabled only for ADMINs)
+  // Fetch users (enabled only for ADMINs when internal auth is active)
   const { 
     data: users, 
     isLoading: isUsersLoading, 
@@ -62,7 +63,7 @@ export default function SettingsPage() {
     queryKey: ['users'],
     queryFn: apiClient.getUsers,
     refetchInterval: 5000,
-    enabled: currentUser?.role === 'ADMIN',
+    enabled: currentUser?.role === 'ADMIN' && !isSso,
   });
 
   // Fetch system config (available to all logged-in users)
@@ -213,25 +214,23 @@ export default function SettingsPage() {
           </div>
           <div>
             <h2 className="text-xl font-bold text-gray-900 tracking-tight">System Settings</h2>
-            <p className="text-sm text-gray-500 mt-1">Configure profile details, inspect system configs, and manage accounts.</p>
+            <p className="text-sm text-gray-500 mt-1">
+              {isSso
+                ? 'Inspect runtime environment configuration and external Authelia SSO status.'
+                : 'Configure profile details, inspect system configs, and manage accounts.'}
+            </p>
           </div>
         </div>
+        {isSso && (
+          <div className="flex items-center gap-2 px-3.5 py-2 bg-emerald-50 border border-emerald-200 rounded-2xl text-xs font-bold text-emerald-700">
+            <Shield className="w-4 h-4 text-emerald-600" />
+            Managed by Authelia ForwardAuth SSO
+          </div>
+        )}
       </div>
 
       {/* Tabs Selector */}
       <div className="flex gap-2 p-1.5 bg-gray-200/60 w-fit rounded-2xl border border-gray-300">
-        <button
-          onClick={() => setActiveTab('profile')}
-          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${
-            activeTab === 'profile'
-              ? 'bg-white text-blue-600 shadow border border-gray-200/80 scale-[1.02]'
-              : 'text-gray-600 hover:text-gray-900 hover:bg-white/40'
-          }`}
-        >
-          <User className="w-4 h-4" />
-          My Profile
-        </button>
-
         <button
           onClick={() => setActiveTab('system')}
           className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${
@@ -244,7 +243,21 @@ export default function SettingsPage() {
           System Configuration
         </button>
 
-        {currentUser?.role === 'ADMIN' && (
+        {!isSso && (
+          <button
+            onClick={() => setActiveTab('profile')}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${
+              activeTab === 'profile'
+                ? 'bg-white text-blue-600 shadow border border-gray-200/80 scale-[1.02]'
+                : 'text-gray-600 hover:text-gray-900 hover:bg-white/40'
+            }`}
+          >
+            <User className="w-4 h-4" />
+            My Profile
+          </button>
+        )}
+
+        {!isSso && currentUser?.role === 'ADMIN' && (
           <button
             onClick={() => setActiveTab('users')}
             className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${

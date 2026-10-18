@@ -14,18 +14,52 @@ import {
   CheckCircle2,
   XCircle,
   Clock,
-  Play
+  Play,
+  Plus,
+  GitBranch
 } from 'lucide-react';
 
 export default function BuildsPage() {
   const queryClient = useQueryClient();
   const [statusFilter, setStatusFilter] = React.useState<string>('all');
   const [searchQuery, setSearchQuery] = React.useState<string>('');
+  const [isTriggering, setIsTriggering] = React.useState<boolean>(false);
+  const [repoInput, setRepoInput] = React.useState<string>('');
+  const [branchInput, setBranchInput] = React.useState<string>('main');
+  const [commitInput, setCommitInput] = React.useState<string>('HEAD');
 
   const { data: builds, isLoading, error } = useQuery({
     queryKey: ['builds'],
     queryFn: apiClient.getBuilds,
     refetchInterval: 5000,
+  });
+
+  const knownRepositories = React.useMemo(() => {
+    if (!builds) return [];
+    const set = new Set<string>();
+    builds.forEach((b) => {
+      if (b.repository && !b.repository.startsWith('myteam/')) {
+        set.add(b.repository);
+      }
+    });
+    builds.forEach((b) => {
+      if (b.repository) set.add(b.repository);
+    });
+    return Array.from(set);
+  }, [builds]);
+
+  const triggerMutation = useMutation({
+    mutationFn: (data: { repository: string; branch: string; commit: string }) =>
+      apiClient.triggerBuild(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['builds'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboardStats'] });
+      setIsTriggering(false);
+      setCommitInput('HEAD');
+    },
+    onError: (err: any) => {
+      alert('Failed to trigger build: ' + err.message);
+    },
   });
 
   const retryMutation = useMutation({
@@ -87,7 +121,131 @@ export default function BuildsPage() {
           </h2>
           <p className="text-sm text-gray-500">Manage, run, and view progress of pipeline executions.</p>
         </div>
+        <div className="flex items-center gap-3 self-start md:self-auto">
+          <button
+            onClick={() => {
+              if (!repoInput && knownRepositories.length > 0) {
+                setRepoInput(knownRepositories[0]);
+              }
+              setIsTriggering(!isTriggering);
+            }}
+            className="flex items-center gap-2 bg-blue-600 hover:bg-[var(--primary)] text-white rounded-full px-4 py-2.5 text-sm font-semibold transition-colors shadow-lg shadow-blue-500/20"
+          >
+            <Plus className="w-4 h-4" />
+            Trigger Build
+          </button>
+        </div>
       </div>
+
+      {/* Trigger Build Panel */}
+      {isTriggering && (
+        <div className="bg-[var(--card)] border border-[var(--card-border)] rounded-2xl p-6 shadow-xl space-y-5">
+          <div className="border-b border-[var(--card-border)] pb-3">
+            <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
+              <Play className="w-4 h-4 text-[var(--primary)]" />
+              Trigger Manual Pipeline Build
+            </h3>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Clone a GitHub repository containing a <code className="font-mono text-gray-700">build.yaml</code> and enqueue a fresh container build.
+            </p>
+          </div>
+
+          {knownRepositories.length > 0 && (
+            <div className="space-y-1.5">
+              <span className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+                Quick-Select Recent Repository
+              </span>
+              <div className="flex flex-wrap gap-2">
+                {knownRepositories.map((repo) => (
+                  <button
+                    key={repo}
+                    type="button"
+                    onClick={() => setRepoInput(repo)}
+                    className={`px-3 py-1 rounded-full text-xs font-mono font-semibold border transition-colors ${
+                      repoInput === repo
+                        ? 'bg-blue-50 text-blue-700 border-blue-300'
+                        : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100'
+                    }`}
+                  >
+                    {repo}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">
+                Repository (owner/repo)
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. hstanway/brewery-test-app"
+                value={repoInput}
+                onChange={(e) => setRepoInput(e.target.value)}
+                className="w-full bg-[var(--background)] border border-[var(--card-border)] rounded-xl px-3.5 py-2 text-sm font-mono text-gray-800 focus:outline-none focus:border-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">
+                Branch
+              </label>
+              <div className="relative">
+                <GitBranch className="w-4 h-4 text-gray-400 absolute left-3 top-2.5" />
+                <input
+                  type="text"
+                  placeholder="main"
+                  value={branchInput}
+                  onChange={(e) => setBranchInput(e.target.value)}
+                  className="w-full bg-[var(--background)] border border-[var(--card-border)] rounded-xl pl-9 pr-3.5 py-2 text-sm font-mono text-gray-800 focus:outline-none focus:border-blue-500"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">
+                Commit SHA or Ref
+              </label>
+              <input
+                type="text"
+                placeholder="HEAD (or 40-char commit SHA)"
+                value={commitInput}
+                onChange={(e) => setCommitInput(e.target.value)}
+                className="w-full bg-[var(--background)] border border-[var(--card-border)] rounded-xl px-3.5 py-2 text-sm font-mono text-gray-800 focus:outline-none focus:border-blue-500"
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-3 pt-1">
+            <button
+              type="button"
+              onClick={() => setIsTriggering(false)}
+              className="px-4 py-2 rounded-2xl text-xs font-semibold border border-[var(--card-border)] text-gray-500 hover:text-gray-800 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (!repoInput.trim()) {
+                  alert('Please enter a repository (e.g. hstanway/brewery-test-app).');
+                  return;
+                }
+                triggerMutation.mutate({
+                  repository: repoInput.trim(),
+                  branch: branchInput.trim() || 'main',
+                  commit: commitInput.trim() || 'HEAD',
+                });
+              }}
+              disabled={triggerMutation.isPending}
+              className="flex items-center gap-1.5 bg-blue-600 hover:bg-[var(--primary)] text-white px-5 py-2 rounded-2xl text-xs font-bold transition-colors disabled:opacity-50 shadow-sm"
+            >
+              <Play className="w-3.5 h-3.5" />
+              {triggerMutation.isPending ? 'Enqueueing...' : 'Start Build'}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Filters & Search Bar */}
       <div className="flex flex-col md:flex-row gap-4 items-center justify-between p-4 bg-[var(--card)] border border-[var(--card-border)] rounded-2xl">
