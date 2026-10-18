@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/api/client';
 import { 
@@ -25,10 +25,20 @@ import {
 
 export default function DeploymentDetailsClient() {
   const params = useParams();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const router = useRouter();
   const queryClient = useQueryClient();
-  const id = (searchParams?.get('id') || params?.id) as string;
+
+  const pathSegmentId = React.useMemo(() => {
+    if (!pathname || !pathname.startsWith('/deployments/')) return undefined;
+    const seg = pathname.split('/')[2];
+    if (!seg || seg === 'details' || seg === '1') return undefined;
+    return seg;
+  }, [pathname]);
+
+  const paramId = typeof params?.id === 'string' && params.id !== '1' ? params.id : undefined;
+  const id = (searchParams?.get('id') || paramId || pathSegmentId || '') as string;
 
   const [isEditing, setIsEditing] = React.useState(false);
   const [selectedVersion, setSelectedVersion] = React.useState('');
@@ -65,6 +75,11 @@ export default function DeploymentDetailsClient() {
     enabled: !!id,
     refetchInterval: 4000,
   });
+
+  const availableVersions: string[] = React.useMemo(() => {
+    if (!artifactVersionsData?.versions) return [];
+    return artifactVersionsData.versions.map((v: any) => (typeof v === 'string' ? v : v.version)).filter(Boolean);
+  }, [artifactVersionsData]);
 
   React.useEffect(() => {
     if (deployment && !isEditing) {
@@ -148,7 +163,7 @@ export default function DeploymentDetailsClient() {
     onError: (err: any) => alert('Error deleting deployment: ' + err.message)
   });
 
-  if (isLoading) {
+  if (!id || isLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[50vh] gap-4">
         <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
@@ -176,11 +191,6 @@ export default function DeploymentDetailsClient() {
   const containerName = deployment.k8sContainerName || 'app';
   const port = deployment.containerPort || 80;
   const headlampUrl = deployment.headlampUrl || statusData?.headlampUrl || `https://deployments.bigiron.dev/c/main/deployments/${ns}/${k8sName}`;
-
-  const availableVersions: string[] = React.useMemo(() => {
-    if (!artifactVersionsData?.versions) return [];
-    return artifactVersionsData.versions.map((v: any) => (typeof v === 'string' ? v : v.version)).filter(Boolean);
-  }, [artifactVersionsData]);
 
   const currentStatus = statusData?.status || deployment.status;
   let statusColor = 'text-gray-500 bg-gray-100 border-gray-200';
