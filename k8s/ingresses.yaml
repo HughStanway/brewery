@@ -1,3 +1,18 @@
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: authelia-forwardauth
+  namespace: brewery
+spec:
+  forwardAuth:
+    address: http://authelia.authelia.svc.cluster.local:9091/api/verify?rd=https://auth.bigiron.dev/
+    authResponseHeaders:
+      - Remote-User
+      - Remote-Groups
+      - Remote-Name
+      - Remote-Email
+    trustForwardHeader: true
+---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -5,6 +20,7 @@ metadata:
   namespace: brewery
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-prod
+    traefik.ingress.kubernetes.io/router.middlewares: brewery-authelia-forwardauth@kubernetescrd
 spec:
   ingressClassName: traefik
   tls:
@@ -22,28 +38,3 @@ spec:
                 name: brewery-orchestrator
                 port:
                   number: 8080
----
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: demo-app-ingress
-  namespace: default
-  annotations:
-    cert-manager.io/cluster-issuer: letsencrypt-prod
-spec:
-  ingressClassName: traefik
-  tls:
-    - hosts:
-        - demo.bigiron.dev
-      secretName: demo-bigiron-dev-tls
-  rules:
-    - host: demo.bigiron.dev
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: demo-app
-                port:
-                  number: 80

@@ -1,3 +1,144 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: brewery
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: brewery-service-account
+  namespace: brewery
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: brewery-deployer-cluster-role
+rules:
+  - apiGroups:
+      - apps
+      - ""
+      - batch
+      - networking.k8s.io
+    resources:
+      - deployments
+      - statefulsets
+      - services
+      - ingresses
+      - configmaps
+      - secrets
+      - pods
+      - pods/log
+      - events
+      - namespaces
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: brewery-deployer-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: brewery-deployer-cluster-role
+subjects:
+  - kind: ServiceAccount
+    name: brewery-service-account
+    namespace: brewery
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: brewery-postgres-pvc
+  namespace: brewery
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: brewery-artifact-store-pvc
+  namespace: brewery
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 50Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: docker-registry-pvc
+  namespace: brewery
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: docker-registry
+  namespace: brewery
+  labels:
+    app: docker-registry
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: docker-registry
+  template:
+    metadata:
+      labels:
+        app: docker-registry
+    spec:
+      containers:
+        - name: registry
+          image: registry:2
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: REGISTRY_HTTP_ADDR
+              value: "0.0.0.0:5000"
+          ports:
+            - containerPort: 5000
+              hostPort: 5000
+          volumeMounts:
+            - name: registry-data
+              mountPath: /var/lib/registry
+      volumes:
+        - name: registry-data
+          persistentVolumeClaim:
+            claimName: docker-registry-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: registry
+  namespace: brewery
+spec:
+  type: ClusterIP
+  selector:
+    app: docker-registry
+  ports:
+    - port: 5000
+      targetPort: 5000
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -18,13 +159,17 @@ spec:
       containers:
         - name: postgres
           image: postgres:15-alpine
+          imagePullPolicy: IfNotPresent
           env:
             - name: POSTGRES_DB
               value: supply_chain
             - name: POSTGRES_USER
               value: postgres
             - name: POSTGRES_PASSWORD
-              value: brewery_secret_db_pass
+              valueFrom:
+                secretKeyRef:
+                  name: brewery-secrets
+                  key: POSTGRES_PASSWORD
           ports:
             - containerPort: 5432
               name: postgres
@@ -35,18 +180,6 @@ spec:
         - name: postgres-storage
           persistentVolumeClaim:
             claimName: brewery-postgres-pvc
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: brewery-postgres-pvc
-  namespace: brewery
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 10Gi
 ---
 apiVersion: v1
 kind: Service
@@ -69,6 +202,11 @@ metadata:
     app: brewery-orchestrator
 spec:
   replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
   selector:
     matchLabels:
       app: brewery-orchestrator
@@ -88,14 +226,38 @@ spec:
             - name: DB_USERNAME
               value: "postgres"
             - name: DB_PASSWORD
-              value: "brewery_secret_db_pass"
+              valueFrom:
+                secretKeyRef:
+                  name: brewery-secrets
+                  key: POSTGRES_PASSWORD
             - name: ARTIFACT_STORE_PATH
               value: "/mnt/artifact-store"
             - name: BREWERY_AUTH_ENABLED
-              value: "true"
+              value: "false"
+            - name: BREWERY_GITHUB_WEBHOOK_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: brewery-secrets
+                  key: BREWERY_GITHUB_WEBHOOK_SECRET
           ports:
             - containerPort: 8080
               name: http
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 4
           volumeMounts:
             - name: artifact-store
               mountPath: /mnt/artifact-store
