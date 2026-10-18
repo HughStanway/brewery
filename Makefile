@@ -1,9 +1,10 @@
-.PHONY: help test build import deploy restart apply status logs run-ui clean
+.PHONY: help test build import secrets deploy restart apply status logs run-ui clean
 
 # Variables
 IMAGE_NAME := brewery/software-supply-chain-platform:latest
 NAMESPACE := brewery
 DEPLOYMENT := brewery-orchestrator
+ENV_FILE := .env
 KUBECTL := sudo k3s kubectl
 CTR := sudo k3s ctr
 JAVA_HOME_21 := $(shell /usr/libexec/java_home -v 21 2>/dev/null || echo "")
@@ -37,16 +38,22 @@ import: ## Import built Docker image into K3s containerd
 	docker save $(IMAGE_NAME) | $(CTR) images import -
 	@echo "$(GREEN)✓ Imported image into K3s$(NC)"
 
+secrets: ## Sync K3s brewery-secrets Secret from local .env file
+	@echo "$(BLUE)Syncing K3s secret/brewery-secrets from $(ENV_FILE)...$(NC)"
+	$(KUBECTL) create namespace $(NAMESPACE) --dry-run=client -o yaml | $(KUBECTL) apply -f -
+	$(KUBECTL) create secret generic brewery-secrets -n $(NAMESPACE) --from-env-file=$(ENV_FILE) --dry-run=client -o yaml | $(KUBECTL) apply -f -
+	@echo "$(GREEN)✓ Secret brewery-secrets synced from $(ENV_FILE)$(NC)"
+
 restart: ## Rolling restart Brewery orchestrator deployment in K3s
 	@echo "$(BLUE)Restarting deployment/$(DEPLOYMENT) in namespace $(NAMESPACE)...$(NC)"
 	$(KUBECTL) rollout restart deployment/$(DEPLOYMENT) -n $(NAMESPACE)
 	$(KUBECTL) rollout status deployment/$(DEPLOYMENT) -n $(NAMESPACE)
 	@echo "$(GREEN)✓ Rollout complete$(NC)"
 
-deploy: build import restart ## Build image, import into K3s, and roll out update
+deploy: secrets build import restart ## Sync secrets from .env, build image, import into K3s, and roll out update
 	@echo "$(GREEN)✓ Brewery deployed to K3s$(NC)"
 
-apply: ## Apply K8s manifests and ingresses to K3s
+apply: secrets ## Sync secrets from .env and apply K8s manifests and ingresses to K3s
 	@echo "$(BLUE)Applying K3s manifests...$(NC)"
 	$(KUBECTL) apply -f k8s/brewery-manifests.yaml
 	$(KUBECTL) apply -f k8s/ingresses.yaml
